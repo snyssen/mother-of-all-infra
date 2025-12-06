@@ -14,6 +14,10 @@ in
   ## WORKAROUNDS
   #
 
+  # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
+  nixpkgs.config.allowUnfree = true;
+  nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
+
   # nixpkgs.config.permittedInsecurePackages = [
   #   "libsoup-2.74.3"
   # ];
@@ -49,6 +53,7 @@ in
     };
   };
 
+  kbd-layout.additionalLayouts = [ "be" ];
   grub.timeout = 10;
   cosmic = {
     enable = lib.mkDefault true;
@@ -61,7 +66,6 @@ in
   ];
 
   syncthing = {
-    enable = true;
     username = "snyssen";
     devices = syncthingData.devices;
     folders = {
