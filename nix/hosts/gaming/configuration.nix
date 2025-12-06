@@ -31,6 +31,7 @@ in
     inputs.stylix.nixosModules.stylix
 
     flake.modules.nixos.grub
+    flake.modules.nixos.kbd-layout
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
