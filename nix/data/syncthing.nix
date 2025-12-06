@@ -1,0 +1,19 @@
+{
+  devices = {
+    "sync.snyssen.be" = {
+      id = "6QHAMO3-PARP6UW-3Y5J7I4-P5PN2C5-RHS6OMP-QCSBP5Z-6OBZMC3-NZM65QT";
+    };
+    "gaming" = {
+      id = "TWXYFR3-NZYUKGD-DHQNCNN-TWE3V2X-IC6KZOY-LF6PNUA-OMGXKEF-M443LAQ";
+    };
+    "xps" = {
+      id = "B32FSBV-MC32PX3-QI2Y7CP-7LDTNDD-74VWP2P-AVXPMN3-CXXRVAF-65SA2QX";
+    };
+    "Pixel 8 Pro" = {
+      id = "DLXNSVV-GZGRYS7-JAZ5KLW-R3DSKMX-NHNUZYL-Y43OE6C-XC2ZNFN-5FEPQA4";
+    };
+    "sninful" = {
+      id = "RUPVKFS-XBNCXTY-ZFZN2I5-ECOMFQX-V74LTZR-JSN4BVS-BOTA235-S6Z7FQT";
+    };
+  };
+}
