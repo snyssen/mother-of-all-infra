@@ -1,9 +1,9 @@
 { lib, config, ... }:
 let
-  cfg = config.i18n;
+  cfg = config.locale;
 in
 {
-  options.i18n = {
+  options.locale = {
     timezone = lib.mkOption {
       default = "Europe/Brussels";
     };

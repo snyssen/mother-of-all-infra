@@ -3,6 +3,7 @@
   inputs,
   system,
   flake,
+  lib,
   ...
 }:
 let
@@ -35,6 +36,8 @@ in
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
+    flake.modules.nixos.locale
+    flake.modules.nixos.nh
     flake.modules.nixos.steam
     flake.modules.nixos.nvidia
     flake.modules.nixos.syncthing
@@ -53,6 +56,11 @@ in
 
   grub.timeout = 10;
   nvidia.open = true;
+  gnome = {
+    enable = lib.mkDefault true;
+    autoLogin.enable = true;
+  };
+  user.zsh.enable = true;
 
   environment.systemPackages = with pkgs; [
     lutris
@@ -89,8 +97,8 @@ in
     };
   };
 
-  # # Fix for time changing between boot of Windows and Linux
-  # time.hardwareClockInLocalTime = true;
+  # Fix for time changing between boot of Windows and Linux
+  time.hardwareClockInLocalTime = true;
 
   stylix = {
     enable = true;
