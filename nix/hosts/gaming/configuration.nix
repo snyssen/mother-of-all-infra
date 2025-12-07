@@ -114,6 +114,15 @@ in
     };
   };
 
+  # TODO: make this part automatically defined
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    auto-optimise-store = true;
+  };
   system.name = "gaming";
+  networking.hostName = "gaming";
   system.stateVersion = "23.05";
 }

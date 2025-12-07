@@ -95,6 +95,15 @@ in
     };
   };
 
+  # TODO: make this part automatically defined
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    auto-optimise-store = true;
+  };
   system.name = "sninful";
+  networking.hostName = "sninful";
   system.stateVersion = "23.05";
 }
