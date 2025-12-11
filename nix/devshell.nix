@@ -7,6 +7,11 @@ pkgs.mkShell {
     just
     pre-commit
     # TODO: Add project specific dependencies
+    ansible
+    ansible-lint
+    glibcLocales # otherwise ansible cannot run
+    grafana-alloy
+    terraform
   ];
 
   # Add environment variables

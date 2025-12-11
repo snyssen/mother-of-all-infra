@@ -1,6 +1,13 @@
 # direnv
 .direnv/
+.envrc.private
 
 # nix
 result
 result-*
+
+# terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+provider_ovh.tf
