@@ -18,6 +18,6 @@ ansible-update:
 ansible-vault-setup:
   bash scripts/ansible-vault-setup.sh
 
-ansible-playbook playbook:
+ansible-playbook playbook *flags:
   # Run in subshell to change directory and load ansible.cfg
-  (cd ansible && ansible-playbook playbooks/{{playbook}}.ansible.yml)
+  (cd ansible && ansible-playbook playbooks/{{playbook}}.ansible.yml {{flags}})
