@@ -1,0 +1,110 @@
+- name: "Creating docker networks"
+  community.docker.docker_network:
+    name: "{{ item }}"
+  loop:
+    - web
+    - db
+    - ldap
+    - monitoring
+- name: Create ipvlan docker network
+  community.docker.docker_network:
+    name: lan
+    driver: ipvlan
+    driver_options:
+      parent: enp3s0
+      ipvlan_mode: l2
+    ipam_config:
+      - subnet: 192.168.1.0/24
+        gateway: 192.168.1.1
+        iprange: 192.168.1.64/27 # 192.168.1.64 - 192.168.1.95
+
+- ansible.builtin.include_role:
+    name: container_databases
+  when: "stacks_deploy_list is not defined or 'databases' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_monitoring
+  when: "stacks_deploy_list is not defined or 'monitoring' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_backbone
+  when: "stacks_deploy_list is not defined or 'backbone' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_unifi
+  when: "stacks_deploy_list is not defined or 'unifi' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_ddns
+  when: "stacks_deploy_list is not defined or 'ddns' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_crowdsec
+  when: "stacks_deploy_list is not defined or 'crowdsec' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_ntfy
+  when: "stacks_deploy_list is not defined or 'ntfy' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_streaming
+  when: "stacks_deploy_list is not defined or 'streaming' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_immich
+  when: "stacks_deploy_list is not defined or 'immich' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_paperless
+  when: "stacks_deploy_list is not defined or 'paperless' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_nextcloud
+  when: "stacks_deploy_list is not defined or 'nextcloud' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_actual-budget
+  when: "stacks_deploy_list is not defined or 'actual-budget' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_recipes
+  when: "stacks_deploy_list is not defined or 'recipes' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_speedtest
+  when: "stacks_deploy_list is not defined or 'speedtest' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_dashboard
+  when: "stacks_deploy_list is not defined or 'dashboard' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_personal_website
+  when: "stacks_deploy_list is not defined or 'personal_website' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_quartz
+  when: "stacks_deploy_list is not defined or 'quartz' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_s-pdf
+  when: "stacks_deploy_list is not defined or 's-pdf' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_foundryvtt
+  when: "stacks_deploy_list is not defined or 'foundryvtt' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_minecraft
+  when: "stacks_deploy_list is not defined or 'minecraft' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_syncthing
+  when: "stacks_deploy_list is not defined or 'syncthing' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_team_wiki
+  when: "stacks_deploy_list is not defined or 'team_wiki' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_rallly
+  when: "stacks_deploy_list is not defined or 'rallly' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_speedtest-tracker
+  when: "stacks_deploy_list is not defined or 'speedtest-tracker' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_sharkey
+  when: "stacks_deploy_list is not defined or 'sharkey' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_dawarich
+  when: "stacks_deploy_list is not defined or 'dawarich' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_semaphore
+  when: "stacks_deploy_list is not defined or 'semaphore' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_backrest
+  when: "stacks_deploy_list is not defined or 'backrest' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_skyrim_together
+  when: "stacks_deploy_list is not defined or 'skyrim_together' in stacks_deploy_list"
+- ansible.builtin.include_role:
+    name: container_matrix
+  when: "stacks_deploy_list is not defined or 'matrix' in stacks_deploy_list"

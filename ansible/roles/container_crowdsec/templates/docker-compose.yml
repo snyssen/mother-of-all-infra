@@ -1,0 +1,29 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.7.4@sha256:4312a5109057f2a6b1237431abe638cd1026ecb3a9c2707c6ccc1ed09e4cb994
+    container_name: crowdsec
+    restart: unless-stopped
+    networks:
+      - monitoring
+      - web
+    volumes:
+      - "{{ docker_mounts_directory }}/crowdsec/crowdsec:/etc/crowdsec"
+      - "{{ docker_mounts_directory }}/crowdsec/data:/var/lib/crowdsec/data"
+      - "{{ docker_mounts_directory }}/crowdsec/acquis.d:/etc/crowdsec/acquis.d"
+      - "{{ docker_mounts_directory }}/crowdsec/config.yaml.local:/etc/crowdsec/config.yaml.local"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.crowdsec.entryPoints=websecure
+      - traefik.http.routers.crowdsec.rule=Host(`crowdsec.{{ main_domain }}`)
+      - traefik.http.routers.crowdsec.middlewares=lan-whitelist
+      - traefik.http.routers.crowdsec.service=crowdsec
+      - traefik.http.services.crowdsec.loadBalancer.server.port=8080
+    environment:
+      BOUNCER_KEY_firewall: "{{ crowdsec__firewall_bouncer__api_key }}"
+      COLLECTIONS: "LePresidente/authelia crowdsecurity/traefik"
+networks:
+  monitoring:
+    external: true
+  web:
+    external: true

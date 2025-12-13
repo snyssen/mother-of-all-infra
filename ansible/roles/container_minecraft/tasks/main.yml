@@ -1,0 +1,25 @@
+- name: Creating folders
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user_uid }}"
+    mode: "774"
+  loop:
+    - /mnt/storage/minecraft/data
+    - /mnt/storage/mc-usw/data
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: minecraft
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: minecraft
+      url: "https://mc.{{ main_domain }}"
+    - name: minecraft USW
+      url: "https://mc-usw.{{ main_domain }}"

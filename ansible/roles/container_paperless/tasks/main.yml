@@ -1,0 +1,38 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    state: directory
+  with_items:
+    - path: "{{ docker_mounts_directory }}/paperless/redis"
+      owner: "999"
+      group: "{{ ansible_user_gid }}"
+    # 33 is the Nextcloud user id, this will allow us to mount the consume folder into Nextcloud and ingest files from it
+    - path: "{{ docker_mounts_directory }}/paperless/data"
+      owner: "33"
+      group: "{{ ansible_user_gid }}"
+    - path: /mnt/storage/paperless/media
+      owner: "33"
+      group: "{{ ansible_user_gid }}"
+    - path: /mnt/storage/paperless/export
+      owner: "33"
+      group: "{{ ansible_user_gid }}"
+    - path: /mnt/storage/paperless/consume
+      owner: "33"
+      group: "{{ ansible_user_gid }}"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "paperless"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: paperless
+      url: "https://paperless.{{ main_domain }}"

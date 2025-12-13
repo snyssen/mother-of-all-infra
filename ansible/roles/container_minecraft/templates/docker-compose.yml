@@ -1,0 +1,122 @@
+services:
+  # See documentation at:
+  # https://docker-minecraft-server.readthedocs.io/en/latest/
+  minecraft:
+    image: itzg/minecraft-server:2025.10.5@sha256:0062e45ec8aa8bdbeeb6b4ad0e15df804c4525f0e208b66d899ab677230ee0e9
+    container_name: minecraft
+    networks:
+      - internal
+      - web
+      - monitoring
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.dynmap.entryPoints=websecure
+      - traefik.http.routers.dynmap.rule=Host(`mc.{{ main_domain }}`)
+      - traefik.http.routers.dynmap.service=dynmap
+      - traefik.http.services.dynmap.loadBalancer.server.port=8123
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.20.2"
+      TYPE: PAPER
+      MEMORY: "8G"
+      ENABLE_AUTOPAUSE: "FALSE" # TODO: Enable once I find a solution. Probably doesn't detect connection because routed through Traefik and listening on wrong interface
+      # DEBUG_AUTOPAUSE: "true"
+      MAX_TICK_TIME: "-1"
+
+      # https://github.com/itzg/docker-minecraft-server/blob/master/README.md#server-configuration
+      MOTD: "Find the Livemap at https://mc.{{ main_domain }} !"
+      DIFFICULTY: "{{ minecraft__difficulty }}"
+      WHITELIST: "{{ minecraft__whitelisted_players | join(',') }}"
+      OVERRIDE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      OPS: "{{ minecraft__admin_players | join(',') }}"
+      OVERRIDE_OPS: "TRUE"
+      MAX_PLAYERS: "{{ minecraft__max_player }}"
+      VIEW_DISTANCE: "{{ minecraft__view_distance }}"
+      GAMEMODE: "{{ minecraft__gamemode }}"
+      ONLINE_MODE: "{{ minecraft__forbid_cracked | to_json }}"
+      SERVER_NAME: "mc.{{ main_domain }}"
+      SPAWN_PROTECTION: "0"
+      ###
+      # DATAPACKS: |
+      #   https://cdn.modrinth.com/data/VHSdL301/versions/eaYoRkOM/KeepSomeInventory-v1.4.2.zip
+      PLUGINS: |
+        https://cdn.modrinth.com/data/fRQREgAc/versions/QtTWJjW6/Dynmap-3.7-beta-6-spigot.jar
+        https://github.com/sladkoff/minecraft-prometheus-exporter/releases/download/v2.5.0/minecraft-prometheus-exporter-2.5.0.jar
+        https://cdn.modrinth.com/data/E1Bps82F/versions/oMB4fXsl/TimeManager-1.8.2.jar
+
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    volumes:
+      - /mnt/storage/minecraft/data:/data
+    mem_limit: 8.2g
+
+  mc-usw:
+    image: itzg/minecraft-server:2025.10.5@sha256:0062e45ec8aa8bdbeeb6b4ad0e15df804c4525f0e208b66d899ab677230ee0e9
+    container_name: mc-usw
+    networks:
+      - internal
+      - web
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.20.2"
+      TYPE: PAPER
+      MEMORY: "8G"
+      MAX_TICK_TIME: "-1"
+      MOTD: Ultimate Survival World by Trixy Blox - vanilla
+      DIFFICULTY: normal
+      WHITELIST: "{{ minecraft__whitelisted_players | join(',') }}"
+      OVERRIDE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      OPS: "{{ minecraft__admin_players | join(',') }}"
+      OVERRIDE_OPS: "TRUE"
+      MAX_PLAYERS: "2"
+      VIEW_DISTANCE: "{{ minecraft__view_distance }}"
+      SERVER_NAME: "usw.{{ main_domain }}"
+      SPAWN_PROTECTION: "0"
+      ###
+      DATAPACKS: |
+        https://cdn.modrinth.com/data/VHSdL301/versions/eaYoRkOM/KeepSomeInventory-v1.4.2.zip
+      PLUGINS: |
+        https://cdn.modrinth.com/data/fRQREgAc/versions/QtTWJjW6/Dynmap-3.7-beta-6-spigot.jar
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.mc-usw-dynmap.entryPoints=websecure
+      - traefik.http.routers.mc-usw-dynmap.rule=Host(`mc-usw.{{ main_domain }}`)
+      - traefik.http.routers.mc-usw-dynmap.service=mc-usw-dynmap
+      - traefik.http.services.mc-usw-dynmap.loadBalancer.server.port=8123
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    volumes:
+      - /mnt/storage/mc-usw/data:/data
+    mem_limit: 8.2g
+
+  mc-router:
+    image: itzg/mc-router:1.37.0@sha256:8d365e5591b91385a559d3eb63179589f9e48437194faedd150ba957c6b5563b
+    container_name: mc-router
+    depends_on:
+      - minecraft
+      - mc-usw
+    command: --mapping=mc.{{ main_domain }}=minecraft:25565,usw.{{ main_domain }}=mc-usw:25565
+    restart: unless-stopped
+    networks:
+      - web
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.tcp.routers.mc-router.entryPoints=minecraft
+      - traefik.tcp.routers.mc-router.rule=HostSNI(`*`)
+      - traefik.tcp.services.mc-router.loadBalancer.server.port=25565
+    mem_limit: 16m
+
+networks:
+  internal:
+  monitoring:
+    external: true
+  web:
+    external: true

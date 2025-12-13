@@ -1,0 +1,45 @@
+- name: Setting disks facts for snapraid
+  ansible.builtin.set_fact:
+    snapraid_data_disks: |-
+      [
+        {% for disk in disks_mounts if disk.path.startswith('/mnt/disk') %}
+        {
+          "path": "{{ disk.path }}",
+          "content": true,
+          "number": "{{ disk.path | regex_search('\d+') }}"
+        },
+        {% endfor %}
+      ]
+    snapraid_parity_disks: |-
+      [
+        {% for parity in disks_mounts if parity.path.startswith('/mnt/parity') %}
+        {
+          "path": "{{ parity.path }}",
+          "content": true,
+          "number": "{{ parity.path | regex_search('\d+') }}"
+        },
+        {% endfor %}
+      ]
+
+# TODO: Wait for PR to be merged then replace with actual source role (PR at https://github.com/ironicbadger/ansible-role-snapraid/pull/11)
+- name: Installing and configuring snapraid
+  ansible.builtin.include_role:
+    name: snapraid
+  vars:
+    snapraid_build_repos: https://github.com/snyssen/docker-snapraid.git
+    # I have no idea why the default path changed when upgradig to Ubuntu 24.04
+    snapraid_bin_path: /usr/bin/snapraid
+
+    snapraid_content_files:
+      - /var/snapraid.content
+
+    snapraid_runner_email_address: "{{ smtp__to }}"
+    snapraid_runner_email_pass: "{{ smtp__pass }}"
+    snapraid_runner_email_address_from: "{{ smtp__from }}"
+    snapraid_runner_email_address_to: "{{ smtp__to }}"
+    snapraid_runner_smtp_host: "{{ smtp__host }}"
+    snapraid_runner_smtp_port: "{{ smtp__port }}"
+    snapraid_runner_smtp_user: "{{ smtp__user }}"
+    snapraid_runner_use_ssl: "{{ smtp__ssl }}"
+    snapraid_runner_use_tls: "{{ smtp__tls }}"
+    snapraid_runner_delete_threshold: 300

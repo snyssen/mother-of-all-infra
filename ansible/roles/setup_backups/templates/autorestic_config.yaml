@@ -1,0 +1,67 @@
+# {{ ansible_managed }}
+version: 2
+
+global:
+  all:
+    json: true # Adds '--json' flag to all restic commands, so logs are in json format
+
+backends:
+  {%- for backend in autorestic__backends +%}
+  {{ backend.name }}:
+    type: {{ backend.type }}
+    path: {{ backend.path }}
+    key: {{ backend.key }}
+    {%- if backend.env is defined +%}
+    env:
+      {%- for key, val in backend.env.items() +%}
+      {{ key }}: {{ val }}
+      {%- endfor +%}
+    {%- endif +%}
+  {%- endfor +%}
+
+locations:
+  {%- for location in autorestic__locations +%}
+  {{ location.name }}:
+    from:
+      {%- for from in location.from +%}
+      - {{ from }}
+      {%- endfor +%}
+    to:
+      {%- for to in location.to +%}
+      - {{ to }}
+      {%- endfor +%}
+    forget: "yes" # TODO: we need a second job to actually prune the data!
+    options:
+      forget:
+        keep-daily: 14
+        keep-weekly: 4
+        keep-monthly: 6
+        keep-yearly: 1
+    cron: 30 0 * * *
+    hooks:
+      before:
+        - echo "Starting backup"
+
+        {%- if location.hooks is defined and location.hooks.before is defined +%}
+        {%- for hook in location.hooks.before +%}
+        - {{ hook }}
+        {%- endfor +%}
+        {%- endif +%}
+
+        {%- for backend in autorestic__backends if backend.name in location.to and backend.hooks is defined +%}
+        {%- for hook in backend.hooks.before if backend.hooks.before is defined +%}
+        - {{ hook }}
+        {%- endfor +%}
+        {%- endfor +%}
+      success:
+        - curl --retry 5 -o /dev/null "https://uptime.{{ main_domain }}/api/push/{{ autorestic__push_monitors.results | selectattr('item.name', '==', location.name) | map(attribute='monitors') | first | map(attribute='pushToken') | first }}?status=up&msg=backup%20done%20in%20${AUTORESTIC_PROCESSED_DURATION}s&ping="
+      failure:
+        - curl --retry 5 -o /dev/null "https://uptime.{{ main_domain }}/api/push/{{ autorestic__push_monitors.results | selectattr('item.name', '==', location.name) | map(attribute='monitors') | first | map(attribute='pushToken') | first }}?status=down&msg=backup%20failed&ping="
+      after:
+        {%- for backend in autorestic__backends if backend.name in location.to and backend.hooks is defined +%}
+        {%- for hook in backend.hooks.after if backend.hooks.after is defined +%}
+        - {{ hook }}
+        {%- endfor +%}
+        {%- endfor +%}
+        - echo "Backup fully done!"
+  {%- endfor +%}

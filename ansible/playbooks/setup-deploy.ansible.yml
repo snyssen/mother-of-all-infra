@@ -1,0 +1,75 @@
+- name: Setup common configs
+  hosts: all,!livecams
+  roles:
+    - setup_common
+- name: Setup DNS
+  hosts: dns
+  roles:
+    - name: dns_adguard
+
+- name: Setup storage configs
+  hosts: apps,backup
+  roles:
+    - setup_storage
+
+- name: Setup monitored clients
+  hosts: monitored
+  roles:
+    - name: undergreen.prometheus-node-exporter
+      become: true
+      vars:
+        prometheus_node_exporter_config_flags:
+          "web.listen-address": "0.0.0.0:9100"
+          "log.level": "info"
+        prometheus_node_exporter_enabled_collectors:
+          - systemd
+    - name: container_alloy
+    - name: container_cadvisor
+  tasks:
+    - name: Permitting traffic for Prometheus Node exporter
+      ansible.builtin.include_role:
+        name: firewall
+      vars:
+        firewall_port: 9100
+        firewall_proto: tcp
+
+- name: Setup backup server
+  hosts: backup
+  roles:
+    - name: container_rest
+    - name: setup_wol
+      become: true
+  tasks:
+    - name: Create backup user
+      become: true
+      ansible.builtin.user:
+        name: backup
+        create_home: true
+        password_lock: true
+        generate_ssh_key: true
+        state: present
+    - name: Allow backup user to shutdown computer
+      become: true
+      community.general.sudoers:
+        name: allow-poweroff-backup
+        state: present
+        user: backup
+        commands:
+          - /usr/sbin/poweroff
+    - name: Authorize connection with backup SSH key
+      become: true
+      ansible.posix.authorized_key:
+        user: backup
+        state: present
+        key: "{{ lookup('file', 'backup_rsa.pub') }}"
+
+- name: Setup apps server
+  hosts: apps
+  roles:
+    - role: setup_snapraid
+      become: true
+      when: skip_snapraid is not defined or not skip_snapraid
+    - role: stacks_deploy
+      when: skip_stacks is not defined or not skip_stacks
+    - role: setup_backups
+      when: skip_backups is not defined or not skip_backups

@@ -1,0 +1,105 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.src }}"
+    state: directory
+    owner: "{{ item.owner | default('33') }}" # 33 as in www-data, i.e. the default PHP, and most importantly Nextcloud, user
+    group: "{{ item.group | default(ansible_user_gid) }}"
+    mode: "{{ item.mode | default('774') }}"
+  with_items:
+    # jellyfin
+    - src: "{{ docker_mounts_directory }}/jellyfin/data"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/jellyfin/config"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/jellyfin/cache"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/jellyfin/logs"
+      mode: "750"
+    # media
+    - src: "/mnt/storage/streaming/media/movies"
+    - src: "/mnt/storage/streaming/media/tv"
+    - src: "/mnt/storage/streaming/media/music"
+    - src: "/mnt/storage/streaming/media/music_vi"
+    - src: "/mnt/storage/streaming/media/audiobooks"
+    - src: "/mnt/storage/streaming/media/audiobooks_vi"
+    - src: "/mnt/storage/streaming/media/podcasts"
+    - src: "/mnt/storage/streaming/media/podcasts_vi"
+    - src: "/mnt/storage/streaming/media/books"
+    # audiobookshelf
+    - src: "{{ docker_mounts_directory }}/audiobookshelf/config"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/audiobookshelf/metadata"
+      mode: "750"
+    # torrents
+    - src: "/mnt/storage/torrent" # config
+      mode: "750"
+    - src: "/mnt/storage/streaming/torrent" # downloads
+      mode: "750"
+    # usenet
+    - src: "/mnt/storage/usenet" # config
+      mode: "750"
+    - src: "/mnt/storage/streaming/usenet" # downloads
+      mode: "750"
+    # sonarr
+    - src: "{{ docker_mounts_directory }}/sonarr/config"
+      mode: "750"
+    # radarr
+    - src: "{{ docker_mounts_directory }}/radarr/config"
+      mode: "750"
+    # lidarr
+    - src: "{{ docker_mounts_directory }}/lidarr/config"
+      mode: "750"
+    # prowlarr
+    - src: "{{ docker_mounts_directory }}/prowlarr/config"
+      mode: "750"
+    # bazarr
+    - src: "{{ docker_mounts_directory }}/bazarr/config"
+      mode: "750"
+    # pinchflat
+    - src: "{{ docker_mounts_directory }}/pinchflat/config"
+      mode: "750"
+    # lidatube
+    - src: "{{ docker_mounts_directory }}/lidatube/config"
+      mode: "750"
+    # lidify
+    - src: "{{ docker_mounts_directory }}/lidify/config"
+      mode: "750"
+
+- name: Deploying Sabnzbd config
+  become: true
+  ansible.builtin.template:
+    src: sabnzbd.ini
+    dest: /mnt/storage/usenet/sabnzbd.ini
+    mode: "600"
+    owner: "33"
+    group: "{{ ansible_user_gid }}"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "streaming"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: "{{ item.type | default('http') }}"
+    url: "{{ item.url }}"
+    keyword: "{{ item.keyword | default('') }}"
+  loop:
+    - name: jellyfin
+      url: https://streaming.snyssen.be/health
+      type: keyword
+      keyword: Healthy
+    - name: bazarr
+      url: https://bazarr.snyssen.be
+    - name: lidarr
+      url: https://lidarr.snyssen.be
+    - name: prowlarr
+      url: https://prowlarr.snyssen.be
+    - name: radarr
+      url: https://radarr.snyssen.be
+    - name: sonarr
+      url: https://sonarr.snyssen.be
+    - name: pinchflat
+      url: https://yt.snyssen.be

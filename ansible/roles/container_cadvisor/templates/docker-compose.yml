@@ -1,0 +1,13 @@
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1@sha256:f40e65878e25c2e78ea037f73a449527a0fb994e303dc3e34cb6b187b4b91435
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - 9200:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    mem_limit: 2g

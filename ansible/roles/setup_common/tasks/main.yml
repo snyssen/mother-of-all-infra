@@ -1,0 +1,121 @@
+# We have to use a block to apply "become: true" to included roles since "become" cannot be applied on include_role directly
+- become: true
+  block:
+    - name: Installing and configuring docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+      vars:
+        docker_users:
+          - "{{ ansible_user_id }}"
+        docker_daemon_options: "{{ docker_daemon_common_options | combine(docker_daemon_extra_options | default({})) }}"
+    - name: Harden SSH
+      ansible.builtin.include_role:
+        name: geerlingguy.security
+      vars:
+        security_autoupdate_mail_to: "{{ smtp__to }}"
+        security_fail2ban_enabled: false
+
+- name: Remove old packages
+  become: true
+  ansible.builtin.package:
+    name:
+      - crowdsec-firewall-bouncer
+    state: absent
+
+- name: Add crowdsec apt-key
+  become: true
+  ansible.builtin.apt_key:
+    url: https://packagecloud.io/crowdsec/crowdsec/gpgkey
+    state: present
+
+# https://packagecloud.io/crowdsec/crowdsec/install#manual-deb
+- name: Add crowdsec apt repository
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+    state: present
+    filename: crowdsec
+    update_cache: true
+
+- name: Installing other packages
+  become: true
+  ansible.builtin.package:
+    name:
+      # - cronie
+      # - cronie-anacron
+      - git
+      - python3-pip
+      - docker-compose
+      - zsh
+      - curl
+      - nano
+      - htop
+      - screen
+      # - lm_sensors
+      - crowdsec-firewall-bouncer-nftables
+    state: present
+
+- name: Deploy crowdsec firewall bouncer configuration
+  become: true
+  ansible.builtin.template:
+    src: crowdsec-firewall-bouncer.yaml
+    dest: /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
+    mode: "600"
+    owner: root
+    group: root
+
+- name: Configure crowdsec on metal so it does nothing
+  become: true
+  ansible.builtin.template:
+    src: crowdsec/config.yaml
+    dest: /etc/crowdsec/config.yaml
+    mode: "600"
+    group: root
+    owner: root
+
+- name: Ensure crowdsec firewall bouncer is running
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    daemon_reload: true
+    enabled: "{{ item.state == 'started' }}"
+  loop:
+    - name: crowdsec-firewall-bouncer
+      state: started
+    # We don't want crowdsec itself to be running since we have a central instance in a container
+    # ... But it seems the bouncer depends on the main crowdsec service running -_-
+    # UPDATE: seems like it's no longer the case when using official package!
+    # - name: crowdsec
+    #   state: stopped
+
+- name: Install and setup tailscale
+  ansible.builtin.include_role:
+    name: artis3n.tailscale.machine
+  vars:
+    verbose: true
+    tailscale_authkey: "{{ tailscale__auth_key }}"
+    tailscale_tags:
+      - server
+    tailscale_oauth_ephemeral: false
+    tailscale_oauth_preauthorized: false
+    tailscale_args: "--ssh"
+
+- name: Install and setup sync-ssh-keys
+  ansible.builtin.include_tasks: sync_ssh_keys.yml
+
+- name: Installing OhMyZsh with PowerLevel10K theme
+  ansible.builtin.include_role:
+    name: snyssen.oh-my-zsh-p10k
+  vars:
+    users:
+      - "{{ ansible_user_id }}"
+    oh_my_zsh_plugins:
+      - colored-man-pages
+      - colorize
+      - docker-compose
+      - docker
+      - screen
+      - zsh-autosuggestions
+      - zsh-syntax-highlighting
+    p10k_src_file: custom.p10k.zsh

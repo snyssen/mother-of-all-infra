@@ -1,0 +1,31 @@
+services:
+  team_wiki:
+    image: ghcr.io/requarks/wiki:2@sha256:1eaa2de751c2925871a95a02e0ddbdd5c48bf2e016653b2e4a8f0c646cc4ff83
+    container_name: team_wiki
+    networks:
+      - web
+      - db
+      - ldap
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: team_wiki
+      DB_USER: team_wiki
+      DB_PASS: "{{ team_wiki__db_pass }}"
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.team_wiki.entryPoints=websecure
+      - traefik.http.routers.team_wiki.rule=Host(`{{ team_domain }}`)
+      - traefik.http.routers.team_wiki.service=team_wiki
+      - traefik.http.services.team_wiki.loadBalancer.server.port=3000
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  ldap:
+    external: true

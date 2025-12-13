@@ -1,0 +1,26 @@
+- name: Creating folders
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+  loop:
+    - path: "{{ docker_mounts_directory }}/dawarich/shared"
+    - path: "{{ docker_mounts_directory }}/dawarich/postgres"
+    - path: /mnt/storage/dawarich/public
+    - path: /mnt/storage/dawarich/watched
+    - path: /mnt/storage/dawarich/storage
+    - path: /mnt/storage/backups/dawarich
+    - path: "{{ docker_mounts_directory }}/dawarich/photon"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "dawarich"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: dawarich
+      url: "https://location.{{ main_domain }}"

@@ -1,0 +1,41 @@
+- name: Ensure databases are running
+  ansible.builtin.include_role:
+    name: stacks_set_state
+  vars:
+    stacks_state: present
+    stacks_include:
+      - databases
+
+- name: Selecting pgsql databases
+  ansible.builtin.include_tasks: pgsql_restore.yml
+  loop: "{{ db__pg_databases }}"
+  loop_control:
+    loop_var: db
+    label: "{'name': '{{ db.name }}', 'password': '***'}"
+  when:
+    (db_restore_include is not defined and db_restore_exclude is not defined)
+    or (db.name in db_restore_include and db.name not in db_restore_exclude)
+
+- name: Restore Immich database
+  ansible.builtin.include_tasks: immich_restore.yml
+  loop:
+    - name: immich
+      password: "{{ immich__db_password }}"
+  loop_control:
+    loop_var: db
+    label: "{'name': '{{ db.name }}', 'password': '***'}"
+  when:
+    (db_restore_include is not defined and db_restore_exclude is not defined)
+    or (db.name in db_restore_include | default([]) and db.name not in db_restore_exclude | default([]))
+
+- name: Restore Dawarich database
+  ansible.builtin.include_tasks: dawarich_restore.yml
+  loop:
+    - name: dawarich
+      password: "{{ dawarich__db_pass }}"
+  loop_control:
+    loop_var: db
+    label: "{'name': '{{ db.name }}', 'password': '***'}"
+  when:
+    (db_restore_include is not defined and db_restore_exclude is not defined)
+    or (db.name in db_restore_include | default([]) and db.name not in db_restore_exclude | default([]))

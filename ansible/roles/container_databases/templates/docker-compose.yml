@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16.11@sha256:74bbe2dbc3c388b05544576167540fc5d8557017282b1c889344137ea7160061
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: "{{ db__pg_password }}"
+    volumes:
+      - "{{ docker_mounts_directory }}/databases/postgres/data:/var/lib/postgresql/data"
+    # Expose port directly on host so ansible can connect to manage databases
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - db
+    mem_limit: 1g
+
+  pgadmin:
+    image: dpage/pgadmin4:9.11@sha256:50700ac17936d0227f9e3e4bb086a91efb67064debc4b4737c35545bf1564088
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "{{ db__pgadmin_email }}"
+      PGADMIN_DEFAULT_PASSWORD: "{{ db__pgadmin_password }}"
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "10" # debug
+      PGADMIN_CONFIG_SHARED_STORAGE: >-
+        [{'name':'Backups',
+        'path': '/backups',
+        'restricted_access': False}]
+      PGADMIN_CONFIG_AUTHENTICATION_SOURCES: "['oauth2']"
+    volumes:
+      - "{{ docker_mounts_directory }}/databases/postgres/servers.json:/pgadmin4/servers.json:ro"
+      - "{{ docker_mounts_directory }}/databases/postgres/config_local.py:/pgadmin4/config_local.py:ro"
+      - /mnt/storage/backups:/backups
+    depends_on:
+      - postgres
+    networks:
+      - db
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.pgadmin.entryPoints=websecure
+      - traefik.http.routers.pgadmin.rule=Host(`pgadmin.{{ main_domain }}`)
+      - traefik.http.routers.pgadmin.service=pgadmin
+      - traefik.http.services.pgadmin.loadBalancer.server.port=80
+    mem_limit: 1g
+
+  postgres_backups:
+    image: prodrigestivill/postgres-backup-local:16-alpine@sha256:08e7b70879af45a89305b91f4600cfbc88da2419a65948df870cddb082b8cf83
+    restart: unless-stopped
+    container_name: postgres_backups
+    networks:
+      - db
+    depends_on:
+      - postgres
+    user: "5050:{{ ansible_user_gid }}"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: "{{ db__pg_databases | map(attribute='name') | join(',') }}"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "{{ db__pg_password }}"
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: "{{ iana_timezone }}"
+      HEALTHCHECK_ID: "{{ db__pg_dump_healthcheck_id }}"
+      SCHEDULE: 30 */4 * * *
+    volumes:
+      - /mnt/storage/backups/postgres:/backups
+      - ./hooks:/hooks
+    mem_limit: 64m
+
+networks:
+  db:
+    external: true
+  web:
+    external: true

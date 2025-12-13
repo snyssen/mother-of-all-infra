@@ -1,0 +1,74 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    # nextcloud uid and gid
+    owner: 33
+    group: 33
+    mode: "770"
+  with_items:
+    # nextcloud
+    - /mnt/storage/nextcloud/config
+    - /mnt/storage/nextcloud_logs
+
+- name: Deploying nextcloud config file
+  become: true
+  ansible.builtin.template:
+    src: extra.config.php
+    dest: /mnt/storage/nextcloud/config/extra.config.php
+    owner: 33
+    group: 33
+    mode: "770"
+  register: nextcloud_config
+
+- name: Deploy Promtail configuration
+  become: true
+  ansible.builtin.template:
+    src: promtail-config.yml
+    dest: /mnt/storage/nextcloud_logs/promtail-config.yml
+    owner: 33
+    group: 33
+    mode: "0640"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "nextcloud"
+    docker_compose_state: "{{ 'restarted' if nextcloud_config.changed else 'present' }}"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: "{{ item.type }}"
+    url: "{{ item.url | default('') }}"
+    jsonPath: "{{ item.jsonPath | default('') }}"
+    expectedValue: "{{ item.expectedValue | default('') }}"
+    interval: "{{ item.interval | default(60) }}"
+    maxretries: "{{ item.maxretries | default(1) }}"
+  loop:
+    - name: nextcloud
+      type: json-query
+      url: "https://cloud.{{ main_domain }}/status.php"
+      jsonPath: installed = true and maintenance = false and needsDbUpgrade = false
+      expectedValue: "true"
+    - name: nextcloud background job
+      type: push
+      interval: 300
+      maxretries: 3
+
+- name: Retrieve push monitor info
+  lucasheld.uptime_kuma.monitor_info:
+    name: nextcloud background job
+  register: nextcloud_push_monitor
+
+- name: Adds cron job for Nextcloud
+  become: true
+  ansible.builtin.cron:
+    name: Nextcloud
+    minute: "*/5"
+    user: root
+    job: >-
+      docker exec -u www-data nextcloud php cron.php
+      && curl -fsS -m 10 --retry 5 -o /dev/null "https://uptime.{{ main_domain }}/api/push/{{ nextcloud_push_monitor.monitors[0].pushToken }}?status=up&msg=OK&ping="
+    state: present

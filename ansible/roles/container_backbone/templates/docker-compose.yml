@@ -1,0 +1,244 @@
+services:
+  traefik:
+    image: traefik:v3.6.4@sha256:beebe9d00a6f7cd8cf35581eb9c065d30d1ac0b961a5561fb106c64d10d8d76d
+    restart: unless-stopped
+    container_name: traefik
+    networks:
+      - web
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      - "--entryPoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      - "--entryPoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.certResolver=le"
+      {% if backbone__acme_dns_challenge__enabled %}
+
+      - "--entrypoints.websecure.http.tls.domains[0].main={{ main_domain }}"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.{{ main_domain }}"
+      {% endif %}
+
+
+      - "--entryPoints.unifi-stun.address=:3478/udp"
+      - "--entryPoints.unifi-discovery.address=:10001/udp"
+      - "--entryPoints.unifi-comm.address=:8081"
+      # TODO: fix DLNA (should be exposed as physical device)
+      # - "--entryPoints.unifi-discovery-l2.address=:1900/udp"
+      - "--entryPoints.minecraft.address=:25565"
+      - "--entryPoints.jellyfin-discovery.address=:7359/udp"
+      # TODO: fix DLNA (should be exposed as physical device)
+      # - "--entryPoints.dlna.address=:1900/udp"
+      - "--entryPoints.syncthing.address=:22000"
+      - "--entryPoints.syncthing-udp.address=:22000/udp"
+      - "--entryPoints.syncthing-discovery.address=:21027/udp"
+      - "--entryPoints.skyrim_together.address=:10578/udp"
+
+      - "--certificatesResolvers.le.acme.email={{ smtp__to }}"
+      - "--certificatesResolvers.le.acme.storage=/certs/acme.json"
+      - "--certificatesresolvers.le.acme.caserver={{ backbone__acme_ca_server }}"
+      - "--certificatesResolvers.le.acme.tlsChallenge=false"
+      - "--certificatesresolvers.le.acme.dnschallenge={{ backbone__acme_dns_challenge__enabled | to_json }}"
+      - "--certificatesresolvers.le.acme.dnschallenge.provider={{ backbone__acme_dns_challenge__provider }}"
+      - "--certificatesresolvers.le.acme.dnschallenge.delaybeforecheck=30"
+      - "--certificatesResolvers.le.acme.httpChallenge={{ backbone__acme_http_challenge__enabled | to_json }}"
+      - "--certificatesResolvers.le.acme.httpChallenge.entryPoint=web"
+
+      # Do not check certificates from apps (some apps, such as unifi, do not provide a way to disable their own cert...)
+      - "--serverstransport.insecureskipverify"
+    environment:
+      - "{{ backbone__acme_dns_challenge__api_key_variable }}={{ backbone__acme_dns_challenge__api_key }}"
+    ports:
+      - 80:80 # HTTP
+      - 443:443 # HTTPS
+      - 3478:3478/udp # unifi STUN
+      - 10001:10001/udp # unifi AP discovery
+      - 8080:8081 # unifi device communication /!\ Internally (in Traefik), uses 8081 because 8080 is taken by API => but unifi then receives it again in 8080, so should be transprent /!\
+      # TODO: fix DLNA (should be exposed as physical device)
+      # - 1900:1900/udp # unifi discovery on L2 network
+      - 25565:25565 # Minecraft
+      - 7359:7359/udp # Jellyfin client discovery
+      # TODO: fix DLNA (should be exposed as physical device)
+      # - 1900:1900/udp # DLNA (for Jellyfin)
+      - 22000:22000/tcp # syncthing (TCP)
+      - 22000:22000/udp # syncthing (UDP)
+      - 21027:21027/udp # syncthing discovery
+      - 10578:10578/udp # Skyrim Together Reborn server
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      # certificates storage
+      - "{{ docker_mounts_directory }}/traefik:/certs"
+    mem_limit: 128m
+    labels:
+      # allow access to traefik UI
+      - traefik.enable=true
+      - traefik.http.routers.traefik.entryPoints=websecure
+      - traefik.http.routers.traefik.rule=Host(`routing.{{ main_domain }}`)
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=authelia@docker,traefik-compress
+
+      # Common middlewares definitions
+      - traefik.http.middlewares.lan-whitelist.ipwhitelist.sourcerange={{ internal_networks_cidr | join(",") }}
+      - traefik.http.middlewares.authelia.forwardAuth.address=http://authelia:9091/api/authz/forward-auth
+      - traefik.http.middlewares.authelia.forwardAuth.trustForwardHeader=true
+      - traefik.http.middlewares.authelia.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Email,Remote-Name
+      - traefik.http.middlewares.traefik-compress.compress=true
+
+  vpn:
+    image: qmcgaw/gluetun:v3.40.3@sha256:ef4a44819a60469682c7b5e69183e6401171891feaa60186652d292c59e41b30
+    container_name: vpn
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    networks:
+      - web
+    ports:
+      - 8888:8888/tcp # HTTP proxy
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 6881:6881
+      - 6881:6881/udp
+    volumes:
+      - "{{ docker_mounts_directory }}/gluetun:/gluetun"
+    environment:
+      # See https://github.com/qdm12/gluetun/wiki
+      - VPN_SERVICE_PROVIDER={{ vpn__service_provider }}
+      # OpenVPN:
+      - OPENVPN_USER={{ vpn__user }}
+      - OPENVPN_PASSWORD={{ vpn__pass }}
+      - SERVER_COUNTRIES=Switzerland # Switzerland has the most P2P compatible servers
+      # Timezone for accurate log times
+      - TZ={{ iana_timezone }}
+      # Server list updater. See https://github.com/qdm12/gluetun/wiki/Updating-Servers#periodic-update
+      - UPDATER_PERIOD=24h
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      # Torrents
+      - traefik.http.routers.torrent.entryPoints=websecure
+      - traefik.http.routers.torrent.rule=Host(`torrent.{{ main_domain }}`)
+      - traefik.http.routers.torrent.service=torrent
+      - traefik.http.services.torrent.loadBalancer.server.port=9091
+      - traefik.http.routers.torrent.middlewares=authelia@docker
+      # Usenet
+      - traefik.http.routers.usenet.entryPoints=websecure
+      - traefik.http.routers.usenet.rule=Host(`usenet.{{ main_domain }}`)
+      - traefik.http.routers.usenet.service=usenet
+      - traefik.http.services.usenet.loadBalancer.server.port=8080
+      - traefik.http.routers.usenet.middlewares=authelia@docker
+    mem_limit: 364m
+
+  lldap:
+    image: lldap/lldap:v0.6.2@sha256:9e605a66c02514bfcffd1b67cafb1e98d50992216bb2871d7ae44622047dd09d
+    container_name: lldap
+    restart: unless-stopped
+    ports:
+      # For LDAP, only expose to localhost so Ansible can connect to it
+      - "127.0.0.1:3890:3890"
+    environment:
+      TZ: {{ iana_timezone }}
+      LLDAP_JWT_SECRET: {{ backbone__lldap__jwt_secret }}
+      LLDAP_KEY_SEED: {{ backbone__lldap__key_seed }}
+      # Output e.g. "dc=snyssen,dc=be"
+      LLDAP_LDAP_BASE_DN: >-
+        {{ main_domain | split(".") | map("regex_replace", "^", "dc=") | join(",") }}
+      LLDAP_DATABASE_URL: >-
+        postgres://{{ backbone__lldap__db_user }}:{{ backbone__lldap__db_pass }}@postgres/{{ backbone__lldap__db_user }}
+    networks:
+      - db
+      - web
+      - ldap
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      # web frontend
+      - traefik.http.routers.lldap.entryPoints=websecure
+      - traefik.http.routers.lldap.rule=Host(`ldap.{{ main_domain }}`)
+      - traefik.http.routers.lldap.service=lldap
+      - traefik.http.services.lldap.loadBalancer.server.port=17170
+
+  authelia:
+    container_name: authelia
+    image: ghcr.io/authelia/authelia:4.39.15@sha256:d23ee3c721d465b4749cc58541cda4aebe5aa6f19d7b5ce0afebb44ebee69591
+    restart: 'unless-stopped'
+    networks:
+      - web
+      - db
+      - ldap
+      - monitoring
+      - authelia
+    depends_on:
+      - authelia_redis
+    environment:
+      TZ: "{{ iana_timezone }}"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.authelia.rule=Host(`auth.{{ main_domain }}`)||Host(`auth.{{ team_domain }}`)
+      - traefik.http.routers.authelia.entryPoints=websecure
+    volumes:
+      - '{{ docker_mounts_directory }}/authelia/config:/config'
+
+  authelia_redis:
+    image: redis:8.4.0@sha256:43355efd22490e31ca14b9d569367d05121e2be61fd8e47937563ae2a80952ae
+    container_name: authelia_redis
+    restart: unless-stopped
+    networks:
+      - authelia
+    volumes:
+      - authelia_sessions:/data:rw
+
+  ts_dns_serve:
+    image: tailscale/tailscale:v1.90.9@sha256:9975353aae933e8fbd1a81226d092a9225b9a0f98b173d365a9d525eca1cc298
+    container_name: ts_dns_serve
+    hostname: ts-dns
+    restart: unless-stopped
+    environment:
+      # TODO: Use seperate oauth client from server
+      TS_AUTHKEY: "{{ tailscale__auth_key }}"
+      TS_EXTRA_ARGS: "--advertise-tags=tag:server"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: false
+    volumes:
+      - tailscale:/var/lib/tailscale:rw
+      - "{{ docker_mounts_directory }}/ts_dns/ts:/config"
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+
+  ts_dns:
+    image: technitium/dns-server:14.2.0@sha256:b6a39621a5c6b37e6ca8c4b428a7e39531041e19be4b28285657c8c74374950b
+    container_name: ts_dns
+    restart: unless-stopped
+    environment:
+      DNS_SERVER_DOMAIN: ts-dns.taild023c5.ts.net
+    volumes:
+      - "{{ docker_mounts_directory }}/ts_dns/dns:/etc/dns"
+    network_mode: service:ts_dns_serve
+
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  ldap:
+    external: true
+  monitoring:
+    external: true
+  authelia:
+volumes:
+  authelia_sessions:
+  tailscale:

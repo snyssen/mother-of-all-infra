@@ -1,0 +1,42 @@
+services:
+  rallly:
+    image: lukevella/rallly:4.5.9@sha256:e158bc0c3b84d0fdcaaf301a0fa462398fa9bc74b3ca511acef644e0535c6ddf
+    container_name: rallly
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://rallly:{{ rallly__db_pass }}@postgres/rallly
+      - SECRET_PASSWORD={{ rallly__secret }}
+      - NEXT_PUBLIC_BASE_URL=https://{{ rallly__subdomain }}.{{ team_domain }}
+      - NOREPLY_EMAIL=rally@{{ main_domain }}
+      - SUPPORT_EMAIL={{ smtp__to }}
+      - SMTP_HOST={{ smtp__host }}
+      - SMTP_PORT={{ smtp__port }}
+      - SMTP_SECURE={{ smtp__tls | lower }}
+      - SMTP_USER={{ smtp__user }}
+      - SMTP_PWD={{ smtp__pass }}
+
+      - OIDC_NAME=Authelia SSO
+      - OIDC_ISSUER_URL=https://auth.{{ team_domain}}
+      - OIDC_DISCOVERY_URL=https://auth.{{ team_domain}}/.well-known/openid-configuration
+      - OIDC_CLIENT_ID={{ backbone__authelia__oidc_rallly_clientid }}
+      - OIDC_CLIENT_SECRET={{ backbone__authelia__oidc_rallly_clientsecret }}
+
+      - EMAIL_LOGIN_ENABLED=false
+      - REGISTRATION_ENABLED=false
+    networks:
+      - db
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.rallly.entryPoints=websecure
+      # Prevent registration by not routing on /register
+      - traefik.http.routers.rallly.rule=Host(`{{ rallly__subdomain }}.{{ team_domain }}`) && !PathPrefix(`/register`)
+      - traefik.http.routers.rallly.service=rallly
+      - traefik.http.services.rallly.loadBalancer.server.port=3000
+
+networks:
+  web:
+    external: true
+  db:
+    external: true

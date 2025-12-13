@@ -1,0 +1,14 @@
+- name: Backing up postgres databases
+  community.docker.docker_container_exec:
+    container: postgres_backups
+    command: /backup.sh
+
+- name: backing up immich database to disk
+  community.docker.docker_container_exec:
+    container: immich_db_dumper
+    command: /backup.sh
+
+- name: backing up dawarich database to disk
+  community.docker.docker_container_exec:
+    container: dawarich_db_dumper
+    command: /backup.sh

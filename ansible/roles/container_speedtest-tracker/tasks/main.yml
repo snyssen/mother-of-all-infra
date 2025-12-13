@@ -1,0 +1,21 @@
+- name: Create data folder
+  ansible.builtin.file:
+    path: "{{ docker_mounts_directory }}/speedtest-tracker"
+    state: directory
+    owner: "{{ ansible_user_uid }}"
+    group: "{{ ansible_user_gid }}"
+    mode: "700"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: speedtest-tracker
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: speedtest-tracker
+      url: "https://speedtest-tracker.{{ main_domain }}"

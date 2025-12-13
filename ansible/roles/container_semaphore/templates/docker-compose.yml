@@ -1,0 +1,36 @@
+services:
+  semaphore:
+    container_name: semaphore
+    image: semaphoreui/semaphore:v2.16.34@sha256:42529f11f25b39ef400a125f32cf097e32fd6489fd62a10643058b7824997383
+    restart: unless-stopped
+    environment:
+      SEMAPHORE_PASSWORD_LOGIN_DISABLED: "True"
+      # Since we do not allow password login, the admin is actually inaccessible and useless, so we need to allow other users to manage projects
+      # As usual, RBAC is instead managed by Authelia, only allowing the "sysadmin" role to log into Semaphore
+      SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT : "True"
+      SEMAPHORE_ADMIN_PASSWORD: "{{ semaphore__admin_pass | replace('$', '$$') }}"
+      SEMAPHORE_ADMIN_NAME: admin
+      SEMAPHORE_ADMIN_EMAIL: admin@localhost
+      SEMAPHORE_ADMIN: admin
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION: "{{ semaphore__encryption_key }}"
+      TZ: "{{ iana_timezone }}"
+      SEMAPHORE_WEB_ROOT: "https://semaphore.{{ main_domain }}"
+    volumes:
+      - /mnt/storage/semaphore/config:/etc/semaphore
+    networks:
+      - web
+      - db
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.semaphore.entryPoints=websecure
+      - traefik.http.routers.semaphore.rule=Host(`semaphore.{{ main_domain }}`)
+      - traefik.http.routers.semaphore.service=semaphore
+      - traefik.http.services.semaphore.loadBalancer.server.port=3000
+
+
+networks:
+  web:
+    external: true
+  db:
+    external: true

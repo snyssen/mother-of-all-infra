@@ -1,0 +1,181 @@
+# Derived from: https://github.com/Freika/dawarich/blob/master/docker/docker-compose.yml
+services:
+  dawarich_redis:
+    image: redis:8.4.0@sha256:43355efd22490e31ca14b9d569367d05121e2be61fd8e47937563ae2a80952ae
+    container_name: dawarich_redis
+    command: redis-server
+    networks:
+      - internal
+    volumes:
+      - "{{ docker_mounts_directory }}/dawarich/shared:/data"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  dawarich_db:
+    image: postgis/postgis:17-3.5-alpine@sha256:5c37f065b662a82a113880662a5ef019109282c9a855435207a801e69036832e
+    container_name: dawarich_db
+    volumes:
+      - "{{ docker_mounts_directory }}/dawarich/postgres:/var/lib/postgresql/data"
+      - "{{ docker_mounts_directory }}/dawarich/shared:/var/shared"
+    networks:
+      - internal
+      - db # So it can be accessed by pgadmin
+    environment:
+      POSTGRES_USER: dawarich
+      POSTGRES_PASSWORD: "{{ dawarich__db_pass }}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dawarich -d dawarich"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  dawarich_backups:
+    container_name: dawarich_db_dumper
+    image: prodrigestivill/postgres-backup-local:17@sha256:483fa15ecd998302bd312fc380cb1b3683a940881d9099d6dfe65bcc1e2714e8
+    user: "5050:{{ ansible_user_gid }}"
+    environment:
+      POSTGRES_HOST: dawarich_db
+      POSTGRES_USER: dawarich
+      POSTGRES_PASSWORD: "{{ dawarich__db_pass }}"
+      POSTGRES_DB: dawarich
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: "{{ iana_timezone }}"
+      HEALTHCHECK_ID: "{{ dawarich__db_dump_hc_id }}"
+      SCHEDULE: 30 */4 * * *
+    volumes:
+      - /mnt/storage/backups/dawarich:/backups
+      - ../databases/hooks:/hooks
+    depends_on:
+      - dawarich_db
+    networks:
+      - internal
+    restart: unless-stopped
+
+  dawarich_app:
+    image: freikin/dawarich:0.36.2@sha256:c302b2bec65d8523a4b450b859d89ff348170551317254f9fdbbe22005f38d27
+    container_name: dawarich_app
+    volumes:
+      - /mnt/storage/dawarich/public:/var/app/public
+      - /mnt/storage/dawarich/watched:/var/app/tmp/imports/watched
+      - /mnt/storage/dawarich/storage:/var/app/storage
+    networks:
+      - internal
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.dawarich.entryPoints=websecure
+      - traefik.http.routers.dawarich.rule=Host(`location.{{ main_domain }}`)
+      - traefik.http.routers.dawarich.service=dawarich
+      - traefik.http.services.dawarich.loadBalancer.server.port=3000
+    # TODO: expose prometheus (port 9394)
+    # ports:
+    #   - 3000:3000
+    #   - 9394:9394 # Prometheus exporter, uncomment if needed
+    stdin_open: true
+    tty: true
+    entrypoint: web-entrypoint.sh
+    command: ["bin/rails", "server", "-p", "3000", "-b", "::"]
+    restart: unless-stopped
+    environment: &dawarich_app_env
+      RAILS_ENV: development
+      REDIS_URL: redis://dawarich_redis:6379
+      DATABASE_HOST: dawarich_db
+      DATABASE_USERNAME: dawarich
+      DATABASE_PASSWORD: "{{ dawarich__db_pass }}"
+      DATABASE_NAME: dawarich
+      MIN_MINUTES_SPENT_IN_CITY: 60
+      APPLICATION_HOSTS: "location.{{ main_domain }}"
+      TIME_ZONE: "{{ iana_timezone }}"
+      APPLICATION_PROTOCOL: http
+      DISTANCE_UNIT: km
+      PROMETHEUS_EXPORTER_ENABLED: "false"
+      PROMETHEUS_EXPORTER_HOST: 0.0.0.0
+      PROMETHEUS_EXPORTER_PORT: 9394
+      SELF_HOSTED: "true"
+      PHOTON_API_HOST: "photon:2322"
+      PHOTON_API_USE_HTTPS: "false"
+      STORE_GEODATA: "true"
+      OIDC_CLIENT_ID: "{{ backbone__authelia__oidc_dawarich_clientid }}"
+      OIDC_CLIENT_SECRET: "{{ backbone__authelia__oidc_dawarich_clientsecret }}"
+      OIDC_ISSUER: https://auth.{{ main_domain }}
+      OIDC_REDIRECT_URI: https://location.{{ main_domain }}/users/auth/openid_connect/callback
+      OIDC_AUTO_REGISTER: true # optional, default is false
+      OIDC_PROVIDER_NAME: Authelia # optional, default is OpenID Connect
+      ALLOW_EMAIL_PASSWORD_REGISTRATION: false # optional, default is true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'",
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
+      dawarich_redis:
+        condition: service_healthy
+        restart: true
+  dawarich_sidekiq:
+    image: freikin/dawarich:0.36.2@sha256:c302b2bec65d8523a4b450b859d89ff348170551317254f9fdbbe22005f38d27
+    container_name: dawarich_sidekiq
+    volumes:
+      - /mnt/storage/dawarich/public:/var/app/public
+      - /mnt/storage/dawarich/watched:/var/app/tmp/imports/watched
+      - /mnt/storage/dawarich/storage:/var/app/storage
+    networks:
+      - internal
+    stdin_open: true
+    tty: true
+    entrypoint: sidekiq-entrypoint.sh
+    command: ["sidekiq"]
+    restart: unless-stopped
+    environment: *dawarich_app_env
+    healthcheck:
+      test:
+        ["CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}"]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
+      dawarich_redis:
+        condition: service_healthy
+        restart: true
+      dawarich_app:
+        condition: service_healthy
+        restart: true
+
+  photon:
+    image: rtuszik/photon-docker:1.3.0@sha256:4b7afa61a0c7516bc0efc8a3c50f6ddc2c6df7bca258ce84cfb7942dd28692e8
+    container_name: photon
+    environment:
+      - UPDATE_STRATEGY=PARALLEL
+      - UPDATE_INTERVAL=720h
+    volumes:
+      # WARNING: Volume below requires large storage, around 200GB and growing 10-20GB/year
+      - "{{ docker_mounts_directory }}/dawarich/photon:/photon/data"
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:

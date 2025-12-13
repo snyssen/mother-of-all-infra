@@ -1,0 +1,32 @@
+services:
+  foundryvtt:
+    image: felddy/foundryvtt:12@sha256:619381ef981fbbe757087221a88f4ee8a386eab4568d247da4e37236c15531e0
+    container_name: foundryvtt
+    restart: unless-stopped
+    volumes:
+      - "{{ docker_mounts_directory }}/foundryvtt:/data:rw"
+    environment:
+      - FOUNDRY_USERNAME={{ foundryvtt__username }}
+      - FOUNDRY_PASSWORD={{ foundryvtt__password }}
+      - FOUNDRY_ADMIN_KEY={{ foundryvtt__admin_key }}
+      - FOUNDRY_LOCAL_HOSTNAME=dnd.{{ main_domain }}
+      - FOUNDRY_HOSTNAME=dnd.{{ main_domain }}
+      - FOUNDRY_PROXY_PORT=443
+      - FOUNDRY_PROXY_SSL=true
+      - FOUNDRY_MINIFY_STATIC_FILES=true
+      - TIMEZONE={{ iana_timezone }}
+      - FOUNDRY_TELEMETRY=true
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.foundryvtt.entryPoints=websecure
+      - traefik.http.routers.foundryvtt.rule=Host(`dnd.{{ main_domain }}`)
+      - traefik.http.routers.foundryvtt.service=foundryvtt
+      - traefik.http.services.foundryvtt.loadBalancer.server.port=30000
+      - traefik.http.routers.foundryvtt.middlewares=authelia@docker
+    mem_limit: 256m
+
+networks:
+  web:
+    external: true

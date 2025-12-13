@@ -1,0 +1,21 @@
+services:
+  s-pdf:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:2.1.3@sha256:6ec3e0d5d92977c58c40ce5ab78a6237b1e9a86e80b28792b4ff76db1d3fdf90
+    container_name: s-pdf
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.s-pdf.entryPoints=websecure
+      - traefik.http.routers.s-pdf.rule=Host(`pdf.{{ main_domain }}`)
+      - traefik.http.services.s-pdf.loadBalancer.server.port=8080
+      - traefik.http.routers.s-pdf.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/s-pdf/ocr:/usr/share/tesseract-ocr/5/tessdata" #Required for extra OCR languages
+      - "{{ docker_mounts_directory }}/s-pdf/config:/configs"
+    mem_limit: 512m
+networks:
+  web:
+    external: true

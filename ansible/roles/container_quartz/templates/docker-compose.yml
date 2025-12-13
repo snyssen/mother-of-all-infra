@@ -1,0 +1,23 @@
+services:
+{% for vault in quartz__vaults %}
+  quartz-{{ vault.name }}:
+    image: ghcr.io/jackyzha0/quartz:latest@sha256:aef85dd761bd78e1d057c8353bac75d58110720b7b2037722d51cfdb452542f1
+    container_name: quartz-{{ vault.name }}
+    restart: unless-stopped
+    volumes:
+      - "{{ vault.path }}:/usr/src/app/content:ro"
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.quartz-{{ vault.name }}.entryPoints=websecure
+      - traefik.http.routers.quartz-{{ vault.name }}.rule=Host(`{{ vault.name }}.notes.{{ main_domain }}`)
+      - traefik.http.routers.quartz-{{ vault.name }}.middlewares=authelia@docker,traefik-compress
+      - traefik.http.routers.quartz-{{ vault.name }}.service=quartz-{{ vault.name }}
+      - traefik.http.services.quartz-{{ vault.name }}.loadBalancer.server.port=8080
+{% endfor %}
+
+networks:
+  web:
+    external: true

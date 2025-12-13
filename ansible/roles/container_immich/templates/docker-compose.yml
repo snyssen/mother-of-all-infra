@@ -1,0 +1,95 @@
+#
+# WARNING: Make sure to use the docker-compose.yml of the current release:
+#
+# https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+#
+# The compose file on main may not be compatible with the latest release.
+#
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:v2.3.1@sha256:f8d06a32b1b2a81053d78e40bf8e35236b9faefb5c3903ce9ca8712c9ed78445
+    environment:
+      DB_USERNAME: immich
+      DB_PASSWORD: "{{ immich__db_password }}"
+      DB_DATABASE_NAME: immich
+    volumes:
+      - /mnt/storage/photos:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+      - internal
+    depends_on:
+      - redis
+      - database
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.immich.entryPoints=websecure
+      - traefik.http.routers.immich.rule=Host(`photos.{{ main_domain }}`)
+      - traefik.http.routers.immich.service=immich
+      - traefik.http.services.immich.loadBalancer.server.port=2283
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:v2.3.1@sha256:379e31b8c75107b0af8141904baa8cc933d7454b88fdb204265ef11749d7d908
+    volumes:
+      - model-cache:/cache
+    networks:
+      - internal
+    restart: unless-stopped
+
+  redis:
+    container_name: immich_redis
+    image: redis:8.4.0@sha256:43355efd22490e31ca14b9d569367d05121e2be61fd8e47937563ae2a80952ae
+    networks:
+      - internal
+    restart: unless-stopped
+
+  database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0@sha256:1a078b237c1d9b420b0ee59147386b4aa60d3a07a8e6a402fc84a57e41b043a4
+    environment:
+      POSTGRES_PASSWORD: "{{ immich__db_password }}"
+      POSTGRES_USER: immich
+      POSTGRES_DB: immich
+    volumes:
+      - "{{ docker_mounts_directory }}/immich/postgres:/var/lib/postgresql/data"
+    networks:
+      - internal
+      - db # So it can be accessed by pgadmin
+    restart: unless-stopped
+
+  backup:
+    container_name: immich_db_dumper
+    image: prodrigestivill/postgres-backup-local:16@sha256:a0103fbce0c48ccc7693ddbb2a2bfa733048db845354f635efef9e4566de185d
+    user: "5050:{{ ansible_user_gid }}"
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_USER: immich
+      POSTGRES_PASSWORD: "{{ immich__db_password }}"
+      POSTGRES_DB: immich
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: "{{ iana_timezone }}"
+      HEALTHCHECK_ID: "{{ immich__db_dump_hc_id }}"
+      SCHEDULE: 30 */4 * * *
+    volumes:
+      - /mnt/storage/backups/immich:/backups
+      - ../databases/hooks:/hooks
+    depends_on:
+      - database
+    networks:
+      - internal
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:

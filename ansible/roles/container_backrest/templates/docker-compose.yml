@@ -1,0 +1,30 @@
+services:
+  backrest:
+    image: garethgeorge/backrest:v1.10.1@sha256:1308397161321b3c5aeca8acc6bf26eccb990df385f2532d3ce0eaa8b483dedf
+    container_name: backrest
+    volumes:
+      - "{{ docker_mounts_directory }}/backrest/data:/data"
+      - "{{ docker_mounts_directory }}/backrest/config:/config"
+      - "{{ docker_mounts_directory }}/backrest/cache:/cache"
+      - "{{ docker_mounts_directory }}/backrest/tmp:/tmp"
+    environment:
+      - BACKREST_DATA=/data
+      - BACKREST_CONFIG=/config/config.json
+      - XDG_CACHE_HOME=/cache
+      - TMPDIR=/tmp
+      - TZ={{ iana_timezone }}
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.backrest.entryPoints=websecure
+      - traefik.http.routers.backrest.rule=Host(`backrest.{{ main_domain }}`)
+      - traefik.http.routers.backrest.service=backrest
+      - traefik.http.services.backrest.loadBalancer.server.port=9898
+      - traefik.http.routers.backrest.middlewares=authelia@docker
+
+networks:
+  web:
+    external: true

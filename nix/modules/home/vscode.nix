@@ -21,6 +21,8 @@
           gruntfuggly.todo-tree
           vscode-icons-team.vscode-icons
           skellock.just
+          github.copilot
+          github.copilot-chat
         ];
         defaultUserSettings = {
           "git.autofetch" = "all";

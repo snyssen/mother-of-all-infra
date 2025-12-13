@@ -1,0 +1,70 @@
+services:
+  nextcloud_redis:
+    image: redis:8.4.0@sha256:43355efd22490e31ca14b9d569367d05121e2be61fd8e47937563ae2a80952ae
+    container_name: nextcloud_redis
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 32m
+
+  nextcloud:
+    image: nextcloud:32.0.2@sha256:04cc19547e586ac75e08dd056c11330d4ce4c5c561c89405b326180a37c19afb
+    container_name: nextcloud
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+      - db
+      - ldap
+    depends_on:
+      - nextcloud_redis
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.nextcloud.entryPoints=websecure
+      - traefik.http.routers.nextcloud.middlewares=nextcloud_headers,nextcloud_redirect
+      - traefik.http.routers.nextcloud.rule=Host(`cloud.{{ main_domain }}`)
+      - traefik.http.middlewares.nextcloud_headers.headers.customFrameOptionsValue=SAMEORIGIN
+      - traefik.http.middlewares.nextcloud_headers.headers.contentSecurityPolicy=frame-ancestors 'self' cloud.{{ main_domain }}
+      - traefik.http.middlewares.nextcloud_headers.headers.stsSeconds=155520011
+      - traefik.http.middlewares.nextcloud_headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.nextcloud_headers.headers.stsPreload=true
+      - traefik.http.middlewares.nextcloud_redirect.redirectregex.regex=/.well-known/(card|cal)dav
+      - traefik.http.middlewares.nextcloud_redirect.redirectregex.replacement=/remote.php/dav/
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD={{ nextcloud__postgres_password }}
+      - POSTGRES_HOST=postgres
+      - NEXTCLOUD_ADMIN_USER={{ nextcloud__nextcloud_admin }}
+      - NEXTCLOUD_ADMIN_PASSWORD={{ nextcloud__nextcloud_password }}
+      - REDIS_HOST=nextcloud_redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=cloud.{{ main_domain }}
+      - OVERWRITEPROTOCOL=https
+    volumes:
+      - /mnt/storage/nextcloud:/var/www/html
+      - /mnt/storage/nextcloud_logs:/var/logs
+      - /mnt/storage/paperless:/paperless
+      - /mnt/storage/streaming/media:/media
+    mem_limit: 2g
+
+  # TODO merge with alloy
+  nextcloud_promtail:
+    image: grafana/promtail:3.6.3@sha256:130b6dd63277d99ce87560c0266c0c30d07bc15ba0a8a590d42215465d4f5363
+    container_name: nextcloud_promtail
+    restart: unless-stopped
+    volumes:
+      - "/mnt/storage/nextcloud_logs:/var/logs:ro"
+    command: -config.file=/var/logs/promtail-config.yml
+    mem_limit: 256m
+
+networks:
+  monitoring:
+    external: true
+  web:
+    external: true
+  db:
+    external: true
+  ldap:
+    external: true
+  internal:

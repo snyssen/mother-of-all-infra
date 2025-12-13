@@ -1,0 +1,21 @@
+- name: Creating folders
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /mnt/storage/recipes/staticfiles
+    - /mnt/storage/recipes/mediafiles
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "recipes"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: recipes
+      url: "https://recipes.{{ main_domain }}"

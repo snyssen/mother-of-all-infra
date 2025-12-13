@@ -1,0 +1,100 @@
+services:
+  paperless_redis:
+    image: redis:8.4.0@sha256:43355efd22490e31ca14b9d569367d05121e2be61fd8e47937563ae2a80952ae
+    container_name: paperless_redis
+    networks:
+      - internal
+    restart: unless-stopped
+    volumes:
+      - "{{ docker_mounts_directory }}/paperless/redis:/data"
+    mem_limit: 12m
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.1@sha256:98528e58787e48c73748608e8d4c03b1692c185e69fc237c00c44d3b4f68b335
+    container_name: paperless
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+      - db
+    depends_on:
+      - paperless_redis
+      - paperless_gotenberg
+      - paperless_tika
+    healthcheck:
+      test:
+        ["CMD", "curl", "-fs", "-S", "--max-time", "2", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.paperless.entryPoints=websecure
+      - traefik.http.routers.paperless.rule=Host(`paperless.{{ main_domain }}`)
+      - traefik.http.routers.paperless.service=paperless
+      - traefik.http.services.paperless.loadBalancer.server.port=8000
+      - traefik.http.routers.paperless.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/paperless/data:/usr/src/paperless/data"
+      - /mnt/storage/paperless/media:/usr/src/paperless/media
+      - /mnt/storage/paperless/export:/usr/src/paperless/export
+      - /mnt/storage/paperless/consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://paperless_redis:6379
+      PAPERLESS_DBHOST: postgres
+      PAPERLESS_DBPASS: "{{ paperless__postgres_password }}"
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://paperless_gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://paperless_tika:9998
+      # Paperless specific
+      USERMAP_UID: "33" # 33 is the Nextcloud user id, this will allow us to mount the consume folder into Nextcloud and ingest files from it
+      USERMAP_GID: "{{ ansible_user_gid }}"
+      PAPERLESS_URL: https://paperless.{{ main_domain }}
+      PAPERLESS_SECRET_KEY: "{{ paperless__secret_key }}"
+      PAPERLESS_TIME_ZONE: Europe/Brussels
+      PAPERLESS_OCR_LANGUAGE: fra
+      PAPERLESS_OCR_USER_ARGS: '{"continue_on_soft_render_error": true, "invalidate_digital_signatures": true}'
+      # OIDC
+      PAPERLESS_DISABLE_REGULAR_LOGIN: "true"
+      PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
+      PAPERLESS_SOCIALACCOUNT_PROVIDERS: '{"openid_connect":{"APPS":[{"provider_id":"authelia","name":"Authelia","client_id":"{{ backbone__authelia__oidc_paperless_clientid }}","secret":"{{ backbone__authelia__oidc_paperless_clientsecret }}","settings":{"server_url":"https://auth.{{ main_domain }}/.well-known/openid-configuration"}}]}}'
+      # RBAC is done on Authelia side, so only authorized users can actually signup
+      # Direct LDAP implementation would probably be better, and there is a way to enable it: https://github.com/paperless-ngx/paperless-ngx/discussions/3228
+      # But this is not an official implementation, so I prefer this way.
+      # Note that user do not have any permissions ater signup, so an admin still has to login and change them
+      PAPERLESS_SOCIALACCOUNT_AUTO_SIGNUP: "true"
+      PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
+      PAPERLESS_SOCIALACCOUNT_EMAIL_AUTHENTICATION: "true"
+    # Some heavy documents require more RAM for OCR
+    mem_limit: 2g
+
+  paperless_gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.25@sha256:f9104080d9a7ecab253fb5ebe75100329cf5699c33ec0448f2ea02d885dfde4b
+    container_name: paperless_gotenberg
+    restart: unless-stopped
+    networks:
+      - internal
+    # The gotenberg chromium route is used to convert .eml files. We do not
+    # want to allow external content like tracking pixels or even javascript.
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+      - "--api-timeout=300s"
+    mem_limit: 1g
+
+  paperless_tika:
+    image: ghcr.io/paperless-ngx/tika:2.9.1-full@sha256:d59c38244949a418ef16be676eeea770e1616b45986661847d373f4de048a37e
+    container_name: paperless_tika
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1g
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:

@@ -1,0 +1,7 @@
+- name: Server-wol
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Send wake-on-lan magic packet
+      community.general.wakeonlan:
+        mac: "{{ backup_server_mac_address }}" # It could later be useful for all server, but as of now only backup server is supported

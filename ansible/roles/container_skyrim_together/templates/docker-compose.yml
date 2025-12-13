@@ -1,0 +1,25 @@
+services:
+  skyrim_together:
+    image: tiltedphoques/st-reborn-server:v1.8.0@sha256:e30cac8cc421be151be181901427a0fb64595c999559cc430861062c22a00d44
+    container_name: skyrim_together
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - traefik.udp.routers.skyrim_together.entryPoints=skyrim_together
+      - traefik.udp.routers.skyrim_together.service=skyrim_together
+      - traefik.udp.services.skyrim_together.loadBalancer.server.port=10578
+    volumes:
+      - /mnt/storage/skyrim_together/config:/home/server/config
+      - /mnt/storage/skyrim_together/logs:/home/server/logs
+      - /mnt/storage/skyrim_together/Data:/home/server/Data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  web:
+    external: true

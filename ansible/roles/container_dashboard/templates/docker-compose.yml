@@ -1,0 +1,19 @@
+services:
+  dashboard:
+    image: ghcr.io/snyssen/webb-launcher:3.0.2@sha256:55b06866a8f2da674f944a44d8b041c08f9e2e9527d83e9899a5b7b59391f589
+    restart: unless-stopped
+    container_name: dashboard
+    networks:
+      - web
+    env_file:
+      - ./.env
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.entryPoints=websecure
+      - traefik.http.routers.dashboard.rule=Host(`dash.{{ main_domain }}`)
+      - traefik.http.routers.dashboard.middlewares=traefik-compress
+    mem_limit: 48m
+
+networks:
+  web:
+    external: true

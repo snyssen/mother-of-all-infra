@@ -1,0 +1,11 @@
+- hosts: all
+  vars_prompt:
+    - name: reboot_delay
+      prompt: |-
+        Enter the delay before rebooting (in second, must be above 60). Leave empty to reboot immediately.
+        delay
+      private: no
+  tasks:
+    - ansible.builtin.reboot:
+        pre_reboot_delay: "{{ reboot_delay | default(0, true) }}"
+      become: yes

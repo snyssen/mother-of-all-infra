@@ -1,0 +1,48 @@
+- name: Setup mergerfs
+  ansible.builtin.include_tasks: "mergerfs_{{ ansible_distribution_file_variety | lower }}.ansible.yaml"
+
+- name: Creating ext4 filesystem on drives
+  become: true
+  community.general.filesystem:
+    fstype: ext4
+    state: present
+    dev: "{{ item.src }}"
+  with_items: "{{ disks_mounts }}"
+  register: filesystem_result
+- name: Mounting disks
+  become: true
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    fstype: auto
+    opts: defaults
+    state: mounted
+  with_items: "{{ disks_mounts }}"
+  register: disks_mount_result
+- name: Setting owner of mounting directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ ansible_user_uid }}"
+    group: "{{ ansible_user_gid }}"
+    mode: "755"
+  with_items: "{{ disks_mounts }}"
+
+- name: Mounting storage volume w/ MergerFS
+  become: true
+  ansible.posix.mount:
+    path: /mnt/storage
+    src: /mnt/disk*
+    fstype: fuse.mergerfs
+    opts: defaults,nonempty,allow_other,use_ino,cache.files=off,moveonenospc=true,category.create=mfs,minfreespace=20G,fsname=mergerfs-storage
+    state: mounted
+  register: storage_mount_result
+- name: Setting owner of storage mount
+  become: true
+  ansible.builtin.file:
+    path: /mnt/storage
+    state: directory
+    owner: "{{ ansible_user_uid }}"
+    group: "{{ ansible_user_gid }}"
+    mode: "755"

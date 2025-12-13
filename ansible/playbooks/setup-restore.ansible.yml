@@ -1,0 +1,16 @@
+- hosts: apps
+  roles:
+    - setup_common
+    - setup_storage
+    - role: setup_snapraid
+      vars:
+        should_skip: "{{ skip_snapraid | default(false) }}"
+      when: not should_skip
+    - role: stacks_deploy
+      vars:
+        docker_compose_state: absent
+    - backup_restore_files
+    - backup_restore_databases
+    - role: stacks_set_state
+      vars:
+        stacks_state: present

@@ -1,0 +1,666 @@
+# yamllint disable rule:comments-indentation
+---
+###############################################################################
+#                           Authelia Configuration                            #
+###############################################################################
+
+## The theme to display: light, dark, grey, auto.
+theme: "auto"
+
+default_2fa_method: totp
+
+##
+## Log Configuration
+##
+log:
+  ## Level of verbosity for logs: info, debug, trace.
+  level: "debug"
+
+  ## Format the logs are written as: json, text.
+  format: "json"
+
+##
+## Telemetry Configuration
+##
+telemetry:
+  ##
+  ## Metrics Configuration
+  ##
+  metrics:
+    ## Enable Metrics.
+    enabled: true
+
+##
+## TOTP Configuration
+##
+## Parameters used for TOTP generation.
+totp:
+  ## Disable TOTP.
+  disable: false
+
+  ## The issuer name displayed in the Authenticator application of your choice.
+  issuer: "Authelia"
+
+##
+## WebAuthn Configuration
+##
+## Parameters used for WebAuthn.
+webauthn:
+  ## Disable WebAuthn.
+  disable: false
+
+##
+## Identity Validation Configuration
+##
+## This configuration tunes the identity validation flows.
+identity_validation:
+  ## Reset Password flow. Adjusts how the reset password flow operates.
+  reset_password:
+    ## The secret key used to sign and verify the JWT.
+    jwt_secret: "{{ backbone__authelia__jwt_secret }}"
+
+##
+## Authentication Backend Provider Configuration
+##
+## Used for verifying user passwords and retrieve information such as email address and groups users belong to.
+##
+## The available providers are: `file`, `ldap`. You must use only one of these providers.
+authentication_backend:
+  ## Password Reset Options.
+  password_reset:
+    ## Disable both the HTML element and the API for reset password functionality.
+    disable: false
+
+  ##
+  ## LDAP (Authentication Provider)
+  ##
+  ## This is the recommended Authentication Provider in production
+  ## because it allows Authelia to offload the stateful operations
+  ## onto the LDAP service.
+  ldap:
+    ## The address of the directory server to connect to in the address common syntax.
+    ## Format: [<scheme>://]<hostname>[:<port>].
+    ## Square brackets indicate optional portions of the format. Scheme must be 'ldap', 'ldaps', or 'ldapi`.
+    ## The default scheme is 'ldapi' if the address is an absolute path otherwise it's 'ldaps'.
+    ## The default port is '636', unless the scheme is 'ldap' in which case it's '389'.
+    address: "ldap://lldap:3890"
+
+    ## The LDAP implementation, this affects elements like the attribute utilised for resetting a password.
+    ## Acceptable options are as follows:
+    ## - 'activedirectory' - for Microsoft Active Directory.
+    ## - 'freeipa' - for FreeIPA.
+    ## - 'lldap' - for lldap.
+    ## - 'custom' - for custom specifications of attributes and filters.
+    ## This currently defaults to 'custom' to maintain existing behaviour.
+    ##
+    ## Depending on the option here certain other values in this section have a default value, notably all of the
+    ## attribute mappings have a default value that this config overrides, you can read more about these default values
+    ## at https://www.authelia.com/c/ldap#defaults
+    implementation: "lldap"
+    ## The distinguished name of the container searched for objects in the directory information tree.
+    ## See also: additional_users_dn, additional_groups_dn.
+    base_dn: >-
+      {{ ldap_base_dn }}
+    ## The username and password of the admin user.
+    user: >-
+      uid={{ backbone__authelia__ldap_user }},ou=people,{{ ldap_base_dn }}
+    ## Password can also be set using a secret: https://www.authelia.com/c/secrets
+    password: "{{ backbone__authelia__ldap_pass }}"
+
+##
+## Password Policy Configuration.
+##
+password_policy:
+  ## zxcvbn is a well known and used password strength algorithm. It does not have tunable settings.
+  zxcvbn:
+    enabled: true
+    ## Configures the minimum score allowed.
+    min_score: 3
+
+##
+## Privacy Policy Configuration
+##
+## Parameters used for displaying the privacy policy link and drawer.
+privacy_policy:
+  ## Enables the display of the privacy policy using the policy_url.
+  enabled: false
+
+  ## Enables the display of the privacy policy drawer which requires users accept the privacy policy
+  ## on a per-browser basis.
+  require_user_acceptance: false
+
+  ## The URL of the privacy policy document. Must be an absolute URL and must have the 'https://' scheme.
+  ## If the privacy policy enabled option is true, this MUST be provided.
+  policy_url: ""
+
+##
+## Access Control Configuration
+##
+## Access control is a list of rules defining the authorizations applied for one resource to users or group of users.
+##
+## If 'access_control' is not defined, ACL rules are disabled and the 'bypass' rule is applied, i.e., access is allowed
+## to anyone. Otherwise restrictions follow the rules defined.
+##
+## Note: One can use the wildcard * to match any subdomain.
+## It must stand at the beginning of the pattern. (example: *.example.com)
+##
+## Note: You must put patterns containing wildcards between simple quotes for the YAML to be syntactically correct.
+##
+## Definition: A 'rule' is an object with the following keys: 'domain', 'subject', 'policy' and 'resources'.
+##
+## - 'domain' defines which domain or set of domains the rule applies to.
+##
+## - 'subject' defines the subject to apply authorizations to. This parameter is optional and matching any user if not
+##    provided. If provided, the parameter represents either a user or a group. It should be of the form
+##    'user:<username>' or 'group:<groupname>'.
+##
+## - 'policy' is the policy to apply to resources. It must be either 'bypass', 'one_factor', 'two_factor' or 'deny'.
+##
+## - 'resources' is a list of regular expressions that matches a set of resources to apply the policy to. This parameter
+##   is optional and matches any resource if not provided.
+##
+## Note: the order of the rules is important. The first policy matching (domain, resource, subject) applies.
+access_control:
+  networks:
+    - name: internal
+      networks:
+      {% for cidr in internal_networks_cidr -%}
+        - "{{ cidr }}"
+      {% endfor -%}
+  ## Default policy can either be 'bypass', 'one_factor', 'two_factor' or 'deny'. It is the policy applied to any
+  ## resource if there is no policy to be applied to the user.
+  ## https://www.authelia.com/configuration/security/access-control/
+  default_policy: "deny"
+  rules:
+    #
+    ## General services - services that are accessible to any registered user
+    #
+    - domain:
+        - "pdf.{{ main_domain }}"
+      policy: one_factor
+    #
+    ## DnD stuff
+    #
+    {% for vault in quartz__vaults -%}
+    {% for permission in vault.permissions -%}
+    - domain: "{{ vault.name }}.notes.{{ main_domain }}"
+      policy: "{{ permission.policy }}"
+      resources:
+      {% for resource in permission.resources -%}
+        - '{{ resource }}'
+      {% endfor -%}
+      subject: {{ permission.subject | to_json }}
+    {% endfor -%}
+    {% endfor -%}
+    - domain: "dnd.{{ main_domain }}"
+      policy: one_factor
+      subject:
+        - ["group:foundry_player"]
+    #
+    ## sysadmin stuff
+    #
+    - domain:
+        - "routing.{{ main_domain }}"
+        - "prometheus.{{ main_domain }}"
+        - "uptime.{{ main_domain }}"
+        - "ddns.{{ main_domain }}"
+        - "speedtest-tracker.{{ main_domain }}"
+        - "backrest.{{ main_domain }}"
+      policy: two_factor
+      subject:
+        - ["group:sysadmin"]
+    #
+    ## media management systems
+    #
+    # allow some direct connection on internal network for m2m calls
+    - domain:
+        # Download clients, contacted by *arr stack
+        - "torrent.{{ main_domain }}"
+        - "usenet.{{ main_domain }}"
+        # Lidarr, contacted by lidatube
+        - "lidarr.{{ main_domain }}"
+      policy: bypass
+      networks:
+        - internal
+    - domain:
+        - "torrent.{{ main_domain }}"
+        - "usenet.{{ main_domain }}"
+        - "sonarr.{{ main_domain }}"
+        - "radarr.{{ main_domain }}"
+        - "lidarr.{{ main_domain }}"
+        - "prowlarr.{{ main_domain }}"
+        - "bazarr.{{ main_domain }}"
+        - "lidatube.{{ main_domain }}"
+        - "lidify.{{ main_domain }}"
+        - "yt.{{ main_domain }}"
+      policy: two_factor
+      subject:
+        - ["group:sysadmin"]
+        - ["group:media_manager"]
+    #
+    ## Misc
+    #
+    # - domain:
+    #     - "wallos.{{ main_domain }}"
+    #   policy: two_factor
+    #   subject:
+    #     - ["group:sysadmin"]
+    #
+    ## Exceptions
+    #
+    # Disable access to Django admin for users not in sysadmin group
+    - domain:
+        - "paperless.{{ main_domain }}"
+        - "recipes.{{ main_domain }}"
+      policy: two_factor
+      subject:
+        - ["group:sysadmin"]
+      resources:
+        # IMPORTANT: use of single quotes -> https://www.authelia.com/configuration/prologue/common/#regular-expressions
+        - '^/admin.*$'
+    # Bypass auth on OIDC enabled sites (be sure to put after more restrictive rules)
+    - domain:
+        - "paperless.{{ main_domain }}"
+        - "recipes.{{ main_domain }}"
+      policy: "bypass"
+
+##
+## Session Provider Configuration
+##
+## The session cookies identify the user once logged in.
+## The available providers are: `memory`, `redis`. Memory is the provider unless redis is defined.
+session:
+  ## The secret to encrypt the session data. This is only used with Redis / Redis Sentinel.
+  ## Secret can also be set using a secret: https://www.authelia.com/c/secrets
+  secret: "{{ backbone__authelia__session_secret }}"
+
+  ## Cookies configures the list of allowed cookie domains for sessions to be created on.
+  ## Undefined values will default to the values below.
+  cookies:
+    ## The domain to protect.
+    ## Note: the Authelia portal must also be in that domain.
+    - domain: "{{ main_domain }}"
+      ## Required. The fully qualified URI of the portal to redirect users to on proxies that support redirections.
+      ## Rules:
+      ##   - MUST use the secure scheme 'https://'
+      ##   - The above 'domain' option MUST either:
+      ##      - Match the host portion of this URI.
+      ##      - Match the suffix of the host portion when prefixed with '.'.
+      authelia_url: "https://auth.{{ main_domain }}"
+    - domain: "{{ team_domain }}"
+      authelia_url: "https://auth.{{ team_domain }}"
+
+  ## Cookie Session Domain default 'name' value.
+  name: "authelia_session"
+
+  ## Cookie Session Domain default 'same_site' value.
+  same_site: "lax"
+
+  inactivity: "45m"
+
+  ## Cookie Session Domain default 'expiration' value.
+  expiration: "1h"
+
+  ## Cookie Session Domain default 'remember_me' value.
+  remember_me: "1M"
+  redis:
+    host: authelia_redis
+
+##
+## Storage Provider Configuration
+##
+## The available providers are: `local`, `mysql`, `postgres`. You must use one and only one of these providers.
+storage:
+  ## The encryption key that is used to encrypt sensitive information in the database. Must be a string with a minimum
+  ## length of 20. Please see the docs if you configure this with an undesirable key and need to change it, you MUST use
+  ## the CLI to change this in the database if you want to change it from a previously configured value.
+  encryption_key: "{{ backbone__authelia__encryption_key }}"
+
+  ##
+  ## PostgreSQL (Storage Provider)
+  ##
+  postgres:
+    ## The address of the PostgreSQL server to connect to in the address common syntax.
+    ## Format: [<scheme>://]<hostname>[:<port>].
+    ## Square brackets indicate optional portions of the format. Scheme must be 'tcp', 'tcp4', 'tcp6', or 'unix`.
+    ## The default scheme is 'unix' if the address is an absolute path otherwise it's 'tcp'. The default port is '5432'.
+    address: "tcp://postgres:5432"
+
+    ## The database name to use.
+    database: "{{ backbone__authelia__db_user }}"
+
+    ## The schema name to use.
+    schema: "public"
+
+    ## The username used for SQL authentication.
+    username: "{{ backbone__authelia__db_user }}"
+
+    ## The password used for SQL authentication.
+    ## Can also be set using a secret: https://www.authelia.com/c/secrets
+    password: "{{ backbone__authelia__db_pass }}"
+
+##
+## Notification Provider
+##
+## Notifications are sent to users when they require a password reset, a WebAuthn registration or a TOTP registration.
+## The available providers are: filesystem, smtp. You must use only one of these providers.
+notifier:
+  ## You can disable the notifier startup check by setting this to true.
+  disable_startup_check: false
+
+  ##
+  ## SMTP (Notification Provider)
+  ##
+  ## Use a SMTP server for sending notifications. Authelia uses the PLAIN or LOGIN methods to authenticate.
+  ## [Security] By default Authelia will:
+  ##   - force all SMTP connections over TLS including unauthenticated connections
+  ##      - use the disable_require_tls boolean value to disable this requirement
+  ##        (only works for unauthenticated connections)
+  ##   - validate the SMTP server x509 certificate during the TLS handshake against the hosts trusted certificates
+  ##     (configure in tls section)
+  smtp:
+    ## The address of the SMTP server to connect to in the address common syntax.
+    address: "smtp://{{ smtp__host }}:{{ smtp__port }}"
+
+    ## The username used for SMTP authentication.
+    username: "{{ smtp__user }}"
+
+    ## The password used for SMTP authentication.
+    ## Can also be set using a secret: https://www.authelia.com/c/secrets
+    password: "{{ smtp__pass }}"
+
+    ## The sender is used to is used for the MAIL FROM command and the FROM header.
+    ## If this is not defined and the username is an email, we use the username as this value. This can either be just
+    ## an email address or the RFC5322 'Name <email address>' format.
+    sender: "Authelia <auth@{{ main_domain }}>"
+
+##
+## Identity Providers
+##
+identity_providers:
+##
+## OpenID Connect (Identity Provider)
+##
+## It's recommended you read the documentation before configuration of this section:
+## https://www.authelia.com/c/oidc
+  oidc:
+    ## The hmac_secret is used to sign OAuth2 tokens (authorization code, access tokens and refresh tokens).
+    ## HMAC Secret can also be set using a secret: https://www.authelia.com/c/secrets
+    hmac_secret: "{{ backbone__authelia__oidc_hmac_secret }}"
+    ## The JWK's issuer option configures multiple JSON Web Keys. It's required that at least one of the JWK's
+    ## configured has the RS256 algorithm. For RSA keys (RS or PS) the minimum is a 2048 bit key.
+    jwks:
+      # Required Private Key in PEM DER form.
+      - key: |
+          {{ backbone__authelia__oidc_jwks_key | indent(10, false) }}
+    claims_policies:
+      semaphore_claims_policy:
+        id_token:
+          - groups
+          - email
+          - email_verified
+          - alt_emails
+          - preferred_username
+          - name
+    authorization_policies:
+      recipes_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:recipes_user"]
+      paperless_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'two_factor'
+            subject:
+              - ["group:paperless_user"]
+      media_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'two_factor'
+            subject:
+              - ["group:media_viewer"]
+      team_wiki_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:team_wiki_member"]
+      team_member_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:team_member"]
+      photos_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:photos_user"]
+      sysadmin_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'two_factor'
+            subject:
+              - ["group:sysadmin"]
+      hass_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'two_factor'
+            subject:
+              - ["group:hass_user"]
+      matrix_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:matrix_user"]
+      dawarich_policy:
+        default_policy: 'deny'
+        rules:
+          - policy: 'one_factor'
+            subject:
+              - ["group:dawarich_user"]
+    ## Clients is a list of known clients and their configuration.
+    clients:
+      ## configuration.
+        ## The description to show to users when they end up on the consent screen. Defaults to the ID above.
+      - client_name: 'Nextcloud'
+        ## The Client ID is the OAuth 2.0 and OpenID Connect 1.0 Client ID which is used to link an application to a
+        client_id: "{{ backbone__authelia__oidc_nextcloud_clientid }}"
+        # The client secret is a shared secret between Authelia and the consumer of this client.
+        client_secret: "{{ backbone__authelia__oidc_nextcloud_clientsecret_hash }}"
+        authorization_policy: 'two_factor'
+        redirect_uris:
+          - 'https://cloud.{{ main_domain }}/apps/user_oidc/code'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+          - 'groups'
+        userinfo_signed_response_alg: 'none'
+        token_endpoint_auth_method: client_secret_post
+      - client_name: 'Recipes'
+        client_id: "{{ backbone__authelia__oidc_recipes_clientid }}"
+        client_secret: "{{ backbone__authelia__oidc_recipes_clientsecret_hash }}"
+        authorization_policy: "recipes_policy"
+        redirect_uris:
+          - "https://recipes.{{ main_domain }}/accounts/oidc/authelia/login/callback/"
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+          - 'groups'
+        userinfo_signed_response_alg: 'none'
+      - client_name: 'Paperless'
+        client_id: "{{ backbone__authelia__oidc_paperless_clientid }}"
+        client_secret: "{{ backbone__authelia__oidc_paperless_clientsecret_hash }}"
+        authorization_policy: "paperless_policy"
+        redirect_uris:
+          - "https://paperless.{{ main_domain }}/accounts/oidc/authelia/login/callback/"
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+          - 'groups'
+        userinfo_signed_response_alg: 'none'
+      - client_name: 'Grafana'
+        client_id: '{{ backbone__authelia__oidc_grafana_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_grafana_clientsecret_hash }}'
+        authorization_policy: 'two_factor'
+        redirect_uris:
+          - 'https://monitor.{{ main_domain }}/login/generic_oauth'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'groups'
+          - 'email'
+        userinfo_signed_response_alg: 'none'
+      - client_name: 'Audiobookshelf'
+        client_id: '{{ backbone__authelia__oidc_audiobookshelf_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_audiobookshelf_clientsecret_hash }}'
+        authorization_policy: 'media_policy'
+        redirect_uris:
+          - 'https://audiobooks.{{ main_domain }}/auth/openid/callback'
+          - 'https://audiobooks.{{ main_domain }}/auth/openid/mobile-redirect'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'groups'
+          - 'email'
+        userinfo_signed_response_alg: 'none'
+      - client_name: 'pgadmin'
+        client_id: '{{ backbone__authelia__oidc_pgadmin_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_pgadmin_clientsecret_hash }}'
+        authorization_policy: 'two_factor'
+        redirect_uris:
+          - 'https://pgadmin.{{ main_domain }}/oauth2/authorize'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'groups'
+          - 'email'
+        userinfo_signed_response_alg: 'none'
+      - client_name: 'immich'
+        client_id: '{{ backbone__authelia__oidc_immich_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_immich_clientsecret_hash }}'
+        authorization_policy: 'photos_policy'
+        redirect_uris:
+          - app.immich:///oauth-callback
+          - https://photos.{{ main_domain }}/auth/login
+          - https://photos.{{ main_domain }}/user-settings
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+        token_endpoint_auth_method: "client_secret_post"
+      - client_name: 'team_wiki'
+        client_id: '{{ backbone__authelia__oidc_team_wiki_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_team_wiki_clientsecret_hash }}'
+        authorization_policy: 'team_wiki_policy'
+        redirect_uris:
+          - 'https://{{ team_domain }}/login/782aa720-97a8-439f-949e-fd75fed1085c/callback'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'groups'
+          - 'email'
+        userinfo_signed_response_alg: 'none'
+        token_endpoint_auth_method: client_secret_post
+      - client_name: 'rallly'
+        client_id: '{{ backbone__authelia__oidc_rallly_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_rallly_clientsecret_hash }}'
+        authorization_policy: 'team_member_policy'
+        redirect_uris:
+          - https://{{ rallly__subdomain }}.{{ team_domain }}/api/auth/callback/oidc
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+      - client_name: Semaphore
+        client_id: '{{ backbone__authelia__oidc_semaphore_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_semaphore_clientsecret_hash }}'
+        claims_policy: semaphore_claims_policy
+        public: false
+        authorization_policy: sysadmin_policy
+        redirect_uris:
+          - https://semaphore.{{ main_domain }}/api/auth/oidc/authelia/redirect
+        scopes:
+          - openid
+          - profile
+          - email
+        userinfo_signed_response_alg: none
+      - client_name: 'Tailscale'
+        client_id: '{{ backbone__authelia__oidc_tailscale_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_tailscale_clientsecret_hash }}'
+        public: false
+        authorization_policy: 'sysadmin_policy'
+        require_pkce: false
+        pkce_challenge_method: ''
+        redirect_uris:
+          - 'https://login.tailscale.com/a/oauth_response'
+        scopes:
+          - 'openid'
+          - 'email'
+          - 'profile'
+        response_types:
+          - 'code'
+        grant_types:
+          - 'authorization_code'
+        access_token_signed_response_alg: 'none'
+        userinfo_signed_response_alg: 'none'
+        token_endpoint_auth_method: 'client_secret_basic'
+      - client_name: 'Home Assistant'
+        client_id: '{{ backbone__authelia__oidc_hass_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_hass_clientsecret_hash }}'
+        public: false
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        authorization_policy: 'hass_policy'
+        redirect_uris:
+          - 'https://hass.{{ main_domain }}/auth/oidc/callback'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'groups'
+        response_types:
+          - 'code'
+        grant_types:
+          - 'authorization_code'
+        access_token_signed_response_alg: 'none'
+        userinfo_signed_response_alg: 'none'
+        token_endpoint_auth_method: 'client_secret_post'
+      - client_name: 'Synapse'
+        client_id: '{{ backbone__authelia__oidc_matrix_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_matrix_clientsecret_hash }}'
+        public: false
+        authorization_policy: 'matrix_policy'
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        redirect_uris:
+          - 'https://matrix-mas.{{ main_domain }}/upstream/callback/{{ matrix__mas__oidc_id }}'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+          - 'groups'
+        response_types:
+          - 'code'
+        grant_types:
+            - 'refresh_token'
+            - 'authorization_code'
+        access_token_signed_response_alg: 'none'
+        userinfo_signed_response_alg: 'none'
+        token_endpoint_auth_method: 'client_secret_post'
+      - client_name: 'dawarich'
+        client_id: '{{ backbone__authelia__oidc_dawarich_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_dawarich_clientsecret_hash }}'
+        authorization_policy: 'dawarich_policy'
+        redirect_uris:
+          - https://location.{{ main_domain }}/users/auth/openid_connect/callback
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'

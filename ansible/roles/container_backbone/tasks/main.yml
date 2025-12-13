@@ -1,0 +1,66 @@
+- name: Creating folders
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ docker_mounts_directory }}/traefik"
+    - "{{ docker_mounts_directory }}/gluetun"
+    - "{{ docker_mounts_directory }}/authelia"
+    - "{{ docker_mounts_directory }}/tailscale_dns"
+
+- name: Set LDAP base domain
+  ansible.builtin.set_fact:
+    ldap_base_dn: "{{ main_domain | split('.') | map('regex_replace', '^', 'dc=') | join(',') }}"
+
+- name: Load OIDC private key for Authelia
+  ansible.builtin.set_fact:
+    backbone__authelia__oidc_jwks_key: "{{ lookup('template', 'authelia/oidc/rsa512-4096.private.pem') }}"
+- name: Deploy Authelia config
+  become: true
+  ansible.builtin.template:
+    src: authelia/configuration.yml
+    dest: "{{ docker_mounts_directory }}/authelia/config/"
+    owner: 0
+    group: 0
+    mode: "400"
+  register: authelia_conf
+
+- name: Deploy ts_dns serve config
+  ansible.builtin.template:
+    src: ts_dns/serve.json
+    dest: "{{ docker_mounts_directory }}/ts_dns/ts/"
+    owner: 1000
+    group: 1000
+    mode: "400"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "backbone"
+    docker_compose_state: "{{ 'restarted' if authelia_conf.changed else 'present' }}"
+# # TODO: manage LDAP groups and technical users (human users will be managed manually)
+# - name: Install python3-ldap for connecting to LDAP
+#   become: true
+#   ansible.builtin.package:
+#     name: python3-ldap
+#     state: present
+
+# - name: Ensure groups are present
+#   community.general.ldap_entry:
+#     server_uri: ldap://localhost:3890
+#     bind_dn: "uid={{ backbone__lldap__user }},ou=people,{{ ldap_base_dn }}"
+#     bind_pw: "{{ backbone__lldap__pass }}"
+#     dn: "uid={{ item.name }},ou=groups,{{ ldap_base_dn }}"
+#     objectClass: groupOfUniqueNames
+#   loop: "{{ backbone__lldapt__groups }}"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: authelia
+      url: "https://auth.{{ main_domain }}"
+    - name: ldap
+      url: "https://ldap.{{ main_domain }}"

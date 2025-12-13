@@ -1,0 +1,575 @@
+main_domain: "{{ vault_main_domain }}"
+team_domain: "{{ vault_team_domain }}"
+docker_daemon_extra_options:
+  dns:
+    - "192.168.1.2"
+
+snapraid_runner_path: /opt/snapraid-runner/snapraid-runner
+snapraid_runner_conf: "{{ snapraid_runner_path }}.conf"
+snapraid_runner_bin: "{{ snapraid_runner_path }}.py"
+snapraid_healthcheck_io_host: https://hc-ping.com
+snapraid_runner_healthcheck_io_uuid: "{{ vault_snapraid_runner_healthcheck_io_uuid }}"
+snapraid_config_excludes:
+  - "*.unrecoverable"
+  - /lost+found/
+  - "*.!sync"
+  - /tmp/
+  # Folders with files that changes often
+  - /torrent/
+  - /streaming/torrent/
+  - /usenet/
+  - /streaming/usenet/
+  - /minecraft/data/
+  - /mc-usw/data/
+  - uploads/ # For Nextcloud upload folders, files are transactional and thus temporary
+  - /nextcloud/data/nextcloud.log
+  - /nextcloud/custom_apps/
+  - /nextcloud/apps/
+  - /nextcloud/core/
+  - /nextcloud/3rdparty/
+  - /nextcloud/lib/
+  - /nextcloud_logs/
+  - /recipes/staticfiles/ # For some reason these static files sure do change a lot...
+  - /syncthing/config/*.db/
+  - /sharkey/files/
+
+ntfy__anonymous_topics:
+  # Necessary for UnifiedPush
+  - pattern: up*
+    permission: wo
+ntfy__users:
+  - name: snyssen
+    password: "{{ vault_ntfy__users__snyssen_password }}"
+    password_hash: "{{ vault_ntfy__users__snyssen_password_hash }}"
+    role: user
+    topics:
+      - pattern: "*"
+        permission: ro
+  - name: monitoring
+    passord: "{{ vault_ntfy__users__monitoring_password }}"
+    password_hash: "{{ vault_ntfy__users__monitoring_password_hash }}"
+    role: user
+    topics:
+      - pattern: "{{ vault_ntfy__topics__monitoring }}"
+        permission: rw
+    # token: tk_3gd7d2yftt4b8ixyfe9mnmro88o76
+  - name: hass
+    passord: "{{ vault_ntfy__users__hass_password }}"
+    password_hash: "{{ vault_ntfy__users__hass_password_hash }}"
+    role: user
+    topics:
+      - pattern: "{{ vault_ntfy__topics__hass }}"
+        permission: rw
+  - name: streaming
+    passord: "{{ vault_ntfy__users__streaming_password }}"
+    password_hash: "{{ vault_ntfy__users__streaming_password_hash }}"
+    role: user
+    topics:
+      - pattern: "streaming"
+        permission: rw
+    token: "{{ vault_ntfy__users__streaming_token }}"
+ntfy__topics__monitoring: "{{ vault_ntfy__topics__monitoring }}"
+ntfy__mollysocket_vapid_key: "{{ vault_ntfy__mollysocket_vapid_key }}"
+
+backbone__acme_ca_server: "{{ vault_backbone__acme_ca_server }}"
+backbone__acme_dns_challenge__enabled: "{{ vault_backbone__acme_dns_challenge__enabled }}"
+backbone__acme_dns_challenge__provider: "{{ vault_backbone__acme_dns_challenge__provider }}"
+backbone__acme_dns_challenge__api_key: "{{ vault_backbone__acme_dns_challenge__api_key }}"
+backbone__acme_dns_challenge__api_key_variable: "{{ vault_backbone__acme_dns_challenge__api_key_variable }}"
+backbone__acme_http_challenge__enabled: "{{ vault_backbone__acme_http_challenge__enabled }}"
+vpn__service_provider: protonvpn
+vpn__user: "{{ vault_vpn__user }}"
+vpn__pass: "{{ vault_vpn__pass }}"
+backbone__lldap__jwt_secret: "{{ vault_backbone__lldap__jwt_secret }}"
+backbone__lldap__key_seed: "{{ vault_backbone__lldap__key_seed }}"
+backbone__lldap__db_user: lldap
+backbone__lldap__db_pass: "{{ vault_backbone__lldap__db_pass }}"
+backbone__lldap__user: "{{ vault_backbone__lldap__user }}"
+backbone__lldap__pass: "{{ vault_backbone__lldap__pass }}"
+backbone__lldapt__groups: "{{ vault_backbone__lldapt__groups }}"
+backbone__authelia__ldap_user: "{{ vault_backbone__authelia__ldap_user }}"
+backbone__authelia__ldap_pass: "{{ vault_backbone__authelia__ldap_pass }}"
+backbone__authelia__jwt_secret: "{{ vault_backbone__authelia__jwt_secret }}"
+backbone__authelia__encryption_key: "{{ vault_backbone__authelia__encryption_key }}"
+backbone__authelia__db_user: authelia
+backbone__authelia__db_pass: "{{ vault_backbone__authelia__db_pass }}"
+backbone__authelia__session_secret: "{{ vault_backbone__authelia__session_secret }}"
+backbone__authelia__oidc_hmac_secret: "{{ vault_backbone__authelia__oidc_hmac_secret }}"
+backbone__authelia__oidc_nextcloud_clientid: "{{ vault_backbone__authelia__oidc_nextcloud_clientid }}"
+backbone__authelia__oidc_nextcloud_clientsecret: "{{ vault_backbone__authelia__oidc_nextcloud_clientsecret }}"
+backbone__authelia__oidc_nextcloud_clientsecret_hash: "{{ vault_backbone__authelia__oidc_nextcloud_clientsecret_hash }}"
+backbone__authelia__oidc_recipes_clientid: "{{ vault_backbone__authelia__oidc_recipes_clientid }}"
+backbone__authelia__oidc_recipes_clientsecret: "{{ vault_backbone__authelia__oidc_recipes_clientsecret }}"
+backbone__authelia__oidc_recipes_clientsecret_hash: "{{ vault_backbone__authelia__oidc_recipes_clientsecret_hash }}"
+backbone__authelia__oidc_paperless_clientid: "{{ vault_backbone__authelia__oidc_paperless_clientid }}"
+backbone__authelia__oidc_paperless_clientsecret: "{{ vault_backbone__authelia__oidc_paperless_clientsecret }}"
+backbone__authelia__oidc_paperless_clientsecret_hash: "{{ vault_backbone__authelia__oidc_paperless_clientsecret_hash }}"
+backbone__authelia__oidc_grafana_clientid: "{{ vault_backbone__authelia__oidc_grafana_clientid }}"
+backbone__authelia__oidc_grafana_clientsecret: "{{ vault_backbone__authelia__oidc_grafana_clientsecret }}"
+backbone__authelia__oidc_grafana_clientsecret_hash: "{{ vault_backbone__authelia__oidc_grafana_clientsecret_hash }}"
+backbone__authelia__oidc_audiobookshelf_clientid: "{{ vault_backbone__authelia__oidc_audiobookshelf_clientid }}"
+backbone__authelia__oidc_audiobookshelf_clientsecret: "{{ vault_backbone__authelia__oidc_audiobookshelf_clientsecret }}"
+backbone__authelia__oidc_audiobookshelf_clientsecret_hash: "{{ vault_backbone__authelia__oidc_audiobookshelf_clientsecret_hash }}"
+backbone__authelia__oidc_pgadmin_clientid: "{{ vault_backbone__authelia__oidc_pgadmin_clientid }}"
+backbone__authelia__oidc_pgadmin_clientsecret: "{{ vault_backbone__authelia__oidc_pgadmin_clientsecret }}"
+backbone__authelia__oidc_pgadmin_clientsecret_hash: "{{ vault_backbone__authelia__oidc_pgadmin_clientsecret_hash }}"
+backbone__authelia__oidc_immich_clientid: "{{ vault_backbone__authelia__oidc_immich_clientid }}"
+backbone__authelia__oidc_immich_clientsecret: "{{ vault_backbone__authelia__oidc_immich_clientsecret }}"
+backbone__authelia__oidc_immich_clientsecret_hash: "{{ vault_backbone__authelia__oidc_immich_clientsecret_hash }}"
+backbone__authelia__oidc_team_wiki_clientid: "{{ vault_backbone__authelia__oidc_team_wiki_clientid }}"
+backbone__authelia__oidc_team_wiki_clientsecret: "{{ vault_backbone__authelia__oidc_team_wiki_clientsecret }}"
+backbone__authelia__oidc_team_wiki_clientsecret_hash: "{{ vault_backbone__authelia__oidc_team_wiki_clientsecret_hash }}"
+backbone__authelia__oidc_rallly_clientid: "{{ vault_backbone__authelia__oidc_rallly_clientid }}"
+backbone__authelia__oidc_rallly_clientsecret: "{{ vault_backbone__authelia__oidc_rallly_clientsecret }}"
+backbone__authelia__oidc_rallly_clientsecret_hash: "{{ vault_backbone__authelia__oidc_rallly_clientsecret_hash }}"
+backbone__authelia__oidc_semaphore_clientid: "{{ vault_backbone__authelia__oidc_semaphore_clientid }}"
+backbone__authelia__oidc_semaphore_clientsecret: "{{ vault_backbone__authelia__oidc_semaphore_clientsecret }}"
+backbone__authelia__oidc_semaphore_clientsecret_hash: "{{ vault_backbone__authelia__oidc_semaphore_clientsecret_hash }}"
+backbone__authelia__oidc_tailscale_clientid: "{{ vault_backbone__authelia__oidc_tailscale_clientid }}"
+backbone__authelia__oidc_tailscale_clientsecret: "{{ vault_backbone__authelia__oidc_tailscale_clientsecret }}"
+backbone__authelia__oidc_tailscale_clientsecret_hash: "{{ vault_backbone__authelia__oidc_tailscale_clientsecret_hash }}"
+backbone__authelia__oidc_hass_clientid: "{{ vault_backbone__authelia__oidc_hass_clientid }}"
+backbone__authelia__oidc_hass_clientsecret: "{{ vault_backbone__authelia__oidc_hass_clientsecret }}"
+backbone__authelia__oidc_hass_clientsecret_hash: "{{ vault_backbone__authelia__oidc_hass_clientsecret_hash }}"
+backbone__authelia__oidc_matrix_clientid: "{{ vault_backbone__authelia__oidc_matrix_clientid }}"
+backbone__authelia__oidc_matrix_clientsecret: "{{ vault_backbone__authelia__oidc_matrix_clientsecret }}"
+backbone__authelia__oidc_matrix_clientsecret_hash: "{{ vault_backbone__authelia__oidc_matrix_clientsecret_hash }}"
+backbone__authelia__oidc_dawarich_clientid: "{{ vault_backbone__authelia__oidc_dawarich_clientid }}"
+backbone__authelia__oidc_dawarich_clientsecret: "{{ vault_backbone__authelia__oidc_dawarich_clientsecret }}"
+backbone__authelia__oidc_dawarich_clientsecret_hash: "{{ vault_backbone__authelia__oidc_dawarich_clientsecret_hash }}"
+
+unifi__mongo_pass: "{{ vault_unifi__mongo_pass }}"
+unifi__mongo_root_pass: "{{ vault_unifi__mongo_root_pass }}"
+
+db__pg_password: "{{ vault_db__pg_password }}"
+db__pg_databases:
+  - name: "{{ backbone__lldap__db_user }}"
+    password: "{{ backbone__lldap__db_pass }}"
+  - name: "{{ backbone__authelia__db_user }}"
+    password: "{{ backbone__authelia__db_pass }}"
+  - name: nextcloud
+    password: "{{ vault_nextcloud__postgres_password }}"
+  - name: recipes
+    password: "{{ vault_recipes__db_password }}"
+  - name: paperless
+    password: "{{ vault_paperless__postgres_password }}"
+  - name: team_wiki
+    password: "{{ vault_team_wiki__db_pass }}"
+  - name: rallly
+    password: "{{ rallly__db_pass }}"
+  - name: speedtest_tracker
+    password: "{{ speedtest_tracker__db_pass }}"
+  - name: umami
+    password: "{{ monitoring__umami_db_pass }}"
+  - name: sharkey
+    password: "{{ sharkey__db_pass }}"
+  - name: semaphore
+    password: "{{ semaphore__db_pass }}"
+  - name: matrix
+    password: "{{ matrix__db_pass }}"
+  - name: matrix_mas
+    password: "{{ matrix__mas__db_pass }}"
+  - name: matrix_discord
+    password: "{{ matrix__discord__db_pass }}"
+  - name: matrix_signal
+    password: "{{ matrix__signal__db_pass }}"
+  - name: matrix_whatsapp
+    password: "{{ matrix__whatsapp__db_pass }}"
+  - name: matrix_meta
+    password: "{{ matrix__meta__db_pass }}"
+  - name: maubot
+    password: "{{ matrix__maubot__db_pass }}"
+db__pg_dump_healthcheck_id: "{{ vault_db__pg_dump_healthcheck_id }}"
+db__pgadmin_email: "{{ vault_db__pgadmin_email }}"
+db__pgadmin_password: "{{ vault_db__pgadmin_password }}"
+
+ddns__dynu_user: "{{ vault_ddns__dynu_user }}"
+ddns__dynu_pass: "{{ vault_ddns__dynu_pass }}"
+ddns__porkbun_api_key: "{{ vault_ddns__porkbun_api_key }}"
+ddns__porkbun_secret_api_key: "{{ vault_ddns__porkbun_secret_api_key }}"
+
+nextcloud__postgres_password: "{{ vault_nextcloud__postgres_password }}"
+nextcloud__postgres_backups_healthcheck_id: "{{ vault_nextcloud__postgres_backups_healthcheck_id }}"
+nextcloud__ldap_user: "{{ vault_nextcloud__ldap_user }}"
+nextcloud__ldap_pass: "{{ vault_nextcloud__ldap_pass }}"
+nextcloud__nextcloud_admin: "{{ vault_nextcloud__nextcloud_admin }}"
+nextcloud__nextcloud_password: "{{ vault_nextcloud__nextcloud_password }}"
+nextcloud__healthcheck_id: "{{ vault_nextcloud__healthcheck_id }}"
+nextcloud__passwordsalt: "{{ vault_nextcloud__passwordsalt }}"
+nextcloud__secret: "{{ vault_nextcloud__secret }}"
+nextcloud__instanceid: "{{ vault_nextcloud__instanceid }}"
+
+torrent__user: "{{ vault_torrent__user }}"
+torrent__pass: "{{ vault_torrent__pass }}"
+
+usenet__server_name: "{{ vault_usenet__server_name }}"
+usenet__server_host: "{{ vault_usenet__server_host }}"
+usenet__server_port: "{{ vault_usenet__server_port }}"
+usenet__server_user: "{{ vault_usenet__server_user }}"
+usenet__server_pass: "{{ vault_usenet__server_pass }}"
+usenet__user: "{{ vault_usenet__user }}"
+usenet__pass: "{{ vault_usenet__pass }}"
+usenet__api_key: "{{ vault_usenet__api_key }}"
+usenet__nzb_key: "{{ vault_usenet__nzb_key }}"
+
+ytdl_sub__healthcheck_id: "{{ vault_ytdl_sub__healthcheck_id }}"
+
+immich__db_password: "{{ vault_immich__db_password }}"
+immich__db_dump_hc_id: "{{ vault_immich__db_dump_hc_id }}"
+
+recipes__secret_key: "{{ vault_recipes__secret_key }}"
+recipes__db_password: "{{ vault_recipes__db_password }}"
+
+backups__local_domain: "{{ vault_backups__local_domain }}"
+# formatted as
+# autorestic__backends:
+#   - name: backend-name
+#     type: b2
+#     path: bucket-name
+#     key: encryption-key
+#     # optional
+#     env:
+#       B2_ACCOUNT_ID: xxxx
+#       B2_ACCOUNT_KEY: xxxx
+#     # optional
+#     hooks:
+#       before:
+#         - some command
+#       after:
+#         - some other command
+autorestic__backends: "{{ vault_autorestic__backends }}"
+# formatted as
+# autorestic__locations:
+#   - name: location-name
+#     from:
+#       - /some/location
+#     to:
+#       - some-backend
+#     healthcheck_id: xxx-xxxx-xxx
+#     # optional
+#     hooks:
+#       before:
+#         - some command
+autorestic__locations: "{{ vault_autorestic__locations }}"
+
+minecraft__forbid_cracked: true
+minecraft__view_distance: 16
+minecraft__max_player: 5
+minecraft__difficulty: easy
+minecraft__gamemode: survival
+minecraft__whitelisted_players: "{{ vault_minecraft__whitelisted_players }}"
+minecraft__admin_players: "{{ vault_minecraft__admin_players }}"
+minecraft__dynmap__resolution: "hires" # default: hires.
+
+dashboard__shortcuts:
+  - name: Work & Tools
+    icon_classes: las la-tools
+    children:
+      - name: GitHub
+        url: https://github.com
+      - name: Dawarich
+        url: https://location.snyssen.be
+      - name: PDF tools
+        url: https://pdf.snyssen.be
+      - name: Recipes
+        url: https://recipes.snyssen.be
+      - name: Rallly
+        url: https://events.bigdouf.team
+      - name: Actual
+        url: https://actual.snyssen.be
+      - name: Matrix
+        url: https://element.snyssen.be
+  - name: Documents
+    icon_classes: las la-folder-open
+    children:
+      - name: websites
+        children:
+          - name: Personal website
+            url: https://snyssen.be
+          - name: Bigdouf'site
+            url: https://bigdouf.team
+      - name: Storage
+        children:
+          - name: Nextcloud
+            url: https://cloud.snyssen.be
+          - name: Syncthing
+            url: https://sync.snyssen.be
+          - name: Syncthing (localhost)
+            url: http://localhost:8384
+          - name: Paperless
+            url: https://paperless.snyssen.be
+      - name: Notes
+        children:
+          - name: DnD - Saltmarsh
+            url: https://dnd-saltmarsh.notes.snyssen.be
+          - name: DnD - Bahut
+            url: https://dnd-bahut.notes.snyssen.be
+          - name: DnD - Yanwning Portal
+            url: https://dnd-yp.notes.snyssen.be
+          - name: ME - En Eaux Troubles
+            url: https://me-eet.notes.snyssen.be
+  - name: Media
+    icon_classes: las la-photo-video
+    children:
+      - name: Jellyfin
+        url: https://streaming.snyssen.be
+      - name: Nebula
+        url: https://nebula.tv
+      - name: Audiobooks
+        url: https://audiobooks.snyssen.be
+      - name: Immich
+        url: https://photos.snyssen.be
+      - name: Sharkey
+        url: https://social.snyssen.be
+      - name: Management
+        children:
+          - name: Prowlarr
+            url: https://prowlarr.snyssen.be
+          - name: Sonarr
+            url: https://sonarr.snyssen.be
+          - name: Radarr
+            url: https://Radarr.snyssen.be
+          - name: Lidarr
+            url: https://lidarr.snyssen.be
+          - name: Bazarr
+            url: https://bazarr.snyssen.be
+          - name: Torrents
+            url: https://torrent.snyssen.be
+          - name: Usenet
+            url: https://usenet.snyssen.be
+          - name: LidaTube
+            url: https://lidatube.snyssen.be
+          - name: Lidify
+            url: https://lidify.snyssen.be
+      - name: Acquisition
+        children:
+          - name: Libro.fm
+            url: https://libro.fm/
+          - name: Pinchflat
+            url: https://yt.snyssen.be
+  - name: Infrastructure
+    icon_classes: las la-server
+    children:
+      - name: Home Assistant
+        url: https://hass.snyssen.be/auth/oidc/welcome
+      - name: OVH Dashboard
+        url: https://www.ovh.com/manager/#/hub/
+      - name: DNS management
+        children:
+          - name: Local DNS
+            url: http://192.168.1.2
+          - name: Tailnet DNS
+            url: https://ts-dns.taild023c5.ts.net
+          - name: DDNS updater
+            url: https://ddns.snyssen.be
+          - name: Dynu
+            url: https://www.dynu.com/en-US/ControlPanel
+          - name: Porkbun
+            url: https://porkbun.com/account/login
+      - name: Networking
+        children:
+          - name: Router
+            url: http://192.168.1.1
+          - name: Unifi controller
+            url: http://unifi.snyssen.be
+          - name: Speedtest (with server)
+            url: https://speedtest.snyssen.be
+          - name: Speedtest (outside)
+            url: https://www.speedtest.net
+          - name: Speedtest tracker
+            url: https://speedtest-tracker.snyssen.be
+          - name: Tailscale
+            url: https://login.tailscale.com/admin/machines
+      - name: Tools
+        children:
+          - name: Semaphore
+            url: https://semaphore.snyssen.be
+          - name: backrest
+            url: https://backrest.snyssen.be
+          - name: LDAP
+            url: https://ldap.snyssen.be
+          - name: pgadmin
+            url: https://pgadmin.snyssen.be
+          - name: Umami
+            url: https://umami.snyssen.be
+          - name: Backblaze
+            url: https://secure.backblaze.com/b2_buckets.htm
+      - name: Monitoring
+        children:
+          - name: Grafana
+            url: https://monitor.snyssen.be
+          - name: Uptime Kuma
+            url: https://uptime.snyssen.be
+          - name: Prometheus
+            url: https://prometheus.snyssen.be
+          - name: Traefik
+            url: https://routing.snyssen.be
+          - name: Healthchecks.io
+            url: https://healthchecks.io/projects/b7456f9a-2422-4e2a-8b0f-96909b448f78/checks/
+  - name: Games
+    icon_classes: las la-gamepad
+    children:
+      - name: Tabletop RPG
+        children:
+          - name: Foundry VTT
+            url: https://dnd.snyssen.be
+          - name: Roll20
+            url: https://roll20.net
+          - name: 5e tools
+            url: https://5e.tools
+          - name: HeroForge
+            url: https://www.heroforge.com
+          - name: Token stamp
+            url: https://rolladvantage.com/tokenstamp
+          - name: Fantasy name generator
+            url: https://www.fantasynamegenerators.com
+      - name: Minecraft live map
+        url: https://mc.snyssen.be
+      - name: USW live map
+        url: https://mc-usw.snyssen.be
+      - name: Icarus Terminal
+        url: http://snyssen-windows.lan:3300
+dashboard__open_weather_key: "{{ vault_dashboard__open_weather_key }}"
+dashboard__search_url_base: https://kagi.com/search?q=
+# dashboard__search_url_base: https://duckduckgo.com/?q=
+
+foundryvtt__username: "{{ vault_foundryvtt__username }}"
+foundryvtt__password: "{{ vault_foundryvtt__password }}"
+foundryvtt__admin_key: "{{ vault_foundryvtt__admin_key }}"
+
+monitoring__extra_monitored_hosts:
+  - xps.lan:9100
+  - vi-s-tower.lan:9100
+  - gaming.lan:9100
+monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
+monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
+monitoring__uptime_monitors:
+  - name: restic rest server
+    url: http://backup.snyssen.be:8000/metrics
+  - name: local DNS
+    url: http://192.168.1.2/
+  - name: home assisstant
+    url: https://hass.snyssen.be
+  - name: router
+    url: http://192.168.1.1
+monitoring__umami_db_pass: "{{ vault_monitoring__umami_db_pass }}"
+monitoring__umami_app_secret: "{{ vault_monitoring__umami_app_secret }}"
+monitoring__adguard_exporter_username: "{{ vault_monitoring__adguard_exporter_username }}"
+monitoring__adguard_exporter_password: "{{ vault_monitoring__adguard_exporter_password }}"
+monitoring__healthchecks_project_uuid: "{{ vault_monitoring__healthchecks_project_uuid }}"
+monitoring__healthchecks_api_key: "{{ vault_monitoring__healthchecks_api_key }}"
+
+paperless__postgres_password: "{{ vault_paperless__postgres_password }}"
+paperless__postgres_backups_healthcheck_id: "{{ vault_paperless__postgres_backups_healthcheck_id }}"
+paperless__secret_key: "{{ vault_paperless__secret_key }}"
+
+# Obsidian vaults that should be published through quartz
+quartz__vaults:
+  - name: dnd-saltmarsh
+    path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Saltmarsh
+    # https://www.authelia.com/configuration/security/access-control/
+    # but domain is automatically filled as "{{ vault.name }}.notes.{{ main_domain }}"
+    permissions:
+      - policy: one_factor
+        resources:
+          - "^*"
+        subject:
+          - ["group:dnd-saltmarsh"]
+  - name: dnd-yp
+    path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Yawning Portal
+    permissions:
+      - policy: one_factor
+        resources:
+          - "^*"
+        subject:
+          - ["group:dnd-yp"]
+  - name: dnd-bahut
+    path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Bahut
+    permissions:
+      - policy: one_factor
+        resources:
+          - "^*"
+        subject:
+          - ["group:dnd-bahut"]
+  - name: me-eet
+    path: /mnt/storage/syncthing/data/Notes/TTRPG/Mass Effect - En eaux troubles
+    permissions:
+      - policy: one_factor
+        resources:
+          - "^/$"
+          - "^/(?:index\\.css|prescript\\.js|postscript\\.js)$"
+          - "^/static/.*$"
+          - "^/Resources/.*$"
+        subject:
+          - ["group:me-eet_player"]
+      - policy: one_factor
+        resources:
+          - "^*"
+        subject:
+          - ["group:me-eet_gm"]
+
+team_wiki__db_pass: "{{ vault_team_wiki__db_pass }}"
+
+rallly__db_pass: "{{ vault_rallly__db_pass }}"
+rallly__secret: "{{ vault_rallly__secret }}"
+rallly__subdomain: events
+
+speedtest_tracker__db_pass: "{{ vault_speedtest_tracker__db_pass }}"
+speedtest_tracker__app_key: "{{ vault_speedtest_tracker__app_key }}"
+
+sharkey__db_pass: "{{ vault_sharkey__db_pass}}"
+sharkey__meili_master_key: "{{ vault_sharkey__meili_master_key }}"
+
+dawarich__db_pass: "{{ vault_dawarich__db_pass }}"
+dawarich__db_dump_hc_id: "{{ vault_dawarich__db_dump_hc_id }}"
+
+semaphore__db_pass: "{{ vault_semaphore__db_pass }}"
+semaphore__admin_pass: "{{ vault_semaphore__admin_pass }}"
+semaphore__encryption_key: "{{ vault_semaphore__encryption_key }}"
+semaphore__cookie_hash: "{{ vault_semaphore__cookie_hash }}"
+semaphore__cookie_encryption: "{{ vault_semaphore__cookie_encryption }}"
+
+skyrim_together__password: "{{ vault_skyrim_together__password }}"
+skyrim_together__admin_password: "{{ vault_skyrim_together__admin_password }}"
+
+hass__prometheus_token: "{{ vault_hass__prometheus_token }}"
+
+matrix__db_pass: "{{ vault_matrix__db_pass }}"
+matrix__registration_shared_secret: "{{ vault_matrix__registration_shared_secret }}"
+matrix__macaroon_secret_key: "{{ vault_matrix__macaroon_secret_key }}"
+matrix__form_secret: "{{ vault_matrix__form_secret }}"
+matrix__mas__db_pass: "{{ vault_matrix__mas__db_pass }}"
+matrix__mas__shared_secret: "{{ vault_matrix__mas__shared_secret }}"
+matrix__mas__encryption_secret: "{{ vault_matrix__mas__encryption_secret }}"
+matrix__mas__oidc_id: "01K8GGKK57BWVMVQ0C46QP5Z6Y"
+matrix__doublepuppet__as_token: "{{ vault_matrix__doublepuppet__as_token }}"
+matrix__doublepuppet__hs_token: "{{ vault_matrix__doublepuppet__hs_token }}"
+matrix__doublepuppet__sender_localpart: "{{ vault_matrix__doublepuppet__sender_localpart }}"
+matrix__discord__db_pass: "{{ vault_matrix__discord__db_pass }}"
+matrix__discord__as_token: "{{ vault_matrix__discord__as_token }}"
+matrix__discord__hs_token: "{{ vault_matrix__discord__hs_token }}"
+matrix__discord__sender_localpart: "{{ vault_matrix__discord__sender_localpart }}"
+matrix__discord__shared_secret: "{{ vault_matrix__discord__shared_secret }}"
+matrix__discord__avatar_proxy_key: "{{ vault_matrix__discord__avatar_proxy_key }}"
+matrix__signal__db_pass: "{{ vault_matrix__signal__db_pass }}"
+matrix__signal__as_token: "{{ vault_matrix__signal__as_token }}"
+matrix__signal__hs_token: "{{ vault_matrix__signal__hs_token }}"
+matrix__signal__sender_localpart: "{{ vault_matrix__signal__sender_localpart }}"
+matrix__signal__shared_secret: "{{ vault_matrix__signal__shared_secret }}"
+matrix__signal__pickle_key: "{{ vault_matrix__signal__pickle_key }}"
+matrix__whatsapp__db_pass: "{{ vault_matrix__whatsapp__db_pass }}"
+matrix__whatsapp__as_token: "{{ vault_matrix__whatsapp__as_token }}"
+matrix__whatsapp__hs_token: "{{ vault_matrix__whatsapp__hs_token }}"
+matrix__whatsapp__sender_localpart: "{{ vault_matrix__whatsapp__sender_localpart }}"
+matrix__whatsapp__shared_secret: "{{ vault_matrix__whatsapp__shared_secret }}"
+matrix__whatsapp__pickle_key: "{{ vault_matrix__whatsapp__pickle_key }}"
+matrix__meta__db_pass: "{{ vault_matrix__meta__db_pass }}"
+matrix__meta__as_token: "{{ vault_matrix__meta__as_token }}"
+matrix__meta__hs_token: "{{ vault_matrix__meta__hs_token }}"
+matrix__meta__sender_localpart: "{{ vault_matrix__meta__sender_localpart }}"
+matrix__meta__shared_secret: "{{ vault_matrix__meta__shared_secret }}"
+matrix__meta__pickle_key: "{{ vault_matrix__meta__pickle_key }}"
+matrix__maubot__db_pass: "{{ vault_matrix__maubot__db_pass }}"
+matrix__maubot__shared_secret: "{{ vault_matrix__maubot__shared_secret }}"
+matrix__maubot__admin_user: "{{ vault_matrix__maubot__admin_user }}"
+matrix__maubot__admin_pass: "{{ vault_matrix__maubot__admin_pass }}"

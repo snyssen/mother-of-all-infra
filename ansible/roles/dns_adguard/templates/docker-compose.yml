@@ -1,0 +1,9 @@
+services:
+  adguard:
+    image: adguard/adguardhome:v0.107.71@sha256:92929135ced2554aaf94706f766a98ad348f211df61b0704e2db7e8498cc00b7
+    container_name: adguard
+    restart: unless-stopped
+    volumes:
+      - "{{ data_directory }}/adguard/work:/opt/adguardhome/work"
+      - "{{ data_directory }}/adguard/conf:/opt/adguardhome/conf"
+    network_mode: host

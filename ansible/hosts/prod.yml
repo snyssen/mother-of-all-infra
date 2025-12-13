@@ -1,0 +1,24 @@
+dns:
+  hosts:
+    192.168.1.2:
+      ansible_host: "192.168.1.2"
+
+apps:
+  hosts:
+    snyssen.be:
+      # ansible_host: "192.168.1.10"
+
+backup:
+  hosts:
+    backup.snyssen.be:
+      # ansible_host: "192.168.1.11"
+
+monitored:
+  hosts:
+    snyssen.be:
+    backup.snyssen.be:
+    192.168.1.2:
+
+livecams:
+  hosts:
+    livecam1.lan:

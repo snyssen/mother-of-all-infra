@@ -1,0 +1,200 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    state: directory
+  loop:
+    # synapse
+    - path: "/mnt/storage/matrix/synapse"
+      owner: "991"
+      group: "991"
+      mode: "750"
+    - path: "/mnt/storage/matrix/synapse/app_services"
+      owner: "991"
+      group: "991"
+      mode: "750"
+    # Matrix Authentication Service (MAS)
+    - path: "/mnt/storage/matrix/mas"
+      owner: "65532"
+      group: "65532"
+      mode: "750"
+    - path: "/mnt/storage/matrix/mas/keys"
+      owner: "65532"
+      group: "65532"
+      mode: "750"
+    # element
+    - path: "/mnt/storage/matrix/element"
+      owner: "101"
+      group: "101"
+      mode: "750"
+    ###########
+    # Bridges #
+    ###########
+    # matrix_discord
+    - path: "/mnt/storage/matrix/matrix_discord"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+    # matrix_signal
+    - path: "/mnt/storage/matrix/matrix_signal"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+    # matrix_whatsapp
+    - path: "/mnt/storage/matrix/matrix_whatsapp"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+    # matrix_meta
+    - path: "/mnt/storage/matrix/matrix_meta"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+    ###########
+    #  Bots   #
+    ###########
+    # matrix_meta
+    - path: "/mnt/storage/matrix/maubot"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+    - path: "{{ docker_mounts_directory }}/matrix/maubot/dbs"
+      owner: "1337"
+      group: "1337"
+      mode: "750"
+
+- name: Deploy config files
+  become: true
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dst }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    # synapse
+    - src: synapse/homeserver.yaml
+      dst: /mnt/storage/matrix/synapse/
+      owner: "991"
+      group: "991"
+      mode: "600"
+    - src: synapse/log.config
+      dst: /mnt/storage/matrix/synapse/
+      owner: "991"
+      group: "991"
+      mode: "600"
+    - src: synapse/signing.key
+      dst: /mnt/storage/matrix/synapse/
+      owner: "991"
+      group: "991"
+      mode: "600"
+    - src: synapse/doublepuppet.yaml
+      dst: /mnt/storage/matrix/synapse/app_services/doublepuppet.yaml
+      owner: "991"
+      group: "991"
+      mode: "600"
+    # Matrix Authentication Service (MAS)
+    - src: mas/mas_config.yaml
+      dst: /mnt/storage/matrix/mas/
+      owner: "65532"
+      group: "65532"
+      mode: "600"
+    - src: mas/keys/one.key
+      dst: /mnt/storage/matrix/mas/keys/
+      owner: "65532"
+      group: "65532"
+      mode: "600"
+    - src: mas/keys/two.key
+      dst: /mnt/storage/matrix/mas/keys/
+      owner: "65532"
+      group: "65532"
+      mode: "600"
+    - src: mas/keys/three.key
+      dst: /mnt/storage/matrix/mas/keys/
+      owner: "65532"
+      group: "65532"
+      mode: "600"
+    - src: mas/keys/four.key
+      dst: /mnt/storage/matrix/mas/keys/
+      owner: "65532"
+      group: "65532"
+      mode: "600"
+    # element
+    - src: element/config.json
+      dst: /mnt/storage/matrix/element/config.json
+      owner: "101"
+      group: "101"
+      mode: "600"
+    ###########
+    # Bridges #
+    ###########
+    # matrix_discord
+    - src: matrix_discord/config.yaml
+      dst: /mnt/storage/matrix/matrix_discord/
+      owner: "1337"
+      group: "1337"
+      mode: "600"
+    - src: matrix_discord/registration.yaml
+      dst: /mnt/storage/matrix/synapse/app_services/matrix_discord.yaml
+      owner: "991"
+      group: "991"
+      mode: "600"
+    # matrix_signal
+    - src: matrix_signal/config.yaml
+      dst: /mnt/storage/matrix/matrix_signal/
+      owner: "1337"
+      group: "1337"
+      mode: "600"
+    - src: matrix_signal/registration.yaml
+      dst: /mnt/storage/matrix/synapse/app_services/matrix_signal.yaml
+      owner: "991"
+      group: "991"
+      mode: "600"
+    # matrix_whatsapp
+    - src: matrix_whatsapp/config.yaml
+      dst: /mnt/storage/matrix/matrix_whatsapp/
+      owner: "1337"
+      group: "1337"
+      mode: "600"
+    - src: matrix_whatsapp/registration.yaml
+      dst: /mnt/storage/matrix/synapse/app_services/matrix_whatsapp.yaml
+      owner: "991"
+      group: "991"
+      mode: "600"
+    # matrix_meta
+    - src: matrix_meta/config.yaml
+      dst: /mnt/storage/matrix/matrix_meta/
+      owner: "1337"
+      group: "1337"
+      mode: "600"
+    - src: matrix_meta/registration.yaml
+      dst: /mnt/storage/matrix/synapse/app_services/matrix_meta.yaml
+      owner: "991"
+      group: "991"
+      mode: "600"
+    ###########
+    #  Bots   #
+    ###########
+    # matrix_meta
+    - src: maubot/config.yaml
+      dst: /mnt/storage/matrix/maubot/config.yaml
+      owner: "1337"
+      group: "1337"
+      mode: "600"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: "matrix"
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: matrix
+      url: "https://element.{{ main_domain }}"

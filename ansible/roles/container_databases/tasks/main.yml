@@ -1,0 +1,107 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.src }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    mode: "{{ item.mode }}"
+    group: "{{ item.group }}"
+  with_items:
+    - src: "{{ docker_mounts_directory }}/databases/postgres/data"
+      # Postgres UID and GID
+      owner: "999"
+      group: "999"
+      mode: "700"
+    - src: /mnt/storage/backups/postgres
+      # pgadmin UID
+      owner: "5050"
+      group: "{{ ansible_user_gid }}"
+      mode: "755"
+
+- name: Deploying extra files
+  become: true
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - src: pgadmin/servers.json
+      dest: "{{ docker_mounts_directory }}/databases/postgres/servers.json"
+      # pgadmin UID
+      owner: "5050"
+      group: "{{ ansible_user_gid }}"
+      mode: "740"
+    - src: pgadmin/config_local.py
+      dest: "{{ docker_mounts_directory }}/databases/postgres/config_local.py"
+      # pgadmin UID
+      owner: "5050"
+      group: "{{ ansible_user_gid }}"
+      mode: "400"
+    - src: hooks/pgsql_backups_hooks.sh
+      dest: "{{ docker_compose_directory }}/databases/hooks/pgsql_backups_hooks"
+      owner: "{{ ansible_user_uid }}"
+      group: "{{ ansible_user_gid }}"
+      mode: "774"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: databases
+
+- name: Installing psycopg for connecting to Postgres
+  become: true
+  ansible.builtin.package:
+    name: python3-psycopg
+    state: present
+
+- name: "Creating databases users"
+  community.postgresql.postgresql_user:
+    login_db: postgres
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    login_host: "localhost"
+    login_password: "{{ db__pg_password }}"
+    state: present
+  loop: "{{ db__pg_databases }}"
+  loop_control:
+    label: "{'name': '{{ item.name }}', 'password': '***'}"
+- name: "Creating databases"
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.name }}"
+    login_host: "localhost"
+    login_password: "{{ db__pg_password }}"
+    state: present
+  loop: "{{ db__pg_databases }}"
+  loop_control:
+    label: "{'name': '{{ item.name }}', 'password': '***'}"
+- name: Revoke all public permissions on databases
+  # i.e. -> REVOKE ALL ON DATABASE <database> FROM PUBLIC;
+  community.postgresql.postgresql_privs:
+    login_host: "localhost"
+    login_password: "{{ db__pg_password }}"
+    login_db: "{{ item.name }}"
+    state: absent
+    privs: ALL
+    type: database
+    objs: "{{ item.name }}"
+    role: public
+  loop: "{{ db__pg_databases }}"
+  loop_control:
+    label: "{'name': '{{ item.name }}', 'password': '***'}"
+- name: Revoke all public permissions on public schema
+  # i.e. -> REVOKE ALL ON SCHEMA public FROM PUBLIC;
+  community.postgresql.postgresql_privs:
+    login_host: "localhost"
+    login_password: "{{ db__pg_password }}"
+    login_db: "{{ item.name }}"
+    state: absent
+    privs: ALL
+    type: schema
+    objs: public
+    role: public
+  loop: "{{ db__pg_databases }}"
+  loop_control:
+    label: "{'name': '{{ item.name }}', 'password': '***'}"

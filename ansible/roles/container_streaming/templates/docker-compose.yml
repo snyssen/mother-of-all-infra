@@ -1,0 +1,274 @@
+services:
+  jellyfin:
+    image: ghcr.io/jellyfin/jellyfin:10.11.4@sha256:37f2625f5d5d70c5b1ceb57f4d8f2a7ff666ea723fb96b468275bbafbde2c06c
+    restart: unless-stopped
+    container_name: jellyfin
+    networks:
+      - web
+      - monitoring
+      - ldap
+    user: "33:{{ ansible_user_gid }}"
+    environment:
+      - JELLYFIN_DATA_DIR=/data
+      - JELLYFIN_CONFIG_DIR=/config
+      - JELLYFIN_CACHE_DIR=/cache
+      - JELLYFIN_LOG_DIR=/logs
+
+      - JELLYFIN_PublishedServerUrl=https://streaming.{{ main_domain }}
+      - JELLYFIN_playlists__allowDuplicates=false
+    devices:
+      - /dev/dri:/dev/dri # allow use of Intel QuickSync for transcoding
+    group_add:
+      - "109" # Adds render group
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.jellyfin.entryPoints=websecure
+      - traefik.http.routers.jellyfin.rule=Host(`streaming.{{ main_domain }}`) && !Path(`/metrics`)
+      - traefik.http.services.jellyfin.loadBalancer.server.port=8096
+      # jellyfin middleware, see https://jellyfin.org/docs/general/networking/traefik2.html
+      - traefik.http.routers.jellyfin.middlewares=jellyfin-mw
+      - traefik.http.middlewares.jellyfin-mw.headers.customResponseHeaders.X-Robots-Tag=noindex,nofollow,nosnippet,noarchive,notranslate,noimageindex
+      - traefik.http.middlewares.jellyfin-mw.headers.SSLRedirect=true
+      - traefik.http.middlewares.jellyfin-mw.headers.SSLHost=streaming.{{ main_domain }}
+      - traefik.http.middlewares.jellyfin-mw.headers.SSLForceHost=true
+      - traefik.http.middlewares.jellyfin-mw.headers.STSSeconds=315360000
+      - traefik.http.middlewares.jellyfin-mw.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.jellyfin-mw.headers.STSPreload=true
+      - traefik.http.middlewares.jellyfin-mw.headers.forceSTSHeader=true
+      - traefik.http.middlewares.jellyfin-mw.headers.frameDeny=true
+      - traefik.http.middlewares.jellyfin-mw.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.jellyfin-mw.headers.browserXSSFilter=true
+      - traefik.http.middlewares.jellyfin-mw.headers.customFrameOptionsValue='allow-from https://streaming.{{ main_domain }}'
+
+      - traefik.udp.routers.jellyfin-discovery.entryPoints=jellyfin-discovery
+      - traefik.udp.routers.jellyfin-discovery.service=jellyfin-discovery
+      - traefik.udp.services.jellyfin-discovery.loadBalancer.server.port=7359
+      # TODO: fix DLNA (should be exposed as physical device)
+      # - traefik.udp.routers.dlna.entryPoints=dlna
+      # - traefik.udp.routers.dlna.service=dlna
+      # - traefik.udp.services.dlna.loadBalancer.server.port=1900
+    volumes:
+      - "{{ docker_mounts_directory }}/jellyfin/data:/data"
+      - "{{ docker_mounts_directory }}/jellyfin/config:/config"
+      - "{{ docker_mounts_directory }}/jellyfin/cache:/cache"
+      - "{{ docker_mounts_directory }}/jellyfin/logs:/logs"
+      # all below refer to media folders
+      - /mnt/storage/streaming/media:/data/media
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:2.31.0@sha256:e23adb24848d99d19cd1e251aee4e1e12ed4f5effc8ccb21754b062b6a06cf66
+    restart: unless-stopped
+    container_name: audiobookshelf
+    networks:
+      - web
+    user: "33:{{ ansible_user_gid }}"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.audiobookshelf.entryPoints=websecure
+      - traefik.http.routers.audiobookshelf.rule=Host(`audiobooks.{{ main_domain }}`)
+    volumes:
+      - /mnt/storage/streaming/media/audiobooks:/audiobooks
+      - /mnt/storage/streaming/media/audiobooks_vi:/audiobooks_vi
+      - /mnt/storage/streaming/media/podcasts:/podcasts
+      - /mnt/storage/streaming/media/podcasts_vi:/podcasts_vi
+      - "{{ docker_mounts_directory }}/audiobookshelf/config:/config"
+      - "{{ docker_mounts_directory }}/audiobookshelf/metadata:/metadata"
+
+  torrent:
+    image: lscr.io/linuxserver/transmission:4.0.6@sha256:2d8d07715382a58f83fdcd1751e08c736711d76eecf71135106312fd370af933
+    container_name: torrent
+    network_mode: container:vpn
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid }}
+      - TZ={{ iana_timezone }}
+    volumes:
+      - /mnt/storage/torrent:/config
+      - /mnt/storage/streaming/torrent:/data/torrent
+    restart: unless-stopped
+    mem_limit: 712m
+
+  usenet:
+    image: lscr.io/linuxserver/sabnzbd:4.5.5@sha256:1c7be873e575c2ff8f699a5fafc79b34630baeeafcb46ad8a5ac75cef38057a5
+    container_name: usenet
+    network_mode: container:vpn
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid }}
+      - TZ={{ iana_timezone }}
+    volumes:
+      - /mnt/storage/usenet:/config
+      - /mnt/storage/streaming/usenet:/data/usenet
+    restart: unless-stopped
+    mem_limit: 256m
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:4.0.16@sha256:60e5edcac39172294ad22d55d1b08c2c0a9fe658cad2f2c4d742ae017d7874de
+    container_name: sonarr
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonarr.entryPoints=websecure
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.{{ main_domain }}`)
+      - traefik.http.services.sonarr.loadBalancer.server.port=8989
+      - traefik.http.routers.sonarr.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/sonarr/config:/config"
+      - /mnt/storage/streaming:/data
+    restart: unless-stopped
+    mem_limit: 1g
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:6.0.4@sha256:06ac318ecb95a34c7b229568dcb4271f02cb5007bb189a0dd67a2032864187ca
+    container_name: radarr
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid }}
+      - TZ=Europe/Brussels
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radarr.entryPoints=websecure
+      - traefik.http.routers.radarr.rule=Host(`radarr.{{ main_domain }}`)
+      - traefik.http.services.radarr.loadBalancer.server.port=7878
+      - traefik.http.routers.radarr.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/radarr/config:/config"
+      - /mnt/storage/streaming:/data
+    restart: unless-stopped
+    mem_limit: 1g
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:8.1.2135@sha256:8455e2c2f3a7e0fb56ab4de6be924d81aa441bfe9a740cf110d46b25a39b42ba
+    container_name: lidarr
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+      - TZ=Europe/Brussels
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lidarr.entryPoints=websecure
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.{{ main_domain }}`)
+      - traefik.http.services.lidarr.loadBalancer.server.port=8686
+      - traefik.http.routers.lidarr.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/lidarr/config:/config"
+      - /mnt/storage/streaming:/data
+    restart: unless-stopped
+    mem_limit: 1g
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:2.3.0@sha256:475853535de3de8441b87c1457c30f2e695f4831228b12b6b7274e9da409d874
+    container_name: prowlarr
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+      - TZ=Europe/Brussels
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.entryPoints=websecure
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.{{ main_domain }}`)
+      - traefik.http.services.prowlarr.loadBalancer.server.port=9696
+      - traefik.http.routers.prowlarr.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/prowlarr/config:/config"
+    restart: unless-stopped
+    mem_limit: 1g
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:1.5.3@sha256:ec11e988e8e13411c994a4d9f43ed9b97409aa92c1da54d9f23926c3da7c2032
+    container_name: bazarr
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+      - TZ=Europe/Brussels
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bazarr.entryPoints=websecure
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.{{ main_domain }}`)
+      - traefik.http.services.bazarr.loadBalancer.server.port=6767
+      - traefik.http.routers.bazarr.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/bazarr/config:/config"
+      - /mnt/storage/streaming:/data
+    restart: unless-stopped
+    mem_limit: 1g
+
+  pinchflat:
+    image: ghcr.io/kieraneglin/pinchflat:v2025.6.6@sha256:4e975edf58f0861a5cbfe8fc6aac4851ff5a02dfc3f05ffeea4982e3084a5a4a
+    user: "33:{{ ansible_user_gid }}"
+    restart: unless-stopped
+    environment:
+      # Set the timezone to your local timezone
+      - TZ={{ iana_timezone }}
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pinchflat.entryPoints=websecure
+      - traefik.http.routers.pinchflat.rule=Host(`yt.{{ main_domain }}`)
+      - traefik.http.services.pinchflat.loadBalancer.server.port=8945
+      - traefik.http.routers.pinchflat.middlewares=authelia@docker
+    volumes:
+      - "{{ docker_mounts_directory }}/pinchflat/config:/config"
+      - /mnt/storage/streaming/media/tv:/downloads
+
+  lidatube:
+    image: thewicklowwolf/lidatube:0.2.42@sha256:5f26abe59c56b08bf8483da3d9df312b2c16dd793d1fe15f82d04973cd2e9a16
+    container_name: lidatube
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+    volumes:
+      - "{{ docker_mounts_directory }}/lidatube/config:/lidatube/config"
+      - /mnt/storage/streaming/media/music:/lidatube/downloads
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lidatube.entryPoints=websecure
+      - traefik.http.routers.lidatube.rule=Host(`lidatube.{{ main_domain }}`)
+      - traefik.http.services.lidatube.loadBalancer.server.port=5000
+      - traefik.http.routers.lidatube.middlewares=authelia@docker
+    restart: unless-stopped
+
+  lidify:
+    image: thewicklowwolf/lidify:0.2.3@sha256:958eaddeef8195470b974ee03512d9a5c31ad2af3167f7824448fb026fa9c94a
+    container_name: lidify
+    environment:
+      - PUID=33
+      - PGID={{ ansible_user_gid}}
+    volumes:
+      - "{{ docker_mounts_directory }}/lidify/config:/lidify/config"
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lidify.entryPoints=websecure
+      - traefik.http.routers.lidify.rule=Host(`lidify.{{ main_domain }}`)
+      - traefik.http.services.lidify.loadBalancer.server.port=5000
+      - traefik.http.routers.lidify.middlewares=authelia@docker
+    restart: unless-stopped
+
+networks:
+  web:
+    external: true
+  monitoring:
+    external: true
+  ldap:
+    external: true
