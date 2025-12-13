@@ -4,7 +4,7 @@ alias au := ansible-update
 default:
   just --list
 
-setup: pre-commit-setup ansible-setup
+setup: pre-commit-setup ansible-setup ansible-vault-setup
 
 pre-commit-setup:
   pre-commit install
@@ -15,8 +15,8 @@ ansible-setup:
 ansible-update:
   ansible-galaxy collection install -r ansible/requirements.yml --force
 
-# ansible-setup-vault:
-
+ansible-vault-setup:
+  bash scripts/ansible-vault-setup.sh
 
 ansible-playbook playbook:
   # Run in subshell to change directory and load ansible.cfg
