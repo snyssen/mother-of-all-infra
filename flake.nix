@@ -19,6 +19,7 @@
   # Add all your dependencies here
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
     blueprint.url = "github:numtide/blueprint";
     blueprint.inputs.nixpkgs.follows = "nixpkgs";
@@ -48,6 +49,15 @@
       inherit inputs;
       prefix = "nix/";
       nixpkgs.config.allowUnfree = true;
-      nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
+      nixpkgs.overlays = [
+        inputs.nix-vscode-extensions.overlays.default
+        (final: _: {
+          # this allows you to access `pkgs.unstable` anywhere in your config
+          unstable = import inputs.nixpkgs-unstable {
+            inherit (final.stdenv.hostPlatform) system;
+            inherit (final) config;
+          };
+        })
+      ];
     };
 }
