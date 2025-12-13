@@ -1,4 +1,4 @@
-# Snyssen's Mother of All Infra
+# Snyssen's "Mother of All Infra" repository
 
 This repository aims to group all of my personal infra config in a single place, mostly managed by [nix](https://nixos.org/).
 
