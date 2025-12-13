@@ -1,23 +1,23 @@
 - name: Setting disks facts for snapraid
   ansible.builtin.set_fact:
-    snapraid_data_disks: |-
+    snapraid_data_disks_str: |-
       [
         {% for disk in disks_mounts if disk.path.startswith('/mnt/disk') %}
         {
           "path": "{{ disk.path }}",
           "content": true,
           "number": "{{ disk.path | regex_search('\d+') }}"
-        },
+        }{{ ',' if not loop.last }}
         {% endfor %}
       ]
-    snapraid_parity_disks: |-
+    snapraid_parity_disks_str: |-
       [
         {% for parity in disks_mounts if parity.path.startswith('/mnt/parity') %}
         {
           "path": "{{ parity.path }}",
           "content": true,
           "number": "{{ parity.path | regex_search('\d+') }}"
-        },
+        }{{ ',' if not loop.last }}
         {% endfor %}
       ]
 
@@ -29,6 +29,9 @@
     snapraid_build_repos: https://github.com/snyssen/docker-snapraid.git
     # I have no idea why the default path changed when upgradig to Ubuntu 24.04
     snapraid_bin_path: /usr/bin/snapraid
+
+    snapraid_data_disks: "{{ snapraid_data_disks_str | from_json }}"
+    snapraid_parity_disks: "{{ snapraid_parity_disks_str | from_json }}"
 
     snapraid_content_files:
       - /var/snapraid.content
