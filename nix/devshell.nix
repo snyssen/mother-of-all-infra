@@ -19,7 +19,8 @@ pkgs.mkShell {
 
   # Load custom bash code
   shellHook = ''
-    just setup
-    echo -e "\e[32;1mReady! \e[0m"
+    echo -e "This devshell uses '\e[32;1mjust\e[0m' as a task runner."
+    just --list
+    echo -e "\e[0;95mNOTE:\e[0m If this is your first time on this repo, running '\e[32;1mjust setup\e[0m' is recommended in order to initialize the development environment."
   '';
 }
