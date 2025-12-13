@@ -1,31 +1,33 @@
-# Snyssen's Nix Development Environment template
+# Snyssen's Mother of All Infra
 
-This repository is a template for starting new projects with dev environment and dependencies handled by [Nix](https://nixos.org/), automatically loaded with [direnv](https://direnv.net/), and using [Just](https://github.com/casey/just) for easy initial setup and commands handling, as well as [Pre-commit](https://pre-commit.com/) for running checks on each commit.
+This repository aims to group all of my personal infra config in a single place, mostly managed by [nix](https://nixos.org/).
 
-## Pre-Requisites
+## Structure
 
-This template tries to make as few assumptions about your system as possible by making sure that most dependencies are defined in the Nix flake itself. However, it still cannot avoid these two assumptions:
+- `ansible/` contains my ansible code, imported from the [infra-snyssen.be](https://github.com/snyssen/infra-snyssen.be). You can also check its own [README](./ansible/README.md).
+- `docs/` contains documentation. It is sadly mostly empty as I hate writing documentation... Hopefully the code itself should mostly be self-documenting.
+- `nix/` contains all nix and nixos related code. It mostly serves as a nixos configuration repos, with most of its code being imported from [nixos-config](https://github.com/snyssen/nixos-config).
+- `scripts/` contains re-usable scripts, usually called through [just](https://just.systems/) recipes.
+- `terraform/` contains terraform code, usually used to create the machines onto which nixos systems are then deployed.
 
-1. Your system can run Nix flakes.
-2. Your system has direnv installed (because it is used to automatically load the flake, so it has to already be available).
+## Get Started
 
-For Nix flakes support, I recommend using [The Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer) to install the Nix package manager on your machine. Or, for a more drastic and permanent solution, why not have your whole system be a Nix flake by [using NixOS](https://nixos.org/manual/nixos/stable/) as your operating system?
+Since the repos is centered around a nix flake, it requires nix to be properly used. This means either using a full nixos system, or installing the nix package manager on your system. For the latter, I recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer).
 
-For direnv, see their [Getting Started](https://direnv.net/#getting-started) for installation instructions.
+You can then either use
 
-### Additional Recommendations
+```sh
+nix develop
+```
 
-If you are using Visual Studio Code, I recommend installing the [direnv extension](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv) as well. This way, any other extension you have installed will benefit from the dependencies added by the Nix flake.
+Or install [direnv](https://direnv.net/) and allow loading this directory to enter the devshell (which is defined at `nix/devshell.nix`). Once in the devshell, enter
 
-## First Start
+```sh
+just setup
+```
 
-You have two options to start using this template:
+To fully initialize the environment. You can list the available commands by simply running
 
-1. If creating a new repository on Github, you can [directly use this template as its starting point](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
-2. Otherwise, simply copy and paste the files from this repository at the root of your project.
-
-Once the files are in place, you should:
-
-1. Run `direnv allow` to allow direnv to load the .envrc file. This should in turn automatically build the Nix flake and load the dependencies.
-
-You are now ready to start hacking!
+```sh
+just --list
+```
