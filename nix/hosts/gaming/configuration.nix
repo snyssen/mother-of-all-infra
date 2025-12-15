@@ -40,6 +40,7 @@ in
     ./hardware-configuration.nix
     inputs.stylix.nixosModules.stylix
 
+    flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.cosmic
