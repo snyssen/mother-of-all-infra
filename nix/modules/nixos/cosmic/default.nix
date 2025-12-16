@@ -30,5 +30,9 @@ in
       enable = true;
       package = pkgs.valent;
     };
+
+    environment.systemPackages = with pkgs; [
+      cosmic-ext-applet-caffeine
+    ];
   };
 }
