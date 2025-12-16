@@ -14,11 +14,11 @@ in
   };
 
   config = {
-    environment = {
-      sessionVariables = {
-        NH_FLAKE = "/home/${cfg.username}/${cfg.flakePath}";
-      };
-      systemPackages = [ pkgs.nh ];
+    programs.nh = {
+      enable = true;
+      clean.enable = true;
+      clean.extraArgs = "--keep-since 4d --keep 3";
+      flake = "/home/${cfg.username}/${cfg.flakePath}"; # sets NH_OS_FLAKE variable for you
     };
   };
 }
