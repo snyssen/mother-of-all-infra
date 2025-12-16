@@ -1,8 +1,10 @@
 # This job is mainly in place so renovate can do branch automerge, as it needs a successful check.
 # It then doubles as a sanity check on the flake quality
 on:
-  pull_request:
+  # pull_request:
   push:
+    # branches:
+    #   - main
 
 jobs:
   build:
