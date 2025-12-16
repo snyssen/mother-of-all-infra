@@ -24,5 +24,11 @@ in
       enable = cfg.autoLogin.enable;
       user = cfg.autoLogin.user;
     };
+
+    services.system76-scheduler.enable = true;
+    programs.kdeconnect = {
+      enable = true;
+      package = pkgs.valent;
+    };
   };
 }
