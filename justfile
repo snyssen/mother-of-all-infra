@@ -2,6 +2,7 @@ alias apb := ansible-playbook
 alias apl := ansible-playbook-list
 alias au := ansible-update
 alias ssh := ssh-connect
+alias nhr := nix-remote-install
 
 default:
   just --list
@@ -38,3 +39,7 @@ ansible-playbook playbook *flags:
 # Test connectivity to a host via SSH (forcing tailscale login if necessary)
 ssh-connect +hosts:
   for host in {{hosts}}; do ssh "$host" echo "connected to $host."; done
+
+# Update NixOS configuration on a remote host using nh (requires tailscale for DNS and root SSH access)
+nix-remote-install host:
+  nh os switch -H {{host}} --target-host=root@{{host}}
