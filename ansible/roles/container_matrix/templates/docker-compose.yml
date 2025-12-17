@@ -44,7 +44,7 @@ services:
 
   element:
     container_name: element
-    image: vectorim/element-web:v1.12.6@sha256:a84f294ce46e4327ebacecb78bfc94cf6a45c7ffa5104a28f06b5ac69d0b2548
+    image: vectorim/element-web:v1.12.7@sha256:e037ff690f6da8d6ad518c7a0c10787bb8be7feca16402a2d90c21300c7affbf
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/element/config.json:/app/config.json:ro
@@ -73,7 +73,7 @@ services:
 
   matrix-signal:
     container_name: matrix-signal
-    image: dock.mau.dev/mautrix/signal:v25.11@sha256:48ee701ae8f8be8c0c678a42563cf3f7770d8bd23321a0ca40191561eb43faed
+    image: dock.mau.dev/mautrix/signal:v25.12@sha256:4a1cc8ce54a388a89f58e53cdd451e11f32fc416a8ae3699c9539c8d36f5ed52
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_signal:/data
@@ -83,7 +83,7 @@ services:
 
   matrix-whatsapp:
     container_name: matrix-whatsapp
-    image: dock.mau.dev/mautrix/whatsapp:v25.11@sha256:9bc5c344d12a9a9112c7c9353f9c640a633120ffc2b5f01212236ab13cef44ac
+    image: dock.mau.dev/mautrix/whatsapp:v25.12@sha256:17cec313f1a3c0edddf673c7aa6ce370f0c7aa1be701f9486cb0fb854e6c3f80
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_whatsapp:/data
@@ -93,7 +93,7 @@ services:
 
   matrix-meta:
     container_name: matrix-meta
-    image: dock.mau.dev/mautrix/meta:v25.11@sha256:1cfaf8bc3ec9aa3ce1aeaddfa7b4e15e8f974cbd077d803db64e49220cc505e5
+    image: dock.mau.dev/mautrix/meta:v25.12@sha256:1ba769047d4910675eed1ceb820c5cb6e8f6d0633ef4ce005ab802128c3b904f
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_meta:/data
