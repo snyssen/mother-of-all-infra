@@ -1,9 +1,8 @@
 {
   pkgs,
-  inputs,
-  system,
-  flake,
   lib,
+  inputs,
+  flake,
   ...
 }:
 let
@@ -17,24 +16,12 @@ in
 
   # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.overlays = [
-    inputs.nix-vscode-extensions.overlays.default
-    (final: _: {
-      # this allows you to access `pkgs.unstable` anywhere in your config
-      unstable = import inputs.nixpkgs-unstable {
-        inherit (final.stdenv.hostPlatform) system;
-        inherit (final) config;
-      };
-    })
-  ];
-
-  # nixpkgs.config.permittedInsecurePackages = [
-  #   "libsoup-2.74.3"
-  # ];
+  nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
 
   #########################
 
   imports = [
+    inputs.nixos-hardware.nixosModules.framework-12-13th-gen-intel
     inputs.disko.nixosModules.disko
     ./disk-config.nix
     ./hardware-configuration.nix
@@ -48,72 +35,55 @@ in
     flake.modules.nixos.user
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.steam
-    flake.modules.nixos.nvidia
     flake.modules.nixos.syncthing
-    flake.modules.nixos.logitech
-    flake.modules.nixos.node-exporter
+    flake.modules.nixos.printing
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
   ];
 
   specialisation = {
-    cosmic.configuration = {
-      gnome.enable = false;
-      cosmic.enable = true;
+    gnome.configuration = {
+      gnome.enable = true;
+      cosmic.enable = false;
     };
   };
 
   grub.timeout = 10;
-  nvidia.open = true;
-  gnome = {
+  cosmic = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
   user.zsh.enable = true;
 
-  environment.systemPackages = with pkgs; [
-    lutris
-    # nexusmods-app-unfree
-    smartmontools
-    tmux
-    htop
+  environment.systemPackages = [
+    pkgs.htop
   ];
 
   syncthing = {
     username = "snyssen";
     devices = syncthingData.devices;
     folders = {
-      PrismLauncher = {
-        path = "/home/snyssen/.local/share/PrismLauncher";
-        devices = [ "sync.snyssen.be" ];
-      };
-      RetroArch = {
-        path = "/home/snyssen/.config/retroarch";
-        devices = [
-          "sync.snyssen.be"
-          "xps"
-        ];
-      };
       Notes = {
         path = "/home/snyssen/Notes";
         devices = [
           "sync.snyssen.be"
+          "xps"
           "Pixel 8 Pro"
-          "sninful"
+          "gaming"
         ];
       };
     };
   };
 
-  # Fix for time changing between boot of Windows and Linux
-  time.hardwareClockInLocalTime = true;
-
   stylix = {
     enable = true;
-    image = ../../files/wallpapers/Elite_wallpaper_4k_8.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/horizon-dark.yaml";
-    polarity = "dark";
+    image = ../../files/wallpapers/icy_pink_sunrise.jpg;
+    # monokai (dark) ?
+    # atelier-cave-light (light) ?
+    # moonlight (dark) ?
+    # stella (dark) ?
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/atelier-cave-light.yaml";
+    polarity = "light";
 
     fonts = {
       monospace = {
@@ -131,7 +101,7 @@ in
     ];
     auto-optimise-store = true;
   };
-  system.name = "gaming";
-  networking.hostName = "gaming";
+  system.name = "sninful";
+  networking.hostName = "sninful";
   system.stateVersion = "23.05";
 }

@@ -74,7 +74,6 @@ in
         path = "/home/snyssen/Notes";
         devices = [
           "sync.snyssen.be"
-          "xps"
           "Pixel 8 Pro"
           "gaming"
         ];
