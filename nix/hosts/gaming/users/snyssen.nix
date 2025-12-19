@@ -13,6 +13,7 @@
   imports = [
     flake.modules.home.dconf
     flake.modules.home.zsh
+    flake.modules.home.rio
     flake.modules.home.git
     flake.modules.home.vscode
     flake.modules.home.direnv
