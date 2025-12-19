@@ -39,6 +39,7 @@ in
             "editor.multiCursorModifier" = "ctrlCmd";
             "editor.formatOnSave" = true;
             "workbench.iconTheme" = "vscode-icons";
+            "vsicons.dontShowNewVersionMessage" = true;
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
@@ -54,6 +55,17 @@ in
             {
               "key" = "ctrl+shift+s";
               "command" = "workbench.action.files.saveFiles";
+            }
+            # Copy lines up or down
+            {
+              "key" = "shift+alt+down";
+              "command" = "editor.action.copyLinesDownAction";
+              "when" = "editorTextFocus && !editorReadonly";
+            }
+            {
+              "key" = "shift+alt+up";
+              "command" = "editor.action.copyLinesUpAction";
+              "when" = "editorTextFocus && !editorReadonly";
             }
           ];
         in
