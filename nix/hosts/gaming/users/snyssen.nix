@@ -42,9 +42,7 @@
     zenity
     protontricks
     p7zip
-    signal-desktop
     fluffychat
-    telegram-desktop
   ];
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
