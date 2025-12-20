@@ -13,7 +13,7 @@ in
     additionalLayouts = lib.mkOption {
       default = [ ];
       description = ''
-        Additional keybaord layouts to apply
+        Additional keyboard layouts to apply
       '';
     };
   };

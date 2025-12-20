@@ -3,6 +3,7 @@
   lib,
   inputs,
   flake,
+  config,
   ...
 }:
 {
@@ -21,8 +22,9 @@
     inputs.disko.nixosModules.disko
     ./disk-config.nix
     ./hardware-configuration.nix
-    inputs.stylix.nixosModules.stylix
+    inputs.sops-nix.nixosModules.sops
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -34,8 +36,16 @@
     flake.modules.nixos.tailscale
   ];
 
+  sops.secrets."tailscale/authKey" = {
+    sopsFile = ./data/secrets.yaml;
+  };
+
   grub.timeout = 10;
   user.zsh.enable = true;
+  tailscale.autoconnect = {
+    enable = true;
+    authKeyPath = config.sops.secrets."tailscale/authKey".path;
+  };
 
   environment.systemPackages = [
     pkgs.htop

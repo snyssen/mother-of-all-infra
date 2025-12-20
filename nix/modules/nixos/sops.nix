@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, lib, ... }:
 let
   cfg = config.sops;
 in
@@ -8,7 +8,7 @@ in
   config = {
     sops = {
       defaultSopsFile = ../../data/secrets.yaml;
-      age.sshKeyPaths = [ "/home/snyssen/.ssh/id_ed25519" ];
+      age.sshKeyPaths = lib.mkDefault [ "/home/snyssen/.ssh/id_ed25519" ];
       age.generateKey = true;
     };
   };
