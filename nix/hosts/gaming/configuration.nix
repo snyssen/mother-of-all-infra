@@ -38,8 +38,10 @@ in
     inputs.disko.nixosModules.disko
     ./disk-config.nix
     ./hardware-configuration.nix
+    inputs.sops-nix.nixosModules.sops
     inputs.stylix.nixosModules.stylix
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -63,6 +65,9 @@ in
       cosmic.enable = true;
     };
   };
+
+  sops.secrets.hello = { };
+  # sops.secrets.example_array = { };
 
   grub.timeout = 10;
   nvidia.open = true;

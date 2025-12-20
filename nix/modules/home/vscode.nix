@@ -31,6 +31,7 @@ in
             skellock.just
             github.copilot
             github.copilot-chat
+            signageos.signageos-vscode-sops
           ];
           defaultUserSettings = {
             "git.autofetch" = "all";

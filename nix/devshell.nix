@@ -12,6 +12,7 @@ pkgs.mkShell {
     glibcLocales # otherwise ansible cannot run
     grafana-alloy
     terraform
+    sops
   ];
 
   # Add environment variables

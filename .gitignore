@@ -4,7 +4,10 @@
 
 # nix
 result
-result-*
+result~*
+
+# sops
+.decrypted*
 
 # terraform
 .terraform/
