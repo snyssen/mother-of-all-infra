@@ -17,10 +17,12 @@ pre-commit-setup:
 # Install Ansible Galaxy collections
 ansible-setup:
   ansible-galaxy collection install -r ansible/requirements.yml
+  ansible-galaxy role install -r ansible/requirements.yml
 
 # Update Ansible Galaxy collections
 ansible-update:
   ansible-galaxy collection install -r ansible/requirements.yml --force
+  ansible-galaxy role install -r ansible/requirements.yml --force
 
 # Setup Ansible Vault password
 ansible-vault-setup:
