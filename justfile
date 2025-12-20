@@ -15,28 +15,31 @@ pre-commit-setup:
   pre-commit install
 
 # Install Ansible Galaxy collections
+[working-directory: 'ansible']
 ansible-setup:
-  ansible-galaxy collection install -r ansible/requirements.yml
-  ansible-galaxy role install -r ansible/requirements.yml
+  ansible-galaxy collection install -r requirements.yml
+  ansible-galaxy role install -r requirements.yml
 
 # Update Ansible Galaxy collections
+[working-directory: 'ansible']
 ansible-update:
-  ansible-galaxy collection install -r ansible/requirements.yml --force
-  ansible-galaxy role install -r ansible/requirements.yml --force
+  ansible-galaxy collection install -r requirements.yml --force
+  ansible-galaxy role install -r requirements.yml --force
 
 # Setup Ansible Vault password
 ansible-vault-setup:
   bash scripts/ansible-vault-setup.sh
 
 # List available Ansible playbooks
+[working-directory: 'ansible']
 ansible-playbook-list:
   @echo "Available Ansible Playbooks:"
-  @ls ansible/playbooks/*.ansible.yml | xargs -n 1 basename | sed 's/\.ansible\.yml//' | sed 's/^/ - /'
+  @ls playbooks/*.ansible.yml | xargs -n 1 basename | sed 's/\.ansible\.yml//' | sed 's/^/ - /'
 
 # Run an Ansible playbook
+[working-directory: 'ansible']
 ansible-playbook playbook *flags:
-  @# Run in subshell to change directory and load ansible.cfg
-  (cd ansible && ansible-playbook playbooks/{{playbook}}.ansible.yml {{flags}})
+  ansible-playbook playbooks/{{playbook}}.ansible.yml {{flags}}
 
 # Test connectivity to a host via SSH (forcing tailscale login if necessary)
 ssh-connect +hosts:
