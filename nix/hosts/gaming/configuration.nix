@@ -4,6 +4,7 @@
   system,
   flake,
   lib,
+  config,
   ...
 }:
 let
@@ -66,8 +67,15 @@ in
     };
   };
 
-  sops.secrets.hello = { };
-  # sops.secrets.example_array = { };
+  sops.secrets.hello = {
+    owner = config.users.users.snyssen.name;
+    group = config.users.users.snyssen.group;
+  };
+  sops.secrets.gaming-test = {
+    sopsFile = ./data/secrets.yaml;
+    owner = config.users.users.snyssen.name;
+    group = config.users.users.snyssen.group;
+  };
 
   grub.timeout = 10;
   nvidia.open = true;

@@ -7,7 +7,7 @@ in
 
   config = {
     sops = {
-      defaultSopsFile = ../../data/test.yaml;
+      defaultSopsFile = ../../data/secrets.yaml;
       age.sshKeyPaths = [ "/home/snyssen/.ssh/id_ed25519" ];
       age.generateKey = true;
     };

@@ -5,7 +5,14 @@
 keys:
   - &snyssen_gaming age1qxzfz6w99ptdyen3mwp3wr93yd8690m20s8p4daqn0qqczujhghsua5x28
 creation_rules:
+  # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *snyssen_gaming
+  # host specific secrets
+  - path_regex: nix/hosts/gaming/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
         age:
