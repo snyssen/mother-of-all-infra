@@ -13,6 +13,7 @@
 
   imports = [
     flake.modules.home.zsh
+    flake.modules.home.ghostty
     flake.modules.home.git
     flake.modules.home.vscode
     flake.modules.home.direnv

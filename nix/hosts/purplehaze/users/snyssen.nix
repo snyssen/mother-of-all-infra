@@ -14,6 +14,7 @@
   imports = [
     flake.modules.home.zsh
     flake.modules.home.git
+    flake.modules.home.ghostty
     flake.modules.home.vscode
     flake.modules.home.direnv
     flake.modules.home.firefox
