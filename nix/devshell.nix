@@ -13,6 +13,7 @@ pkgs.mkShell {
     grafana-alloy
     terraform
     sops
+    openstackclient
   ];
 
   # Add environment variables

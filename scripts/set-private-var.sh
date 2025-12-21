@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # update-ansible-vault-pass.sh
-# Safely add or replace ANSIBLE_VAULT_PASSPHRASE in .envrc.private
-# Usage: ./update-ansible-vault-pass.sh
+# Safely add or replace given var in .envrc.private
+# Usage: ./set-private-var.sh YOUR_VAR_NAME
 
 set -euo pipefail
 
 TARGET=".envrc.private"
-VAR="ANSIBLE_VAULT_PASSPHRASE"
+VAR="$1"
 
 # Regex for detecting an export line for the variable
 EXPORT_GREP='^[[:space:]]*export[[:space:]]+'"$VAR"'[[:space:]]*='
@@ -30,7 +30,7 @@ if $file_exists && $has_export; then
 fi
 
 # Prompt for the password (hidden input) — single prompt only
-read -r -s -p "Enter Ansible vault password: " pass
+read -r -s -p "Enter value for $VAR variable: " pass
 echo
 
 # Escape single quotes for safe single-quoted shell literal
@@ -51,9 +51,8 @@ if grep -Eq "$EXPORT_GREP" "$TARGET"; then
   sed -E -i "s|^[[:space:]]*export[[:space:]]+ANSIBLE_VAULT_PASSPHRASE[[:space:]]*=.*|$new_line|" "$TARGET"
   echo "Replaced existing $VAR in $TARGET."
 else
-  # Append to file with a newline separator
+  # Append to file
   {
-    printf '\n'
     printf '%s\n' "$new_line"
   } >> "$TARGET"
   echo "Appended $VAR to $TARGET."

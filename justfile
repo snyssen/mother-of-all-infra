@@ -4,6 +4,7 @@ alias au := ansible-update
 alias ssh := ssh-connect
 alias nhr := nix-remote-install
 
+# Default recipe, list all available recipes
 default:
   just --list
 
@@ -28,7 +29,7 @@ ansible-update:
 
 # Setup Ansible Vault password
 ansible-vault-setup:
-  bash scripts/ansible-vault-setup.sh
+  scripts/set-private-var.sh ANSIBLE_VAULT_PASSPHRASE
 
 # List available Ansible playbooks
 [working-directory: 'ansible']
@@ -46,5 +47,24 @@ ssh-connect +hosts:
   for host in {{hosts}}; do ssh "$host" echo "connected to $host."; done
 
 # Update NixOS configuration on a remote host using nh (requires tailscale for DNS and root SSH access)
-nix-remote-install host:
-  nh os switch -H {{host}} --target-host=root@{{host}}
+nix-remote-install host ip=host:
+  nh os switch -H {{host}} --target-host=root@{{ip}}
+
+# Use SOPS to create or update secrets in given file
+sops-update file:
+  sops {{file}}
+
+# Rotate SOPS keys for given file, based on rules from `.sops.yaml`
+sops-update-keys file:
+  sops updatekeys {{file}}
+
+# Setup state backend (s3 on backblaze) for Terraform
+terraform-state-backend-setup:
+  scripts/set-private-var.sh AWS_ACCESS_KEY_ID
+  scripts/set-private-var.sh AWS_SECRET_ACCESS_KEY
+
+# Setup openstack for terraform operations on gandi.net
+terraform-openstack-setup:
+  scripts/set-private-var.sh OS_USERNAME
+  scripts/set-private-var.sh OS_PROJECT_NAME
+  scripts/set-private-var.sh OS_PASSWORD

@@ -16,17 +16,18 @@
   nixpkgs.config.allowUnfree = true;
   nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
 
+  # Not part of the default gandicloud.nix, even though it is required
+  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+
   #########################
 
   imports = [
-    inputs.disko.nixosModules.disko
-    ./disk-config.nix
-    ./hardware-configuration.nix
+    # Note: no need for disko, as disk is managed on VPS. Thanks to Gandi.net, NixOS is also pre-installed so there is no need to use nixos-anywhere.
+    ./gandicloud.nix
     inputs.sops-nix.nixosModules.sops
 
     flake.modules.nixos.sops
     flake.modules.nixos.cache
-    flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.user
     flake.modules.nixos.locale
@@ -40,7 +41,6 @@
     sopsFile = ./data/secrets.yaml;
   };
 
-  grub.timeout = 10;
   user.zsh.enable = true;
   tailscale.autoconnect = {
     enable = true;
@@ -65,5 +65,4 @@
   };
   system.name = "ingress";
   networking.hostName = "ingress";
-  system.stateVersion = "23.05";
 }
