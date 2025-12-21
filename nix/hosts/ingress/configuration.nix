@@ -22,7 +22,9 @@
   #########################
 
   imports = [
-    # Note: no need for disko, as disk is managed on VPS. Thanks to Gandi.net, NixOS is also pre-installed so there is no need to use nixos-anywhere.
+    # Note: no need for disko, as disk is managed on VPS.
+    # Thanks to Gandi.net, NixOS is also pre-installed so there is no need to use nixos-anywhere.
+    # gandicloud.nix was copied from VPS after initial creation, and replaces the usual hardware-configuration.nix file.
     ./gandicloud.nix
     inputs.sops-nix.nixosModules.sops
 
@@ -45,6 +47,7 @@
   tailscale.autoconnect = {
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
+    enableSSH = true;
   };
 
   environment.systemPackages = [
