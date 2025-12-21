@@ -16,5 +16,6 @@ terraform.tfstate.*
 provider_ovh.tf
 
 # ansible
+.ansible/
 # Ignore roles with a dot in the name as they come from ansible-galaxy
 ansible/roles/*.*/
