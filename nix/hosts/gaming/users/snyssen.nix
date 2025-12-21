@@ -13,7 +13,7 @@
   imports = [
     flake.modules.home.dconf
     flake.modules.home.zsh
-    flake.modules.home.rio
+    flake.modules.home.ghostty
     flake.modules.home.git
     flake.modules.home.vscode
     flake.modules.home.direnv
@@ -37,7 +37,6 @@
     vesktop
     onlyoffice-desktopeditors
     protonmail-desktop
-    ghostty
     caligula
     zenity
     protontricks
