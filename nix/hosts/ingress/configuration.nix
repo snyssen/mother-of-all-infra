@@ -37,10 +37,14 @@
 
     # flake.modules.nixos.docker
     flake.modules.nixos.tailscale
+    flake.modules.nixos.crowdsec-firewall-bouncer
   ];
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets."tailscale/authKey" = {
+    sopsFile = ./data/secrets.yaml;
+  };
+  sops.secrets."crowdsec-firewall-bouncer/api_key" = {
     sopsFile = ./data/secrets.yaml;
   };
 
@@ -50,6 +54,7 @@
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
   };
+  crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
 
   environment.systemPackages = [
     pkgs.htop
