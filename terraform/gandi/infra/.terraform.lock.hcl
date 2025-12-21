@@ -3,9 +3,19 @@
 
 provider "registry.terraform.io/terraform-provider-openstack/openstack" {
   version     = "1.35.0"
-  constraints = "~> 1.35.0"
+  constraints = "1.35.0"
   hashes = [
+    "h1:5GEIQG5o1oZLqnEFYj2U8uukeQ0/Yj5FFl6tkTloF8E=",
+    "h1:6bmS2UM1ThkbfOqpsKvfycc4lgQplGkSQapIAvnwuXI=",
+    "h1:LBsuZlhv6DYyKSO1bFd0CxnF2/t0OJvHIhV4vzoY1Z8=",
+    "h1:ZqiQFhVS914+wtuKnjIKhb3Js+w0L78a3krtEPTvTr8=",
+    "h1:aGjTT1d3p88kO1UGpZQQjKEnWY4+CpfwHibnRLrogR8=",
+    "h1:dAiBI13E/WMWfnYBcCMiIICLLd0+karK92dFlT+/yGQ=",
+    "h1:dl0m5Ud6Caqx/FLDPHOWV1XbG2L7NntGZVOoLYAnOZI=",
+    "h1:hb7WFZYTJ/w8kvK+8qnuv7kLZm7jbVQ3J+FhpndG3Es=",
     "h1:k1SCosvSICWAgRkswl83KtCycN7iP9asejWDDEQEtuk=",
+    "h1:tH4SlmLi0oODD8vcPh5m74KF/elh2YXqcovPlB7A+HI=",
+    "h1:wLtzpvbee734O+BChK4YZgJaahBVSvHikaeBMgqaSi8=",
     "zh:04cf8800c83289a28619ac9925bc03e0ccd624f0ed68284f8bd473cf48f05ef0",
     "zh:15fc2e1ea6f87d11e15aad075f3bfb7013eb63f31637f1ee317c94686c9650ec",
     "zh:1b6625ce80e6d8f192c984dcf6ba7ab303e4fdab6fa5a0a5651a8a01521aa879",
