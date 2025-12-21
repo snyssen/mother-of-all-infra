@@ -23,6 +23,10 @@ resource "openstack_compute_instance_v2" "ingress_server" {
     destination_type      = "volume"
     delete_on_termination = true
   }
+
+  lifecycle {
+    replace_triggered_by = [openstack_compute_keypair_v2.ingress_keypair]
+  }
 }
 
 output "ingress_public_key" {
