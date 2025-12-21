@@ -39,6 +39,7 @@
     flake.modules.nixos.tailscale
   ];
 
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets."tailscale/authKey" = {
     sopsFile = ./data/secrets.yaml;
   };

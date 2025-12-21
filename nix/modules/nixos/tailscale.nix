@@ -18,15 +18,29 @@ in
         '';
       };
       enableSSH = lib.mkEnableOption "allow SSH connection";
+      tags = lib.mkOption {
+        default = [ "server" ];
+        description = "Tailscale tags to advertise when connecting. 'tag:' prefix is automatically added and should not be part of the value.";
+      };
     };
   };
 
   config = {
-    services.tailscale = {
-      enable = true;
-      openFirewall = true;
-      authKeyFile = lib.mkIf cfg.autoconnect.enable cfg.autoconnect.authKeyPath;
-      extraUpFlags = lib.mkIf (cfg.autoconnect.enable && cfg.autoconnect.enableSSH) [ "--ssh" ];
-    };
+    services.tailscale = lib.mkMerge [
+      {
+        enable = true;
+        openFirewall = true;
+      }
+      (lib.mkIf cfg.autoconnect.enable {
+        authKeyFile = cfg.autoconnect.authKeyPath;
+        extraUpFlags =
+          [ ]
+          ++ lib.lists.optional cfg.autoconnect.enableSSH "--ssh"
+          ++
+            lib.lists.optional (cfg.autoconnect.tags != [ ])
+              # e.g. for function below: tags = [ "server" "dns" ] -> "--advertise-tags=tag:server,tag:dns"
+              "--advertise-tags=${lib.strings.concatMapStringsSep "," (x: "tag:" + x) cfg.autoconnect.tags}";
+      })
+    ];
   };
 }
