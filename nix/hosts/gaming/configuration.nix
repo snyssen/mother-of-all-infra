@@ -105,7 +105,6 @@ in
         path = "/home/snyssen/.config/retroarch";
         devices = [
           "sync.snyssen.be"
-          "xps"
         ];
       };
       Notes = {
@@ -114,6 +113,7 @@ in
           "sync.snyssen.be"
           "Pixel 8 Pro"
           "sninful"
+          "purplehaze"
         ];
       };
     };

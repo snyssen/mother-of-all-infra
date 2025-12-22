@@ -76,6 +76,7 @@ in
           "sync.snyssen.be"
           "Pixel 8 Pro"
           "gaming"
+          "purplehaze"
         ];
       };
     };

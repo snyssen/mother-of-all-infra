@@ -16,7 +16,16 @@ in
 
   # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
+  nixpkgs.overlays = [
+    inputs.nix-vscode-extensions.overlays.default
+    (final: _: {
+      # this allows you to access `pkgs.unstable` anywhere in your config
+      unstable = import inputs.nixpkgs-unstable {
+        inherit (final.stdenv.hostPlatform) system;
+        inherit (final) config;
+      };
+    })
+  ];
 
   #########################
 
@@ -35,6 +44,7 @@ in
     flake.modules.nixos.user
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.steam
     flake.modules.nixos.syncthing
     flake.modules.nixos.printing
     flake.modules.nixos.docker
@@ -42,14 +52,14 @@ in
   ];
 
   specialisation = {
-    gnome.configuration = {
-      gnome.enable = true;
-      cosmic.enable = false;
+    cosmic.configuration = {
+      gnome.enable = false;
+      cosmic.enable = true;
     };
   };
 
   grub.timeout = 10;
-  cosmic = {
+  gnome = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
@@ -67,7 +77,6 @@ in
         path = "/home/snyssen/Notes";
         devices = [
           "sync.snyssen.be"
-          "xps"
           "Pixel 8 Pro"
           "gaming"
         ];
@@ -101,7 +110,7 @@ in
     ];
     auto-optimise-store = true;
   };
-  system.name = "sninful";
-  networking.hostName = "sninful";
+  system.name = "purplehaze";
+  networking.hostName = "purplehaze";
   system.stateVersion = "23.05";
 }

@@ -15,5 +15,8 @@
     "sninful" = {
       id = "RUPVKFS-XBNCXTY-ZFZN2I5-ECOMFQX-V74LTZR-JSN4BVS-BOTA235-S6Z7FQT";
     };
+    "purplehaze" = {
+      id = "P2ECEG6-RRB6YZI-KFYZUBF-FBHSUSA-DQUZXH2-MCQXI3Z-HMFUPDV-7ACNIAJ";
+    };
   };
 }
