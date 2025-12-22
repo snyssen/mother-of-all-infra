@@ -37,6 +37,7 @@
 
     # flake.modules.nixos.docker
     flake.modules.nixos.tailscale
+    flake.modules.nixos.traefik
     flake.modules.nixos.crowdsec-firewall-bouncer
     flake.modules.nixos.prometheus-node-exporter
   ];
@@ -68,6 +69,10 @@
 
   networking.firewall = {
     enable = true;
+    allowedTCPPorts = [
+      80
+      443
+    ];
   };
 
   # TODO: make this part automatically defined
