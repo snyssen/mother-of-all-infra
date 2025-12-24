@@ -40,7 +40,7 @@ services:
       - traefik.http.routers.ntfy.service=ntfy
       - traefik.http.services.ntfy.loadBalancer.server.port=80
   mollysocket:
-    image: ghcr.io/mollyim/mollysocket:1.6.0@sha256:6f034cd67ae2c5ef643ba3562d0aa51eaf9edd9eec95d61d230bcc0268c4a739
+    image: ghcr.io/mollyim/mollysocket:1.6.0@sha256:3c9a98dba4aaefd0e2c925a167e7bfacd4d6281f7102873ed83b0953402514e7
     container_name: mollysocket
     restart: unless-stopped
     volumes:
