@@ -78,8 +78,7 @@ backbone__acme_dns_challenge__api_key: "{{ vault_backbone__acme_dns_challenge__a
 backbone__acme_dns_challenge__api_key_variable: "{{ vault_backbone__acme_dns_challenge__api_key_variable }}"
 backbone__acme_http_challenge__enabled: "{{ vault_backbone__acme_http_challenge__enabled }}"
 vpn__service_provider: protonvpn
-vpn__user: "{{ vault_vpn__user }}"
-vpn__pass: "{{ vault_vpn__pass }}"
+vpn__wireguard_pk: "{{ vault_vpn__wireguard_pk }}"
 backbone__lldap__jwt_secret: "{{ vault_backbone__lldap__jwt_secret }}"
 backbone__lldap__key_seed: "{{ vault_backbone__lldap__key_seed }}"
 backbone__lldap__db_user: lldap

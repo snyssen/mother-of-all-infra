@@ -113,10 +113,10 @@ services:
     environment:
       # See https://github.com/qdm12/gluetun/wiki
       - VPN_SERVICE_PROVIDER={{ vpn__service_provider }}
-      # OpenVPN:
-      - OPENVPN_USER={{ vpn__user }}
-      - OPENVPN_PASSWORD={{ vpn__pass }}
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY={{ vpn__wireguard_pk }}
       - SPORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
       # Timezone for accurate log times
       - TZ={{ iana_timezone }}
       # Server list updater. See https://github.com/qdm12/gluetun/wiki/Updating-Servers#periodic-update
