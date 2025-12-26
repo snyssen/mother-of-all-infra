@@ -87,10 +87,6 @@ in
   stylix = {
     enable = true;
     image = ../../files/wallpapers/icy_pink_sunrise.jpg;
-    # monokai (dark) ?
-    # atelier-cave-light (light) ?
-    # moonlight (dark) ?
-    # stella (dark) ?
     base16Scheme = "${pkgs.base16-schemes}/share/themes/atelier-cave-light.yaml";
     polarity = "light";
 
@@ -98,6 +94,15 @@ in
       monospace = {
         package = pkgs.nerd-fonts.fira-mono;
         name = "FiraMono Nerd Font Mono";
+      };
+    };
+  };
+  specialisation = {
+    gnome-dark.configuration = {
+      stylix = {
+        image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
+        base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
+        polarity = lib.mkForce "dark";
       };
     };
   };
