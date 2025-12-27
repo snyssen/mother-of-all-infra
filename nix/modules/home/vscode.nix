@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 let
   cfg = config.vscode;
 in
@@ -91,7 +96,12 @@ in
                 hashicorp.terraform
               ]
               ++ defaultExtensions;
-            userSettings = defaultUserSettings;
+            userSettings = lib.mkMerge [
+              {
+                "redhat.telemetry.enabled" = false;
+              }
+              defaultUserSettings
+            ];
             keybindings = defaultKeybindings;
           };
           astro = {
