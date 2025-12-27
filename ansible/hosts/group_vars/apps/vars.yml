@@ -437,7 +437,6 @@ foundryvtt__password: "{{ vault_foundryvtt__password }}"
 foundryvtt__admin_key: "{{ vault_foundryvtt__admin_key }}"
 
 monitoring__extra_monitored_hosts:
-  - xps.lan:9100
   - vi-s-tower.lan:9100
   - gaming.lan:9100
   - 46.226.104.72:9100

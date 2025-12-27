@@ -7,15 +7,19 @@ in
     listenAddress = lib.mkOption {
       default = "0.0.0.0";
     };
+    port = lib.mkOption {
+      default = 9100;
+    };
+    openFirewall = lib.mkEnableOption "open firewall";
   };
 
   config = {
     services.prometheus.exporters.node = {
       enable = true;
       listenAddress = cfg.listenAddress;
-      port = 9100;
+      port = cfg.port;
       enabledCollectors = [ "systemd" ];
-      openFirewall = true;
+      openFirewall = cfg.openFirewall;
     };
   };
 }

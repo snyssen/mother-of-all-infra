@@ -55,7 +55,7 @@ in
     flake.modules.nixos.nvidia
     flake.modules.nixos.syncthing
     flake.modules.nixos.logitech
-    flake.modules.nixos.node-exporter
+    flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
   ];
@@ -84,6 +84,8 @@ in
     autoLogin.enable = true;
   };
   user.zsh.enable = true;
+
+  prometheus-node-exporter.openFirewall = true;
 
   environment.systemPackages = with pkgs; [
     lutris
