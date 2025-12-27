@@ -40,6 +40,7 @@
     flake.modules.nixos.traefik
     flake.modules.nixos.crowdsec-firewall-bouncer
     flake.modules.nixos.prometheus-node-exporter
+    flake.modules.nixos.grafana-alloy
   ];
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
@@ -57,11 +58,7 @@
     enableSSH = true;
   };
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
-  # TODO: configure below to only accept connection from localhost.
-  # As soon as we have traefik on the machine, we should use it to only allow our own machine from scraping metrics!
-  # Until now, I still want to monitor the host, even if it means the world can also do it...
-  # prometheus-node-exporter.listenAddress = "ingress.taild023c5.ts.net";
-  # TODO: We also need to configure grafana alloy for sending logs. But Traefik setup is more urgent.
+  grafana-alloy.varlogs.enable = true;
 
   environment.systemPackages = [
     pkgs.htop
