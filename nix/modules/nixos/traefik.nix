@@ -7,11 +7,24 @@ in
     letsencrypt.email = lib.mkOption {
       default = "admin@snyssen.be";
     };
-    letsencrypt.dnsChallenge.apiKeyPath = lib.mkOption { };
+    letsencrypt = {
+      challengeType = lib.mkOption {
+        type = lib.types.enum [
+          "http"
+          "dns"
+        ];
+        default = "http";
+      };
+      dnsChallenge.apiKeyPath = lib.mkOption {
+        description = ''
+          Path to API key file for DNS challenge, REQUIRED if challengeType is "dns". Should be provided using a SOPS secret.
+        '';
+      };
+    };
   };
 
   config = {
-    systemd.services.traefik.environment = {
+    systemd.services.traefik.environment = lib.mkIf (cfg.letsencrypt.challengeType == "dns") {
       DYNU_API_KEY_FILE = cfg.letsencrypt.dnsChallenge.apiKeyPath;
     };
 
@@ -32,7 +45,7 @@ in
             address = ":443";
             asDefault = true;
             http.tls.certResolver = "letsencrypt";
-            http.tls.domains = [
+            http.tls.domains = lib.mkIf (cfg.letsencrypt.challengeType == "dns") [
               {
                 main = "ingress.snyssen.be";
                 sans = [ "*.ingress.snyssen.be" ];
@@ -40,11 +53,18 @@ in
             ];
           };
         };
-        certificatesResolvers.letsencrypt.acme = {
-          email = cfg.letsencrypt.email;
-          storage = "${config.services.traefik.dataDir}/acme.json";
-          dnsChallenge.provider = "dynu";
-        };
+        certificatesResolvers.letsencrypt.acme = lib.mkMerge [
+          {
+            email = cfg.letsencrypt.email;
+            storage = "${config.services.traefik.dataDir}/acme.json";
+          }
+          (lib.mkIf (cfg.letsencrypt.challengeType == "http") {
+            httpChallenge.entrypoint = "web";
+          })
+          (lib.mkIf (cfg.letsencrypt.challengeType == "dns") {
+            dnsChallenge.provider = "dynu";
+          })
+        ];
         api.dashboard = true;
         log = {
           level = "INFO";
@@ -70,13 +90,13 @@ in
             entryPoints = [ "websecure" ];
             rule = "Host(`ingress.snyssen.be`)";
             service = "api@internal";
-            middlewares = [ "io-allowlist" ];
+            middlewares = [ "ip-allowlist" ];
           };
           prometheus-node-exporter = {
             entryPoints = [ "websecure" ];
             rule = "Host(`pne.ingress.snyssen.be`)";
             service = "prometheus-node-exporter";
-            middlewares = [ "io-allowlist" ];
+            middlewares = [ "ip-allowlist" ];
           };
         };
         http.services = {
