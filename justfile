@@ -50,6 +50,15 @@ ssh-connect +hosts:
 nix-remote-install host ip=host:
   nh os switch -H {{host}} --target-host=root@{{ip}}
 
+# Generate age key for current host, for use with SOPS
+sops-gen-privkey privKeyPath="~/.ssh/id_ed25519":
+  mkdir -p ~/.config/sops/age
+  ssh-to-age -private-key -i {{ privKeyPath }} > ~/.config/sops/age/keys.txt
+
+# Get public age key of current host, for use with SOPS
+sops-get-pubkey:
+  age-keygen -y ~/.config/sops/age/keys.txt
+
 # Use SOPS to create or update secrets in given file
 sops-update file:
   sops {{file}}

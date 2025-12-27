@@ -49,6 +49,9 @@
   sops.secrets."crowdsec-firewall-bouncer/api_key" = {
     sopsFile = ./data/secrets.yaml;
   };
+  sops.secrets."traefik/letsencrypt_dnsChallenge_apikey" = {
+    sopsFile = ./data/secrets.yaml;
+  };
 
   user.zsh.enable = true;
   tailscale.autoconnect = {
@@ -57,6 +60,7 @@
     enableSSH = true;
   };
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
+  traefik.letsencrypt.dnsChallenge.apiKeyPath = config.sops.secrets."traefik/letsencrypt_dnsChallenge_apikey"
   # TODO: configure below to only accept connection from localhost.
   # As soon as we have traefik on the machine, we should use it to only allow our own machine from scraping metrics!
   # Until now, I still want to monitor the host, even if it means the world can also do it...

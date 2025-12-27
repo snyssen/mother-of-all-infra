@@ -12,6 +12,8 @@ pkgs.mkShell {
     glibcLocales # otherwise ansible cannot run
     grafana-alloy
     terraform
+    age
+    ssh-to-age
     sops
     openstackclient
   ];
