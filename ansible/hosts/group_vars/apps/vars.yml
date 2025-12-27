@@ -439,7 +439,7 @@ foundryvtt__admin_key: "{{ vault_foundryvtt__admin_key }}"
 monitoring__extra_monitored_hosts:
   - vi-s-tower.lan:9100
   - gaming.lan:9100
-  - 46.226.104.72:9100
+  - pne.ingress.snyssen.be
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:
