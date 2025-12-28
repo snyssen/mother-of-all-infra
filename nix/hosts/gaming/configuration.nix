@@ -58,6 +58,7 @@ in
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
+    flake.modules.nixos.sunshine
   ];
 
   specialisation = {
