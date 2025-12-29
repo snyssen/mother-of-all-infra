@@ -58,7 +58,10 @@
     enableSSH = true;
   };
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
-  grafana-alloy.varlogs.enable = true;
+  grafana-alloy = {
+    varlogs.enable = true;
+    journald.enable = true;
+  };
 
   environment.systemPackages = [
     pkgs.htop

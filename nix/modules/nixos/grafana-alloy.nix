@@ -8,6 +8,7 @@ in
       default = config.system.name;
     };
     varlogs.enable = lib.mkEnableOption "/var/log collection";
+    journald.enable = lib.mkEnableOption "journald (systemd) collection";
     containerlogs.enable = lib.mkEnableOption "Docker logs collection";
     loki.endpoint = lib.mkOption {
       default = "https://loki.snyssen.be/loki/api/v1/push";
@@ -29,7 +30,25 @@ in
         loki.source.file "varlogs" {
           targets               = local.file_match.varlogs.targets
           forward_to            = [loki.write.default.receiver]
-          legacy_positions_file = "/tmp/positions.yaml"
+        }
+      '';
+      alloy_journald = ''
+        loki.relabel "journald" {
+          forward_to = []
+          rule {
+            source_labels = ["__journal__systemd_unit"]
+            target_label  = "unit"
+          }
+        }
+
+        loki.source.journal "journald"  {
+          forward_to    = [loki.write.default.receiver]
+          relabel_rules = loki.relabel.journald.rules
+          labels        = {
+            component = "journald",
+            job       = "journald",
+            host      = "${cfg.hostname}",
+          }
         }
       '';
       alloy_containerlogs = ''
@@ -90,7 +109,6 @@ in
         loki.source.file "containerlogs" {
           targets               = local.file_match.containerlogs.targets
           forward_to            = [loki.process.containerlogs.receiver]
-          legacy_positions_file = "/tmp/positions.yaml"
         }
       '';
       alloy_loki = ''
@@ -105,10 +123,12 @@ in
     {
       services.alloy = {
         enable = true;
+        extraFlags = [ "--disable-reporting" ];
       };
 
       environment.etc."alloy/config.alloy".text = ''
         ${if cfg.varlogs.enable then alloy_varlogs else ""}
+        ${if cfg.journald.enable then alloy_journald else ""}
         ${if cfg.containerlogs.enable then alloy_containerlogs else ""}
         ${alloy_loki}
       '';
