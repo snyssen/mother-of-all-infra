@@ -1,10 +1,10 @@
 { config, lib, ... }:
 let
-  cfg = config.disko;
   layoutName = "single-btrfs-luks";
+  cfg = config.disko."${layoutName}";
 in
 {
-  options.disko = {
+  options.disko."${layoutName}" = {
     mainDiskPath = lib.mkOption {
       default = "/dev/sda";
     };
@@ -26,7 +26,7 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.layout == layoutName) {
+  config = lib.mkIf (config.disko.layout == layoutName) {
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
       "uas"

@@ -58,10 +58,19 @@ in
     };
   };
 
-  disko.layout = "single-btrfs-luks";
-  disko.mainDiskPath = "/dev/nvme0n1";
-  disko.usbKeysIds = [ "9FBA-884A" ];
-  disko.swap.enable = true;
+  disko =
+    let
+      ly = "single-btrfs-luks";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        mainDiskPath = "/dev/nvme0n1";
+        usbKeysIds = [ "9FBA-884A" ];
+        swap.enable = true;
+      };
+    };
+
   grub.timeout = 10;
   gnome = {
     enable = lib.mkDefault true;

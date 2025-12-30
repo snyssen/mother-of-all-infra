@@ -54,9 +54,18 @@ in
     };
   };
 
-  disko.layout = "single-btrfs-luks";
-  disko.usbKeysIds = [ "9FBA-884A" ];
-  disko.swap.enable = true;
+  disko =
+    let
+      ly = "single-btrfs-luks";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        usbKeysIds = [ "9FBA-884A" ];
+        swap.enable = true;
+      };
+    };
+
   kbd-layout.additionalLayouts = [ "be" ];
   grub.timeout = 10;
   cosmic = {

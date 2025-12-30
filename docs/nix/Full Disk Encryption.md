@@ -68,7 +68,7 @@ I like to use the target machine name as the keyfile name. It should correspond 
 On the target machine, allow the keyfile to unlock the partition:
 
 ```sh
-sudo cryptsetup luksAddKey /dev/sdb1 ./
+sudo cryptsetup luksAddKey /dev/sdb1 ./KEYFILENAME
 ```
 
 **Replace `/dev/sdb1` with whatever your LUKS partition is**. You can figure out the partition name using `lsblk`, e.g.:

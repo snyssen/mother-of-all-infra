@@ -1,10 +1,10 @@
 { config, lib, ... }:
 let
-  cfg = config.disko;
-  layoutName = "single-btrfs-luks";
+  layoutName = "legacy-gaming";
+  cfg = config.disko."${layoutName}";
 in
 {
-  options.disko = {
+  options.disko."${layoutName}" = {
     usbKeysIds = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       description = "List of IDs (as seen under /dev/disk/by-uuid) to look for for mounting your USB key(s)";
@@ -16,7 +16,7 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.layout == layoutName) {
+  config = lib.mkIf (config.disko.layout == layoutName) {
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
       "uas"
