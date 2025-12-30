@@ -69,7 +69,10 @@ in
   };
 
   disko.layout = "legacy-gaming";
-  disko."legacy-gaming".usbKeysIds = [ "9FBA-884A" ];
+  disko."legacy-gaming".usbKeysIds = [
+    "9FBA-884A"
+    "75E6-4B88"
+  ];
 
   grub.timeout = 10;
   nvidia.open = true;

@@ -66,7 +66,10 @@ in
       layout = ly;
       "${ly}" = {
         mainDiskPath = "/dev/nvme0n1";
-        usbKeysIds = [ "9FBA-884A" ];
+        usbKeysIds = [
+          "9FBA-884A"
+          "75E6-4B88"
+        ];
         swap.enable = true;
       };
     };
