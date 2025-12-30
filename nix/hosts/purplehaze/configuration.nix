@@ -32,7 +32,7 @@ in
   imports = [
     inputs.nixos-hardware.nixosModules.framework-12-13th-gen-intel
     inputs.disko.nixosModules.disko
-    ./disk-config.nix
+    flake.modules.nixos.disko
     ./hardware-configuration.nix
     inputs.stylix.nixosModules.stylix
 
@@ -58,6 +58,10 @@ in
     };
   };
 
+  disko.layout = "single-btrfs-luks";
+  disko.mainDiskPath = "/dev/nvme0n1";
+  disko.usbKeysIds = [ "9FBA-884A" ];
+  disko.swap.enable = true;
   grub.timeout = 10;
   gnome = {
     enable = lib.mkDefault true;

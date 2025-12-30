@@ -17,10 +17,16 @@ in
       description = "Filename of the key file to look for from the root of the USB disk";
       default = config.system.name;
     };
+    swap = {
+      enable = lib.mkEnableOption "swap partition";
+      size = lib.mkOption {
+        type = lib.types.str;
+        default = "8G";
+      };
+    };
   };
 
   config = lib.mkIf (cfg.layout == layoutName) {
-    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
       "uas"
@@ -59,19 +65,21 @@ in
                 content = {
                   type = "luks";
                   name = "cryptroot";
+                  passwordFile = "/tmp/secret.key";
                   settings = {
                     allowDiscards = true; # Allow TRIM operations on SSD
                     keyFile = "/key/${cfg.keyFilename}";
+                    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
                     fallbackToPassword = true;
                     preOpenCommands = ''
                       mkdir -m 0755 -p /key
                       echo "Trying to mount USB key for LUKS decryption..."
+                      sleep 3 # Waiting for USB to be ready
                       ${lib.strings.concatMapStringsSep " || " (
                         id: "mount -n -t vfat -o ro -U ${id} /key"
                       ) cfg.usbKeysIds}
                     '';
                   };
-                  passwordFile = "/tmp/secret.key";
                   content = {
                     type = "btrfs";
                     extraArgs = [
@@ -104,9 +112,9 @@ in
                           "noatime"
                         ];
                       };
-                      "/swap" = {
+                      "/swap" = lib.mkIf cfg.swap.enable {
                         mountpoint = "/swap";
-                        swap.swapfile.size = "8G";
+                        swap.swapfile.size = cfg.swap.size;
                       };
                     };
                   };

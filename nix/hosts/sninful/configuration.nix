@@ -29,11 +29,11 @@ in
 
   imports = [
     inputs.disko.nixosModules.disko
+    flake.modules.nixos.disko
     ./hardware-configuration.nix
     inputs.stylix.nixosModules.stylix
 
     flake.modules.nixos.cache
-    flake.modules.nixos.disko
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.cosmic
@@ -56,6 +56,7 @@ in
 
   disko.layout = "single-btrfs-luks";
   disko.usbKeysIds = [ "9FBA-884A" ];
+  disko.swap.enable = true;
   kbd-layout.additionalLayouts = [ "be" ];
   grub.timeout = 10;
   cosmic = {

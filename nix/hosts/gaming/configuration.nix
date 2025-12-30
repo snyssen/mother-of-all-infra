@@ -37,7 +37,7 @@ in
 
   imports = [
     inputs.disko.nixosModules.disko
-    ./disk-config.nix
+    flake.modules.nixos.disko
     ./hardware-configuration.nix
     inputs.sops-nix.nixosModules.sops
     inputs.stylix.nixosModules.stylix
@@ -68,15 +68,8 @@ in
     };
   };
 
-  sops.secrets.hello = {
-    owner = config.users.users.snyssen.name;
-    group = config.users.users.snyssen.group;
-  };
-  sops.secrets.gaming-test = {
-    sopsFile = ./data/secrets.yaml;
-    owner = config.users.users.snyssen.name;
-    group = config.users.users.snyssen.group;
-  };
+  disko.layout = "legacy-gaming";
+  disko.usbKeysIds = [ "9FBA-884A" ];
 
   grub.timeout = 10;
   nvidia.open = true;
