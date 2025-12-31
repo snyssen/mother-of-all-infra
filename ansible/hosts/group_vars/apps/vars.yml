@@ -68,8 +68,6 @@ ntfy__users:
       - pattern: "streaming"
         permission: rw
     token: "{{ vault_ntfy__users__streaming_token }}"
-ntfy__topics__monitoring: "{{ vault_ntfy__topics__monitoring }}"
-ntfy__mollysocket_vapid_key: "{{ vault_ntfy__mollysocket_vapid_key }}"
 
 backbone__acme_ca_server: "{{ vault_backbone__acme_ca_server }}"
 backbone__acme_dns_challenge__enabled: "{{ vault_backbone__acme_dns_challenge__enabled }}"

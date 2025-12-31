@@ -39,34 +39,6 @@ services:
       - traefik.http.routers.ntfy.rule=Host(`ntfy.{{ main_domain }}`)
       - traefik.http.routers.ntfy.service=ntfy
       - traefik.http.services.ntfy.loadBalancer.server.port=80
-  mollysocket:
-    image: ghcr.io/mollyim/mollysocket:1.6.0@sha256:53626f423f47001408b7aad4583135039c0477cff707966cb78e6331414964fe
-    container_name: mollysocket
-    restart: unless-stopped
-    volumes:
-      - "{{ docker_mounts_directory }}/ntfy/mollysocket:/data"
-    working_dir: /data
-    command: server
-    environment:
-      - MOLLY_DB="/data/mollysocket.db"
-      # Do not add space in the array ["http://a.tld","*"]
-      - MOLLY_ALLOWED_ENDPOINTS=["https://ntfy.{{ main_domain }}"]
-      - MOLLY_ALLOWED_UUIDS=["*"]
-      - MOLLY_VAPID_PRIVKEY="{{ ntfy__mollysocket_vapid_key }}"
-      - MOLLY_HOST=0.0.0.0
-      - MOLLY_PORT=8020
-      - RUST_LOG=info
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=web
-      - traefik.http.routers.mollysocket.entryPoints=websecure
-      - traefik.http.routers.mollysocket.rule=Host(`molly.{{ main_domain }}`)
-      - traefik.http.routers.mollysocket.service=mollysocket
-      - traefik.http.services.mollysocket.loadBalancer.server.port=8020
 networks:
   web:
-    external: true
-  monitoring:
     external: true
