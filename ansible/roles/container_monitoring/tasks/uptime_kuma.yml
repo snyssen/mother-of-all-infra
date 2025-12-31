@@ -9,6 +9,8 @@
   lucasheld.uptime_kuma.setup:
     api_username: "{{ monitoring__uptime_user }}"
     api_password: "{{ monitoring__uptime_pass }}"
+  retries: 3
+  delay: 3
 
 - name: Set settings
   lucasheld.uptime_kuma.settings:
@@ -24,6 +26,8 @@
     keepDataPeriodDays: 90
     dnsCache: true
     nscd: true
+  retries: 3
+  delay: 3
 
 - name: Create monitors
   lucasheld.uptime_kuma.monitor:
