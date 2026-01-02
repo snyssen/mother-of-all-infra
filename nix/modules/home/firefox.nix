@@ -76,7 +76,10 @@ in
         ];
         settings = {
           "browser.startup.homepage" = "https://dash.snyssen.be";
-          "widget.disable-swipe-tracker" = "true"; # Disable annoying swipe gesture to back and forward in history
+          # Disable annoying swipe gesture to back and forward in history
+          "widget.disable-swipe-tracker" = "true";
+          "browser.gesture.swipe.left" = "";
+          "browser.gesture.swipe.right" = "";
         };
         search.engines = {
           "Kagi" = {
