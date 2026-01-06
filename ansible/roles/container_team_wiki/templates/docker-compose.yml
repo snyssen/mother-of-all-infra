@@ -1,6 +1,6 @@
 services:
   team_wiki:
-    image: ghcr.io/requarks/wiki:2@sha256:f7e92a711280e75d88e5c0892af15ccbf53d64b7963e3da9911cbb053d79698d
+    image: ghcr.io/requarks/wiki:2@sha256:98cb1c1d9796cfd2dd751eeacb9435659adffca58780f9d6050a809bfa62cd54
     container_name: team_wiki
     networks:
       - web
