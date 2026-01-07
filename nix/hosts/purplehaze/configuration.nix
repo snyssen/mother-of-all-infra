@@ -53,13 +53,6 @@ in
     flake.modules.nixos.jellyfin
   ];
 
-  specialisation = {
-    cosmic.configuration = {
-      gnome.enable = false;
-      cosmic.enable = true;
-    };
-  };
-
   disko =
     let
       ly = "single-btrfs-luks";
@@ -115,15 +108,22 @@ in
       };
     };
   };
-  specialisation = {
-    gnome-dark.configuration = {
-      stylix = {
+  specialisation =
+    let
+      stylixDarkTheme = {
         image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
         base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
         polarity = lib.mkForce "dark";
       };
+    in
+    {
+      gnome-dark.configuration.stylix = stylixDarkTheme;
+      cosmic.configuration = {
+        gnome.enable = false;
+        cosmic.enable = true;
+        stylix = stylixDarkTheme;
+      };
     };
-  };
 
   # TODO: make this part automatically defined
   nix.settings = {
