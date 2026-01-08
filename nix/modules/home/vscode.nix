@@ -19,25 +19,38 @@ in
       mutableExtensionsDir = false;
       profiles =
         let
-          defaultExtensions = with pkgs.vscode-marketplace; [
-            mkhl.direnv
-            jnoortheen.nix-ide
-            aaron-bond.better-comments
-            streetsidesoftware.code-spell-checker
-            mk12.better-git-line-blame
-            mhutchie.git-graph
-            oderwat.indent-rainbow
-            yzhang.markdown-all-in-one
-            davidanson.vscode-markdownlint
-            yutengjing.open-in-external-app
-            johnpapa.vscode-peacock
-            gruntfuggly.todo-tree
-            vscode-icons-team.vscode-icons
-            skellock.just
-            github.copilot
-            github.copilot-chat
-            signageos.signageos-vscode-sops
-          ];
+          # Take from same nixpkgs as vscode itself as versions need to be aligned
+          versionAlignedExtensions =
+            if cfg.useUnstable then
+              [
+                pkgs.unstable.vscode-extensions.github.copilot
+                pkgs.unstable.vscode-extensions.github.copilot-chat
+              ]
+            else
+              [
+                pkgs.vscode-extensions.github.copilot
+                pkgs.vscode-extensions.github.copilot-chat
+              ];
+          defaultExtensions =
+            with pkgs.vscode-marketplace;
+            [
+              mkhl.direnv
+              jnoortheen.nix-ide
+              aaron-bond.better-comments
+              streetsidesoftware.code-spell-checker
+              mk12.better-git-line-blame
+              mhutchie.git-graph
+              oderwat.indent-rainbow
+              yzhang.markdown-all-in-one
+              davidanson.vscode-markdownlint
+              yutengjing.open-in-external-app
+              johnpapa.vscode-peacock
+              gruntfuggly.todo-tree
+              vscode-icons-team.vscode-icons
+              skellock.just
+              signageos.signageos-vscode-sops
+            ]
+            ++ versionAlignedExtensions;
           defaultUserSettings = {
             "git.autofetch" = "all";
             "git.enableSmartCommit" = true;
