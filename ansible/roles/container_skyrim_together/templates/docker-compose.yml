@@ -11,9 +11,9 @@ services:
       - traefik.udp.routers.skyrim_together.service=skyrim_together
       - traefik.udp.services.skyrim_together.loadBalancer.server.port=10578
     volumes:
-      - /mnt/storage/skyrim_together/config:/home/server/config
-      - /mnt/storage/skyrim_together/logs:/home/server/logs
-      - /mnt/storage/skyrim_together/Data:/home/server/Data
+      - /mnt/storage/skyrim_together/config:/st-server/config
+      - /mnt/storage/skyrim_together/logs:/st-server/logs
+      - /mnt/storage/skyrim_together/Data:/st-server/Data
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
