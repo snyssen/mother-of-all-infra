@@ -1,0 +1,63 @@
+name: Build and Cache Flake Outputs
+
+on:
+  pull_request:
+    paths:
+      - "flake.lock"
+      - "flake.nix"
+  push:
+    branches:
+      - main
+    paths:
+      - "flake.lock"
+      - "flake.nix"
+
+jobs:
+  build-hosts:
+    strategy:
+      matrix:
+        host: [gaming, ingress, purplehaze, sninful]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    name: Build ${{ matrix.host }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      - name: Build NixOS configuration for ${{ matrix.host }}
+        run: |
+          nix build \
+            --json \
+            --print-build-logs \
+            ".#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel" \
+            > build-result-${{ matrix.host }}.json
+
+      - name: Configure Attic
+        run: |
+          nix profile install github:zhaofengli/attic
+          mkdir -p ~/.config/attic
+          attic login "${{ secrets.ATTIC_CACHE }}" "${{ secrets.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_CI_TOKEN }}"
+
+      - name: Push to Attic cache
+        run: |
+          RESULT=$(jq -r '.[0].outputs | to_entries[] | select(.key == "out").value' build-result-${{ matrix.host }}.json)
+          if [ -n "$RESULT" ]; then
+            echo "Pushing $RESULT to Attic..."
+            attic push "${{ secrets.ATTIC_CACHE }}" "$RESULT"
+          else
+            echo "No output found in build result"
+            exit 1
+          fi
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.host }}
+          path: build-result-${{ matrix.host }}.json
+          retention-days: 7

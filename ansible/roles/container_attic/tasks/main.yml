@@ -1,0 +1,24 @@
+- name: Create folders
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "/mnt/storage/attic"
+    - "/mnt/storage/attic/storage"
+
+- name: Load RS256 private key
+  ansible.builtin.set_fact:
+    attic__rs256_privkey: "{{ lookup('template', 'jwtRS256.key')  }}"
+
+- name: Deploy attic configuration
+  ansible.builtin.template:
+    src: attic.toml
+    dest: "/mnt/storage/attic/attic.toml"
+    mode: "0600"
+
+- name: Deploy attic docker-compose
+  ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: attic
