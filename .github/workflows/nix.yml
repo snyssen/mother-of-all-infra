@@ -1,3 +1,4 @@
+name: Check nix flake
 # This job is mainly in place so renovate can do branch automerge, as it needs a successful check.
 # It then doubles as a sanity check on the flake quality
 on:
@@ -8,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Nix targets
+    name: Check nix flake
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
