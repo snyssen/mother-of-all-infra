@@ -2,7 +2,7 @@ services:
 
   synapse:
     container_name: synapse
-    image: matrixdotorg/synapse:v1.144.0@sha256:fc0d7409b5022124a4c48283deb5f95d7c971ba9f5eef60b5dc701b1abcafff4
+    image: matrixdotorg/synapse:v1.145.0@sha256:9e33e40f6e69ac7dbac331a5fa29f39b7a4f8b7765476c76fe22055014dcccb1
     restart: unless-stopped
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
@@ -22,7 +22,7 @@ services:
 
   matrix_mas:
     container_name: matrix_mas
-    image: ghcr.io/element-hq/matrix-authentication-service:1.8.0@sha256:b06aa8e1c89094819a4849729b39932a735bdfd5039b38ffe4022f88176efb4d
+    image: ghcr.io/element-hq/matrix-authentication-service:1.9.0@sha256:be5b9e568b24f406d621046e46b877ad9a1d2e1d4b36eefc6ee182b100c1dcea
     restart: unless-stopped
     environment:
       MAS_CONFIG: /config/mas_config.yaml
@@ -44,7 +44,7 @@ services:
 
   element:
     container_name: element
-    image: vectorim/element-web:v1.12.7@sha256:e037ff690f6da8d6ad518c7a0c10787bb8be7feca16402a2d90c21300c7affbf
+    image: vectorim/element-web:v1.12.8@sha256:c875fdc104165c36d76faf0599d8550f6d6358718345906ae3cf156f44a5435b
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/element/config.json:/app/config.json:ro
