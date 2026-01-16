@@ -22,3 +22,12 @@
     name: snyssen.compose_deploy
   vars:
     stack_name: attic
+
+- name: Create monitors
+  lucasheld.uptime_kuma.monitor:
+    name: "{{ item.name }}"
+    type: http
+    url: "{{ item.url }}"
+  loop:
+    - name: attic
+      url: "https://attic.{{ main_domain }}"
