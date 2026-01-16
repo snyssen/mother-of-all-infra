@@ -59,7 +59,9 @@ in
             "editor.formatOnSave" = true;
             "workbench.iconTheme" = "vscode-icons";
             "vsicons.dontShowNewVersionMessage" = true;
-            "markdown.extension.preview.autoShowPreviewToSide" = true;
+            "workbench.editorAssociations" = {
+              "*.md" = "vscode.markdown.preview.editor";
+            };
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
