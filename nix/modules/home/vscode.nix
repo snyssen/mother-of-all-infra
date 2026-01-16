@@ -49,6 +49,8 @@ in
               vscode-icons-team.vscode-icons
               skellock.just
               signageos.signageos-vscode-sops
+              github.vscode-github-actions
+              github.vscode-pull-request-github
             ]
             ++ versionAlignedExtensions;
           defaultUserSettings = {
