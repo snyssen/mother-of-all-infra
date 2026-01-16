@@ -1,6 +1,6 @@
 services:
   backrest:
-    image: garethgeorge/backrest:v1.10.1@sha256:1308397161321b3c5aeca8acc6bf26eccb990df385f2532d3ce0eaa8b483dedf
+    image: garethgeorge/backrest:v1.11.0@sha256:c79b87d7da28d9a0f6ce74de96b0a4c771590b86e5066f22535d073513f31f54
     container_name: backrest
     volumes:
       - "{{ docker_mounts_directory }}/backrest/data:/data"
