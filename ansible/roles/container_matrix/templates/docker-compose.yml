@@ -83,7 +83,7 @@ services:
 
   matrix-whatsapp:
     container_name: matrix-whatsapp
-    image: dock.mau.dev/mautrix/whatsapp:v25.12@sha256:17cec313f1a3c0edddf673c7aa6ce370f0c7aa1be701f9486cb0fb854e6c3f80
+    image: dock.mau.dev/mautrix/whatsapp:v26.01@sha256:cbd395cc939cdfab127a9bac1d090a12cb10a3f24046c3324c1ba4bc5f6c4b72
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_whatsapp:/data
