@@ -73,7 +73,7 @@ services:
 
   matrix-signal:
     container_name: matrix-signal
-    image: dock.mau.dev/mautrix/signal:v25.12@sha256:4a1cc8ce54a388a89f58e53cdd451e11f32fc416a8ae3699c9539c8d36f5ed52
+    image: dock.mau.dev/mautrix/signal:v26.01@sha256:7123afe68978eb6e7326d0beeb5bae73cf36fe51ec39c0a6fddab50e8a2f67d9
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_signal:/data
