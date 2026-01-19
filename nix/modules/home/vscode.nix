@@ -64,6 +64,16 @@ in
             "workbench.editorAssociations" = {
               "*.md" = "vscode.markdown.preview.editor";
             };
+            "chat.tools.urls.autoApprove" = {
+              "https://search.nixos.org" = {
+                "approveRequest" = true;
+                "approveResponse" = false;
+              };
+              "https://nixos.org" = {
+                "approveRequest" = true;
+                "approveResponse" = true;
+              };
+            };
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
@@ -136,13 +146,26 @@ in
             userSettings = defaultUserSettings;
             keybindings = defaultKeybindings;
           };
+          dotnet = {
+            extensions =
+              with pkgs.vscode-marketplace;
+              [
+                ms-dotnettools.vscode-dotnet-runtime
+                ms-dotnettools.csharp
+                ms-dotnettools.csdevkit
+              ]
+              ++ defaultExtensions;
+            userSettings = defaultUserSettings;
+            keybindings = defaultKeybindings;
+          };
         };
-    };
 
+    };
     stylix.targets.vscode.profileNames = [
       "default"
       "ansible"
       "astro"
+      "dotnet"
     ];
   };
 }
