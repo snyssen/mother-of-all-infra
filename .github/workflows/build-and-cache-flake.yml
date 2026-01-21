@@ -32,6 +32,13 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
 
+      - name: Configure Attic
+        run: |
+          nix profile install github:zhaofengli/attic
+          mkdir -p ~/.config/attic
+          attic login "${{ secrets.ATTIC_CACHE }}" "${{ secrets.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_CI_TOKEN }}"
+          attic use "${{ secrets.ATTIC_CACHE }}"
+
       - name: Build NixOS configuration for ${{ matrix.host }}
         run: |
           nix build \
@@ -39,12 +46,6 @@ jobs:
             --print-build-logs \
             ".#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel" \
             > build-result-${{ matrix.host }}.json
-
-      - name: Configure Attic
-        run: |
-          nix profile install github:zhaofengli/attic
-          mkdir -p ~/.config/attic
-          attic login "${{ secrets.ATTIC_CACHE }}" "${{ secrets.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_CI_TOKEN }}"
 
       - name: Push to Attic cache
         run: |
