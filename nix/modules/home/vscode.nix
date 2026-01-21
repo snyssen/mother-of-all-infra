@@ -64,6 +64,7 @@ in
             "workbench.editorAssociations" = {
               "*.md" = "vscode.markdown.preview.editor";
             };
+            "chat.viewSessions.orientation" = "stacked";
             "chat.tools.urls.autoApprove" = {
               "https://search.nixos.org" = {
                 "approveRequest" = true;
