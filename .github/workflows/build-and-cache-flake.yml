@@ -23,6 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
+      - name: "[DEBUG] Network diagnostics"
+        run: |
+          echo "=== public IP ==="
+          curl -sS https://ifconfig.co || curl -sS https://ifconfig.me || true
+          echo "=== https request to attic api ==="
+          curl -v --connect-timeout 10 'https://${{ secrets.ATTIC_ENDPOINT }}/_api/v1/cache-config' -I || true
+
       # Clear space for Nix
       - uses: wimpysworld/nothing-but-nix@main
 
