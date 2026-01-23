@@ -578,3 +578,6 @@ matrix__maubot__admin_user: "{{ vault_matrix__maubot__admin_user }}"
 matrix__maubot__admin_pass: "{{ vault_matrix__maubot__admin_pass }}"
 
 attic__postgres_password: "{{ vault_attic__postgres_password }}"
+
+crowdsec__webui_user: "{{ vault_crowdsec__webui_user }}"
+crowdsec__webui_password: "{{ vault_crowdsec__webui_password }}"

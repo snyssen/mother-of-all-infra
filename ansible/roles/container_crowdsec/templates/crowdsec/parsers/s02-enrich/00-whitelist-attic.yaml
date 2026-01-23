@@ -1,0 +1,6 @@
+name: "snyssen/whitelist-attic"
+description: "Ignore 404s from Attic's binary cache service"
+whitelist:
+  reason: "Attic's binary cache service returns expected 404s for non-cached items"
+  expression:
+    - evt.Meta.http_status == '404' && evt.Meta.traefik_router_name == 'attic@docker'

@@ -41,6 +41,7 @@ in
               mk12.better-git-line-blame
               mhutchie.git-graph
               oderwat.indent-rainbow
+              pomdtr.excalidraw-editor
               yzhang.markdown-all-in-one
               davidanson.vscode-markdownlint
               yutengjing.open-in-external-app
