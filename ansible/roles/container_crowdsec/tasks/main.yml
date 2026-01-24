@@ -27,6 +27,7 @@
   loop:
     - config.yaml.local
     - acquis.d/ssh.yaml
+    - acquis.d/ssh-journald.yaml
     - acquis.d/authelia.yaml
     - acquis.d/traefik.yaml
     - parsers/s02-enrich/00-whitelist-attic.yaml
