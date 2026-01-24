@@ -393,6 +393,8 @@ dashboard__shortcuts:
             url: https://ldap.snyssen.be
           - name: pgadmin
             url: https://pgadmin.snyssen.be
+          - name: Crowdsec WebUI
+            url: https://dash.crowdsec.snyssen.be
           - name: Umami
             url: https://umami.snyssen.be
           - name: Backblaze
