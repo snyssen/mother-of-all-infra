@@ -30,6 +30,7 @@
     - acquis.d/ssh-journald.yaml
     - acquis.d/authelia.yaml
     - acquis.d/traefik.yaml
+    - acquis.d/traefik-varlogs.yaml
     - parsers/s02-enrich/00-whitelist-attic.yaml
 
 - ansible.builtin.include_role:
