@@ -85,8 +85,7 @@ in
           ip-allowlist = {
             ipAllowList.sourceRange = [
               # Home
-              "81.240.174.125"
-              "2a02:a03f:ab21:f900:d8a4:3da3:67f1:963d"
+              "213.49.36.74/32"
               # tailnet
               "100.64.0.0/10"
             ];
