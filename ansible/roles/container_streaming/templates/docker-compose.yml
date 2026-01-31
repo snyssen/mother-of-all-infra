@@ -227,7 +227,7 @@ services:
       - /mnt/storage/streaming/media/tv:/downloads
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.42@sha256:5f26abe59c56b08bf8483da3d9df312b2c16dd793d1fe15f82d04973cd2e9a16
+    image: thewicklowwolf/lidatube:0.2.43@sha256:145c148ac67061e709d5d46aad01a0f5088ee228f410cc7f3dcaeebd0fac3616
     container_name: lidatube
     environment:
       - PUID=33
