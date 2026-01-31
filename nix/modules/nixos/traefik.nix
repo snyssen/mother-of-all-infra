@@ -79,53 +79,6 @@ in
           format = "json";
         };
       };
-
-      dynamicConfigOptions = {
-        http.middlewares = {
-          ip-allowlist = {
-            ipAllowList.sourceRange = [
-              # Home
-              "213.49.36.74/32"
-              # tailnet
-              "100.64.0.0/10"
-            ];
-          };
-        };
-        http.routers = {
-          traefik-dash = {
-            entryPoints = [ "websecure" ];
-            rule = "Host(`ingress.snyssen.be`)";
-            service = "api@internal";
-            middlewares = [ "ip-allowlist" ];
-          };
-          prometheus-node-exporter = {
-            entryPoints = [ "websecure" ];
-            rule = "Host(`pne.ingress.snyssen.be`)";
-            service = "prometheus-node-exporter";
-            middlewares = [ "ip-allowlist" ];
-          };
-          speedtest = {
-            entryPoints = [ "websecure" ];
-            rule = "Host(`speedtest.ingress.snyssen.be`)";
-            service = "speedtest";
-          };
-        };
-        http.services = {
-          prometheus-node-exporter = {
-            loadBalancer.servers = [
-              { url = "http://localhost:9100"; }
-            ];
-          };
-          speedtest = {
-            loadBalancer = {
-              servers = [
-                { url = "https://speedtest.snyssen.be"; }
-              ];
-              passHostHeader = false;
-            };
-          };
-        };
-      };
     };
   };
 }

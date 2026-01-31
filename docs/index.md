@@ -12,6 +12,7 @@ Documentation for backup operations and restore procedures.
 
 Infrastructure-as-code configurations for NixOS and Home Manager:
 
+- **[Network](nix/network.md)** — Overview of the network setup
 - **[Full Disk Encryption](nix/Full%20Disk%20Encryption.md)** — Setting up and managing full disk encryption on NixOS hosts
 
 ### Ansible

@@ -41,6 +41,8 @@
     flake.modules.nixos.crowdsec-firewall-bouncer
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
+
+    ./traefik-configuration.nix
   ];
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
