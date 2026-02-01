@@ -59,6 +59,7 @@
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
   };
+  tailscale.advertiseExitNode = true;
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
   grafana-alloy = {
     varlogs.enable = true;
