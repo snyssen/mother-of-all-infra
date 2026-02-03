@@ -157,6 +157,7 @@ in
                 ms-dotnettools.csharp
                 ms-dotnettools.csdevkit
                 editorconfig.editorconfig
+                atlassian.atlascode
               ]
               ++ defaultExtensions;
             userSettings = defaultUserSettings;
