@@ -155,6 +155,7 @@ in
                 ms-dotnettools.vscode-dotnet-runtime
                 ms-dotnettools.csharp
                 ms-dotnettools.csdevkit
+                editorconfig.editorconfig
               ]
               ++ defaultExtensions;
             userSettings = defaultUserSettings;
