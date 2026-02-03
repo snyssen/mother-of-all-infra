@@ -19,6 +19,7 @@
     flake.modules.home.vscode
     flake.modules.home.direnv
     flake.modules.home.firefox
+    flake.modules.home.obsidian
   ];
 
   # specialisation = {
@@ -34,9 +35,10 @@
 
   vscode.useUnstable = true;
 
+  # obsidian.vaults.manage = true;
+
   # TODO: move
   home.packages = with pkgs; [
-    obsidian
     sweethome3d.application
     librewolf
     vesktop
