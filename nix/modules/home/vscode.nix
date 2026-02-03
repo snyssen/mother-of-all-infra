@@ -62,6 +62,7 @@ in
             "editor.formatOnSave" = true;
             "workbench.iconTheme" = "vscode-icons";
             "vsicons.dontShowNewVersionMessage" = true;
+            "diffEditor.ignoreTrimWhitespace" = false;
             "workbench.editorAssociations" = {
               "*.md" = "vscode.markdown.preview.editor";
             };
