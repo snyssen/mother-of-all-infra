@@ -47,6 +47,7 @@
     annotator
     element-desktop
     moonlight-qt
+    gradia
   ];
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
