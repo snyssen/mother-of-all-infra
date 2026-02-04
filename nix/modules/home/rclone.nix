@@ -8,9 +8,20 @@ let
   cfg = config.rclone;
 in
 {
-  options.rclone = { };
+  options.rclone = {
+    gui = {
+      enable = lib.mkEnableOption "Enable rclone GUI (rclone-browser) application";
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = pkgs.rclone-browser;
+        description = "Package to use for rclone GUI.";
+      };
+    };
+  };
 
   config = {
+    home.packages = lib.mkIf cfg.gui.enable [ cfg.gui.package ];
+
     programs.rclone = {
       enable = true;
       package = pkgs.rclone;

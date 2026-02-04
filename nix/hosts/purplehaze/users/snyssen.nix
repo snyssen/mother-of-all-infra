@@ -36,6 +36,8 @@
 
   vscode.useUnstable = true;
 
+  rclone.gui.enable = true;
+
   # obsidian.vaults.manage = true;
 
   # TODO: move
