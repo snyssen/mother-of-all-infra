@@ -70,7 +70,7 @@ services:
 
   grafana-to-ntfy:
     container_name: grafana-to-ntfy
-    image: kittyandrew/grafana-to-ntfy@sha256:58a77118e424c3559eb75d30056b4135935ccd18d3725217ae7a8208dbb8a158
+    image: kittyandrew/grafana-to-ntfy@sha256:65123ec72e684483ca704ae59f6e618ddd501b0c546b2ea99ac0b47277b6dc51
     restart: unless-stopped
     environment:
       - NTFY_URL=https://ntfy.{{ main_domain }}/{{ ntfy__topics__monitoring }}
