@@ -157,17 +157,9 @@ in
                 ms-dotnettools.csharp
                 ms-dotnettools.csdevkit
                 editorconfig.editorconfig
-                atlassian.atlascode
-                redhat.vscode-yaml # Dependency for atlasian.atlascode
               ]
               ++ defaultExtensions;
             userSettings = lib.mkMerge [
-              {
-                "yaml.schemas" = {
-                  "file:///home/snyssen/.vscode/extensions/atlassian.atlascode/resources/schemas/pipelines-schema.json" =
-                    "bitbucket-pipelines.yml";
-                };
-              }
               defaultUserSettings
             ];
             keybindings = defaultKeybindings;
