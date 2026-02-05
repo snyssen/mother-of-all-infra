@@ -157,6 +157,8 @@ in
                 ms-dotnettools.csharp
                 ms-dotnettools.csdevkit
                 editorconfig.editorconfig
+                ms-azuretools.vscode-containers
+                ms-vscode-remote.remote-containers
               ]
               ++ defaultExtensions;
             userSettings = lib.mkMerge [
