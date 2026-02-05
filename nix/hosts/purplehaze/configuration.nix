@@ -49,8 +49,7 @@ in
     flake.modules.nixos.printing
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
-
-    flake.modules.nixos.jellyfin
+    flake.modules.nixos.sunshine
   ];
 
   disko =

@@ -51,6 +51,7 @@
     vlc
     annotator
     element-desktop
+    fluffychat
     moonlight-qt
     gradia
   ];
