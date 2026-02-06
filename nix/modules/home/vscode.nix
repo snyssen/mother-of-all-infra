@@ -77,6 +77,8 @@ in
                 "approveResponse" = true;
               };
             };
+            "remote.autoForwardPorts" = false;
+            "remote.autoForwardPortsSource" = "hybrid";
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
