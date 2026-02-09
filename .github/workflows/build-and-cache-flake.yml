@@ -55,7 +55,8 @@ jobs:
           RESULT=$(jq -r '.[0].outputs | to_entries[] | select(.key == "out").value' build-result-${{ matrix.host }}.json)
           if [ -n "$RESULT" ]; then
             echo "Pushing $RESULT to Attic..."
-            attic push "${{ secrets.ATTIC_CACHE }}" "$RESULT"
+            attic push "${{ secrets.ATTIC_CACHE }}" "$RESULT" \
+              || echo "[WARNING] Failed to push (parts of) '$RESULT' to Attic, but build succeeded."
           else
             echo "No output found in build result"
             exit 1
