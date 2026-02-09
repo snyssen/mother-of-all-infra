@@ -1,4 +1,9 @@
-{ lib, config, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 let
   cfg = config.docker;
 in
@@ -11,7 +16,12 @@ in
   };
 
   config = {
-    virtualisation.docker.enable = true;
+    virtualisation.docker = {
+      enable = true;
+      extraPackages = with pkgs; [
+        docker-buildx
+      ];
+    };
     users.extraGroups.docker.members = cfg.users;
   };
 }
