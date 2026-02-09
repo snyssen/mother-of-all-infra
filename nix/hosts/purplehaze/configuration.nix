@@ -72,6 +72,7 @@ in
   gnome = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;
+    touchScreen.enable = true;
   };
   user.zsh.enable = true;
 

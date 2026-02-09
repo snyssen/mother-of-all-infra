@@ -14,6 +14,7 @@ in
       enable = lib.mkEnableOption "autoLogin feature";
       user = lib.mkOption { default = "snyssen"; };
     };
+    touchScreen.enable = lib.mkEnableOption "touch screen support";
   };
 
   config = lib.mkIf cfg.enable {
@@ -21,15 +22,17 @@ in
     services.displayManager.gdm.enable = true;
     services.desktopManager.gnome.enable = true;
 
-    environment.systemPackages = with pkgs; [
-      gnomeExtensions.caffeine
-      gnomeExtensions.pop-shell
-      gnomeExtensions.dash-to-dock
-      gnomeExtensions.appindicator
-      gnomeExtensions.touchup # TODO: make optional
+    environment.systemPackages =
+      with pkgs;
+      [
+        gnomeExtensions.caffeine
+        gnomeExtensions.pop-shell
+        gnomeExtensions.dash-to-dock
+        gnomeExtensions.appindicator
 
-      gnome-terminal
-    ];
+        gnome-terminal
+      ]
+      ++ lib.lists.optional cfg.touchScreen.enable gnomeExtensions.touchup;
 
     # Enable KDE Connect for use with gsconnect
     programs.kdeconnect = {
