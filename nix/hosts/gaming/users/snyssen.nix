@@ -12,16 +12,13 @@
 
   imports = [
     flake.modules.home.dconf
-    flake.modules.home.zsh
+    flake.modules.home.shell
     flake.modules.home.ghostty
     flake.modules.home.git
     flake.modules.home.vscode
     flake.modules.home.direnv
     flake.modules.home.firefox
   ];
-
-  zsh.fzf.enable = true;
-  zsh.intelli-shell.enable = true;
 
   git.signingKeyFilename = "id_ed25519.pub";
 

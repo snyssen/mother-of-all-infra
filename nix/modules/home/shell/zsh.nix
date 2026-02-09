@@ -1,20 +1,21 @@
 {
-  pkgs,
   lib,
   config,
+  pkgs,
   ...
 }:
 let
-  cfg = config.zsh;
+  cfg = config.shell.zsh;
 in
 {
-  options.zsh = {
+  options.shell.zsh = {
+    enable = lib.mkEnableOption "Zsh shell";
     atuin.enable = lib.mkEnableOption "enable atuin history manager";
     fzf.enable = lib.mkEnableOption "enable fzf history manager";
     intelli-shell.enable = lib.mkEnableOption "Enable intelli-shell";
   };
 
-  config = {
+  config = lib.mkIf cfg.enable {
     home.packages = lib.mkIf cfg.atuin.enable [ pkgs.atuin ];
 
     programs.fzf = lib.mkIf cfg.fzf.enable {
@@ -80,6 +81,6 @@ in
     };
 
     # Place p10k config file
-    home.file.".p10k.zsh".source = ../../files/home/p10k-config;
+    home.file.".p10k.zsh".source = ../../../files/home/p10k-config;
   };
 }

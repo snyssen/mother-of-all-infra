@@ -39,6 +39,7 @@ in
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
+    flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
     flake.modules.nixos.syncthing
@@ -72,7 +73,6 @@ in
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
-  user.zsh.enable = true;
 
   environment.systemPackages = [
     pkgs.htop

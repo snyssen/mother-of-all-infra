@@ -49,6 +49,7 @@ in
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
+    flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
     flake.modules.nixos.steam
@@ -80,7 +81,6 @@ in
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
-  user.zsh.enable = true;
 
   prometheus-node-exporter.openFirewall = true;
 

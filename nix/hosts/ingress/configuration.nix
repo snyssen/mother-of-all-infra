@@ -32,6 +32,7 @@
     flake.modules.nixos.cache
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.user
+    flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
 
@@ -53,7 +54,6 @@
     sopsFile = ./data/secrets.yaml;
   };
 
-  user.zsh.enable = true;
   tailscale.autoconnect = {
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
