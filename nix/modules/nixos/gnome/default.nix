@@ -26,6 +26,7 @@ in
       gnomeExtensions.pop-shell
       gnomeExtensions.dash-to-dock
       gnomeExtensions.appindicator
+      gnomeExtensions.touchup # TODO: make optional
 
       gnome-terminal
     ];
