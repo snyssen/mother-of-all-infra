@@ -10,9 +10,10 @@ in
 {
   options.shell.zsh = {
     enable = lib.mkEnableOption "Zsh shell";
-    atuin.enable = lib.mkEnableOption "enable atuin history manager";
-    fzf.enable = lib.mkEnableOption "enable fzf history manager";
-    intelli-shell.enable = lib.mkEnableOption "Enable intelli-shell";
+    atuin.enable = lib.mkEnableOption "atuin history manager";
+    fzf.enable = lib.mkEnableOption "fzf history manager";
+    intelli-shell.enable = lib.mkEnableOption "intelli-shell";
+    direnv.enable = lib.mkEnableOption "direnv integration";
   };
 
   config = lib.mkIf cfg.enable {
@@ -28,6 +29,12 @@ in
       enableZshIntegration = true;
       # settings = {};
       # shellHotkeys = {};
+    };
+
+    programs.direnv = lib.mkIf cfg.direnv.enable {
+      enable = true;
+      enableZshIntegration = true;
+      nix-direnv.enable = true;
     };
 
     programs.zsh = {

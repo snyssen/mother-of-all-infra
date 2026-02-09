@@ -13,9 +13,16 @@
   config = {
     shell.zsh = lib.mkIf (osConfig.shell.default == "zsh") {
       enable = true;
-      fzf.enable = true;
-      intelli-shell.enable = true;
+      fzf.enable = lib.mkDefault true;
+      intelli-shell.enable = lib.mkDefault true;
+      direnv.enable = lib.mkDefault true;
     };
-    shell.fish.enable = (osConfig.shell.default == "fish");
+    shell.fish = lib.mkIf (osConfig.shell.default == "fish") {
+      enable = true;
+      fzf.enable = lib.mkDefault true;
+      intelli-shell.enable = lib.mkDefault true;
+      direnv.enable = lib.mkDefault true;
+      starship.enable = lib.mkDefault true;
+    };
   };
 }

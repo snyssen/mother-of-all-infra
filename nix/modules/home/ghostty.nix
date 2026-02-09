@@ -9,7 +9,8 @@ in
     programs.ghostty = {
       enable = true;
 
-      enableZshIntegration = true;
+      enableZshIntegration = config.shell.zsh.enable;
+      enableFishIntegration = config.shell.fish.enable;
 
       settings = {
         shell-integration-features = "ssh-terminfo,ssh-env";

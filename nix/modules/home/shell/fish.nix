@@ -10,8 +10,41 @@ in
 {
   options.shell.fish = {
     enable = lib.mkEnableOption "Fish shell";
+    fzf.enable = lib.mkEnableOption "fzf history manager";
+    intelli-shell.enable = lib.mkEnableOption "intelli-shell";
+    direnv.enable = lib.mkEnableOption "direnv integration";
+    starship.enable = lib.mkEnableOption "starship prompt";
   };
 
   config = lib.mkIf cfg.enable {
+    programs.fish = {
+      enable = true;
+      generateCompletions = true;
+    };
+
+    programs.fzf = lib.mkIf cfg.fzf.enable {
+      enable = true;
+      enableFishIntegration = true;
+    };
+
+    programs.intelli-shell = lib.mkIf cfg.intelli-shell.enable {
+      enable = true;
+      enableFishIntegration = true;
+      # settings = {};
+      # shellHotkeys = {};
+    };
+
+    programs.direnv = lib.mkIf cfg.direnv.enable {
+      enable = true;
+      # Below is automatically enabled by direnv,
+      # and adding it again actually break build
+      # enableFishIntegration = true;
+      nix-direnv.enable = true;
+    };
+
+    programs.starship = lib.mkIf cfg.starship.enable {
+      enable = true;
+      enableFishIntegration = true;
+    };
   };
 }

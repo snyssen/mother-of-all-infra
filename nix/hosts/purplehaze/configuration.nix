@@ -75,6 +75,7 @@ in
     autoLogin.enable = true;
     touchScreen.enable = true;
   };
+  shell.default = "fish";
 
   environment.systemPackages = [
     pkgs.htop
