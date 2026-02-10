@@ -64,6 +64,7 @@ in
         mainDiskPath = "/dev/nvme0n1";
         usbKeysIds = [
           "75E6-4B88"
+          "C998-4F4D"
           "9FBA-884A"
         ];
         swap.enable = true;

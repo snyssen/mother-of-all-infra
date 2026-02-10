@@ -59,8 +59,8 @@ in
       layout = ly;
       "${ly}" = {
         mainDiskPath = "/dev/nvme0n1";
-        # TODO: create keyfile
         usbKeysIds = [
+          "C998-4F4D"
           "75E6-4B88"
           "9FBA-884A"
         ];
