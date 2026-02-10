@@ -30,7 +30,7 @@ in
   #########################
 
   imports = [
-    inputs.nixos-hardware.nixosModules.framework-12-13th-gen-intel
+    inputs.nixos-hardware.nixosModules.framework-desktop-amd-ai-max-300-series
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
@@ -40,15 +40,12 @@ in
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.logitech
-    flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.steam
     flake.modules.nixos.syncthing
-    flake.modules.nixos.printing
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
@@ -62,6 +59,7 @@ in
       layout = ly;
       "${ly}" = {
         mainDiskPath = "/dev/nvme0n1";
+        # TODO: create keyfile
         usbKeysIds = [
           "75E6-4B88"
           "9FBA-884A"
@@ -74,7 +72,6 @@ in
   gnome = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;
-    touchScreen.enable = true;
   };
   shell.default = "fish";
 
@@ -92,6 +89,7 @@ in
           "sync.snyssen.be"
           "Pixel 8 Pro"
           "gaming"
+          "purplehaze"
         ];
       };
     };
@@ -99,9 +97,9 @@ in
 
   stylix = {
     enable = true;
-    image = ../../files/wallpapers/icy_pink_sunrise.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/atelier-cave-light.yaml";
-    polarity = "light";
+    image = ../../files/wallpapers/purple_water_splashes.jpg;
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/stella.yaml";
+    polarity = "dark";
 
     fonts = {
       monospace = {
@@ -110,22 +108,22 @@ in
       };
     };
   };
-  specialisation =
-    let
-      stylixDarkTheme = {
-        image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
-        base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
-        polarity = lib.mkForce "dark";
-      };
-    in
-    {
-      gnome-dark.configuration.stylix = stylixDarkTheme;
-      cosmic.configuration = {
-        gnome.enable = false;
-        cosmic.enable = true;
-        stylix = stylixDarkTheme;
-      };
-    };
+  # specialisation =
+  #   let
+  #     stylixDarkTheme = {
+  #       image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
+  #       base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
+  #       polarity = lib.mkForce "dark";
+  #     };
+  #   in
+  #   {
+  #     gnome-dark.configuration.stylix = stylixDarkTheme;
+  #     cosmic.configuration = {
+  #       gnome.enable = false;
+  #       cosmic.enable = true;
+  #       stylix = stylixDarkTheme;
+  #     };
+  #   };
 
   # TODO: make this part automatically defined
   nix.settings = {
@@ -135,7 +133,7 @@ in
     ];
     auto-optimise-store = true;
   };
-  system.name = "purplehaze";
-  networking.hostName = "purplehaze";
+  system.name = "blackfog";
+  networking.hostName = "blackfog";
   system.stateVersion = "23.05";
 }
