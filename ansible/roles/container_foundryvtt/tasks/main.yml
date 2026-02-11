@@ -1,7 +1,11 @@
 - name: Creating folders
+  become: true
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
+    owner: "{{ ansible_user_uid }}"
+    group: "{{ ansible_user_gid }}"
+    mode: "775"
   loop:
     - "{{ docker_mounts_directory }}/foundryvtt"
 
