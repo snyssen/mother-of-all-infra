@@ -20,6 +20,7 @@
     flake.modules.home.firefox
     flake.modules.home.obsidian
     flake.modules.home.rclone
+    flake.modules.home.vesktop
   ];
 
   # specialisation = {
@@ -40,7 +41,6 @@
   home.packages = with pkgs; [
     sweethome3d.application
     librewolf
-    vesktop
     onlyoffice-desktopeditors
     protonmail-desktop
     picard

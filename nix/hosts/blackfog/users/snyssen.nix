@@ -1,4 +1,5 @@
 {
+  inputs,
   flake,
   pkgs,
   ...
@@ -20,6 +21,7 @@
     flake.modules.home.firefox
     flake.modules.home.obsidian
     flake.modules.home.rclone
+    flake.modules.home.vesktop
   ];
 
   git.signingKeyFilename = "id_ed25519.pub";
@@ -33,7 +35,6 @@
   # TODO: move
   home.packages = with pkgs; [
     librewolf
-    vesktop
     onlyoffice-desktopeditors
     protonmail-desktop
     vlc
