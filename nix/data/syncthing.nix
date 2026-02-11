@@ -18,5 +18,8 @@
     "purplehaze" = {
       id = "P2ECEG6-RRB6YZI-KFYZUBF-FBHSUSA-DQUZXH2-MCQXI3Z-HMFUPDV-7ACNIAJ";
     };
+    "blackfog" = {
+      id = "EDMGHVH-55SKSKP-OHIK7JD-T4FZEAG-EHTZVCX-VT5W7CI-2OIGIFH-LMYQKAG";
+    };
   };
 }

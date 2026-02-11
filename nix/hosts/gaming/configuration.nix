@@ -113,6 +113,7 @@ in
           "Pixel 8 Pro"
           "sninful"
           "purplehaze"
+          "blackfog"
         ];
       };
     };

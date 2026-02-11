@@ -92,7 +92,9 @@ in
         devices = [
           "sync.snyssen.be"
           "Pixel 8 Pro"
+          "sninful"
           "gaming"
+          "blackfog"
         ];
       };
     };
