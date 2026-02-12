@@ -61,9 +61,8 @@ in
       "${ly}" = {
         mainDiskPath = "/dev/nvme0n1";
         usbKeysIds = [
-          "C998-4F4D"
-          "75E6-4B88"
-          "9FBA-884A"
+          "8B34-7D3C" # Philips 8GB
+          "75E6-4B88" # Kingston Data Traveller
         ];
         swap.enable = true;
       };
