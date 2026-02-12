@@ -65,6 +65,15 @@
     # lidify
     - src: "{{ docker_mounts_directory }}/lidify/config"
       mode: "750"
+    # peertube
+    - src: "{{ docker_mounts_directory }}/peertube/data"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/peertube/config"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/peertube/db"
+      mode: "750"
+    - src: "{{ docker_mounts_directory }}/peertube/redis"
+      mode: "750"
 
 - name: Deploying Sabnzbd config
   become: true
@@ -103,3 +112,5 @@
       url: https://sonarr.snyssen.be
     - name: pinchflat
       url: https://yt.snyssen.be
+    - name: peertube
+      url: https://peertube.snyssen.be
