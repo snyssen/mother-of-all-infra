@@ -99,13 +99,23 @@ In addition, configurations are stored at `/mnt/storage/{name of service}/config
 
 Peertube has been added to the streaming stack and requires the following secrets to be configured in the Ansible vault:
 
+### Database Configuration
+
+Peertube uses the shared PostgreSQL database. Add the Peertube database to the `db__pg_databases` list in `ansible/hosts/group_vars/apps/vars.yml`:
+
+```yaml
+db__pg_databases:
+  # ... existing databases ...
+  - name: peertube
+    password: "{{ vault_peertube__db_password }}"
+```
+
 ### Required Vault Variables
 
 Add the following variables to `ansible/hosts/group_vars/apps/vault.yml`:
 
 ```yaml
-# Peertube database credentials
-vault_peertube__db_username: "peertube"
+# Peertube database password
 vault_peertube__db_password: "<GENERATE_RANDOM_PASSWORD>"
 
 # Peertube application secret (generate with: openssl rand -hex 32)
@@ -126,7 +136,7 @@ Then add the corresponding variable references to `ansible/hosts/group_vars/apps
 
 ```yaml
 # Peertube configuration
-peertube__db_username: "{{ vault_peertube__db_username }}"
+peertube__db_username: "peertube"
 peertube__db_password: "{{ vault_peertube__db_password }}"
 peertube__secret: "{{ vault_peertube__secret }}"
 peertube__smtp_hostname: "{{ vault_peertube__smtp_hostname }}"
@@ -161,16 +171,22 @@ Peertube data is stored in the following locations:
 {{ docker_mounts_directory }}/peertube/
 ├── data/       # Video files and user-uploaded content
 ├── config/     # Peertube application configuration
-├── db/         # PostgreSQL database files
 └── redis/      # Redis cache data
 ```
+
+Note: Database files are stored in the shared PostgreSQL container managed by the `databases` stack.
+
+### Authentication
+
+Peertube is protected by Authelia SSO. Users must authenticate through Authelia before accessing the Peertube interface.
 
 ### Access
 
 Once deployed, Peertube will be available at `https://peertube.{{ main_domain }}`. 
 
 **IMPORTANT SECURITY NOTICE**: The first user to register will become the administrator of the instance. After deployment:
-1. Immediately register your admin account
-2. Disable public registration in Admin → Configuration → Signup to prevent unauthorized access
+1. Authenticate through Authelia
+2. Register your admin account in Peertube
+3. Disable public registration in Admin → Configuration → Signup to prevent unauthorized access
 
 For detailed setup instructions and security considerations, see `SECRETS.md`.

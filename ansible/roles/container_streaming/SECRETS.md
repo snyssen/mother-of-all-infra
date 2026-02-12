@@ -5,7 +5,7 @@ This document describes the secrets that need to be added to the Ansible vault t
 ## Overview
 
 Peertube requires several secrets for:
-- Database authentication
+- Database authentication (uses shared PostgreSQL database)
 - Application security (secret key)
 - SMTP email configuration
 
@@ -34,8 +34,7 @@ just sops-update ansible/hosts/group_vars/apps/vault.yml
 Add the following variables to the vault file:
 
 ```yaml
-# Peertube Database Configuration
-vault_peertube__db_username: "peertube"
+# Peertube Database Password
 vault_peertube__db_password: "<PASTE_GENERATED_PASSWORD_HERE>"
 
 # Peertube Application Secret (REQUIRED - generate with: openssl rand -hex 32)
@@ -61,11 +60,20 @@ Edit the non-encrypted variables file:
 vim ansible/hosts/group_vars/apps/vars.yml
 ```
 
-Add these variable mappings (these reference the vault variables):
+**A. Add the Peertube database to the `db__pg_databases` list:**
+
+```yaml
+db__pg_databases:
+  # ... existing databases ...
+  - name: peertube
+    password: "{{ vault_peertube__db_password }}"
+```
+
+**B. Add these variable mappings (these reference the vault variables):**
 
 ```yaml
 # Peertube configuration
-peertube__db_username: "{{ vault_peertube__db_username }}"
+peertube__db_username: "peertube"
 peertube__db_password: "{{ vault_peertube__db_password }}"
 peertube__secret: "{{ vault_peertube__secret }}"
 peertube__smtp_hostname: "{{ vault_peertube__smtp_hostname }}"
@@ -84,8 +92,9 @@ peertube__admin_email: "{{ vault_peertube__admin_email }}"
 
 ### Database Credentials
 
-- **vault_peertube__db_username**: PostgreSQL database username (default: `peertube`)
-- **vault_peertube__db_password**: PostgreSQL database password (generate randomly)
+- **vault_peertube__db_password**: PostgreSQL database password for the Peertube database in the shared PostgreSQL instance (generate randomly)
+
+**Note**: Peertube uses the shared PostgreSQL database managed by the `databases` stack. The database username is hardcoded to `peertube` and matches the database name.
 
 ### Application Secret
 
@@ -147,16 +156,21 @@ ansible -i hosts/prod.yml apps -m debug -a "var=peertube__db_username"
 
 ## Deployment
 
-Once secrets are configured, deploy the streaming stack:
+Once secrets are configured, deploy the stacks in order:
 
 ```bash
+# 1. Deploy/update the databases stack first to create the Peertube database
+just ansible-playbook playbook=stacks-deploy flags='-i hosts/prod.yml -e "{\"stacks_deploy_list\":[\"databases\"]}"'
+
+# 2. Then deploy the streaming stack with Peertube
 just ansible-playbook playbook=stacks-deploy flags='-i hosts/prod.yml -e "{\"stacks_deploy_list\":[\"streaming\"]}"'
 ```
 
 ## Security Notes
 
 1. **Never commit unencrypted secrets** to version control
-2. The `vault_peertube__secret` is particularly sensitive - it's used for:
+2. **Authelia SSO**: Peertube is protected by Authelia middleware, requiring authentication before access
+3. The `vault_peertube__secret` is particularly sensitive - it's used for:
    - Session management
    - Token generation
    - Cryptographic operations
@@ -182,30 +196,42 @@ If email is not working:
 
 If Peertube cannot connect to the database:
 
-1. Verify the database password matches in both services
-2. Check database logs: `docker logs peertube_postgres`
-3. Ensure the database container is running: `docker ps | grep peertube`
+1. Verify the database was created by the `databases` stack
+2. Check that the `peertube` database exists: `docker exec -it postgres psql -U postgres -l`
+3. Verify the database password matches in vault and variables
+4. Check shared database logs: `docker logs postgres`
+5. Ensure the databases stack is running: `docker ps | grep postgres`
+
+### Authentication Issues
+
+If you cannot access Peertube:
+
+1. Verify you can authenticate through Authelia
+2. Check Authelia logs: `docker logs authelia`
+3. Ensure you're using the correct domain: `https://peertube.yourdomain.com`
 
 ### First-Time Setup
 
 After deployment:
 
 1. Navigate to `https://peertube.yourdomain.com` (replace with your actual domain)
-2. **IMPORTANT SECURITY NOTICE**: The first registered user will become the administrator with full control
-3. **IMMEDIATELY** register your admin account after deployment
-4. After creating the admin account, **DISABLE PUBLIC REGISTRATION** to prevent unauthorized admin access:
+2. **Authenticate through Authelia first** - you'll be redirected to the Authelia login page
+3. After Authelia authentication, you'll be redirected to Peertube
+4. **IMPORTANT SECURITY NOTICE**: The first registered user will become the administrator with full control
+5. **IMMEDIATELY** register your admin account after deployment
+6. After creating the admin account, **DISABLE PUBLIC REGISTRATION** to prevent unauthorized admin access:
    - Go to Admin → Configuration → Signup
    - Disable "Signup enabled"
    - Optionally enable "Signup requires email verification" if you want controlled registration
-5. Complete the initial setup wizard
-6. Configure additional settings through the admin interface
+7. Complete the initial setup wizard
+8. Configure additional settings through the admin interface
 
 ### Performance Tuning
 
 The default configuration uses conservative memory limits:
-- PostgreSQL: 512MB (minimum for development/testing)
 - Redis: 64MB (suitable for light usage)
 
-For production instances with significant usage, consider adjusting these in the docker-compose.yml:
-- PostgreSQL: Increase to 1-2GB for better performance
+For production instances with significant usage, consider adjusting Redis in the docker-compose.yml:
 - Redis: Increase to 128-256MB for high-traffic instances
+
+**Note**: PostgreSQL memory is managed by the shared `databases` stack, not in the streaming stack configuration.
