@@ -12,6 +12,16 @@ in
       type = lib.types.listOf lib.types.str;
       description = "List of IDs (as seen under /dev/disk/by-uuid) to look for for mounting your USB key(s)";
     };
+    usbMount = {
+      attempts = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 3;
+      };
+      waitBetweenAttempts = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 5;
+      };
+    };
     keyFilename = lib.mkOption {
       type = lib.types.str;
       description = "Filename of the key file to look for from the root of the USB disk";
@@ -73,8 +83,17 @@ in
                     fallbackToPassword = true;
                     preOpenCommands = ''
                       mkdir -m 0755 -p /key
-                      echo "Trying to mount USB key for LUKS decryption..."
-                      sleep 3 # Waiting for USB to be ready
+                      echo "Waiting for USB key for LUKS decryption to appear..."
+                      current_attempt=0
+                      while true; do
+                        current_attempt=$((current_attempt+1))
+                        echo "  Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
+                        if (ls /dev/disk/by-uuid | grep -e '${lib.strings.concatStringsSep "' -e '" cfg.usbKeysIds}' -q) || [ $current_attempt -eq '${builtins.toString cfg.usbMount.attempts}' ]; then
+                          break
+                        fi
+                        sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
+                      done
+                      echo "Trying to mount USB key..."
                       ${lib.strings.concatMapStringsSep " || " (
                         id: "mount -n -t vfat -o ro -U ${id} /key"
                       ) cfg.usbKeysIds}
