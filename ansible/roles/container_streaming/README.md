@@ -11,6 +11,11 @@
     - [servarr apps](#servarr-apps)
     - [Jellyfin](#jellyfin)
   - [Configurations](#configurations)
+  - [Peertube Configuration](#peertube-configuration)
+    - [Required Vault Variables](#required-vault-variables)
+    - [Generating Secrets](#generating-secrets)
+    - [Peertube Data Structure](#peertube-data-structure)
+    - [Access](#access)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
