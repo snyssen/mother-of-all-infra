@@ -130,6 +130,20 @@ vault_peertube__smtp_disable_starttls: "false"
 
 # Peertube admin email
 vault_peertube__admin_email: "<ADMIN_EMAIL_ADDRESS>"
+
+# Authelia OIDC client credentials for Peertube
+vault_backbone__authelia__oidc_peertube_clientid: "peertube"
+vault_backbone__authelia__oidc_peertube_clientsecret: "<GENERATE_RANDOM_SECRET>"
+vault_backbone__authelia__oidc_peertube_clientsecret_hash: "<HASHED_SECRET>"
+```
+
+**Note**: Generate the OIDC client secret and its hash using:
+```bash
+# Generate client secret
+openssl rand -base64 32
+
+# Generate hash (using docker authelia command)
+docker run --rm authelia/authelia:latest authelia crypto hash generate pbkdf2 --password '<CLIENT_SECRET>'
 ```
 
 Then add the corresponding variable references to `ansible/hosts/group_vars/apps/vars.yml`:
@@ -145,6 +159,13 @@ peertube__smtp_from: "{{ vault_peertube__smtp_from }}"
 peertube__smtp_tls: "{{ vault_peertube__smtp_tls }}"
 peertube__smtp_disable_starttls: "{{ vault_peertube__smtp_disable_starttls }}"
 peertube__admin_email: "{{ vault_peertube__admin_email }}"
+peertube__oidc_client_id: "{{ backbone__authelia__oidc_peertube_clientid }}"
+peertube__oidc_client_secret: "{{ backbone__authelia__oidc_peertube_clientsecret }}"
+
+# Authelia OIDC configuration for Peertube
+backbone__authelia__oidc_peertube_clientid: "{{ vault_backbone__authelia__oidc_peertube_clientid }}"
+backbone__authelia__oidc_peertube_clientsecret: "{{ vault_backbone__authelia__oidc_peertube_clientsecret }}"
+backbone__authelia__oidc_peertube_clientsecret_hash: "{{ vault_backbone__authelia__oidc_peertube_clientsecret_hash }}"
 
 # Optional: Trust proxy networks (default: ["127.0.0.1", "loopback", "172.18.0.0/16"])
 # Only override if your Docker network uses a different subnet
@@ -178,15 +199,38 @@ Note: Database files are stored in the shared PostgreSQL container managed by th
 
 ### Authentication
 
-Peertube is protected by Authelia SSO. Users must authenticate through Authelia before accessing the Peertube interface.
+Peertube is configured to use OpenID Connect (OIDC) authentication with Authelia. The `peertube-plugin-auth-openid-connect` plugin is automatically configured via environment variables.
+
+**Authentication Flow:**
+1. Users click "Login with Authelia" on the Peertube login page
+2. They are redirected to Authelia for authentication
+3. After successful authentication, users are returned to Peertube
+4. User accounts are automatically created in Peertube based on OIDC claims
+
+**Important**: The first user to log in via OIDC may need to be manually promoted to admin status through the Peertube database or CLI.
 
 ### Access
 
 Once deployed, Peertube will be available at `https://peertube.{{ main_domain }}`. 
 
-**IMPORTANT SECURITY NOTICE**: The first user to register will become the administrator of the instance. After deployment:
-1. Authenticate through Authelia
-2. Register your admin account in Peertube
-3. Disable public registration in Admin → Configuration → Signup to prevent unauthorized access
+**OIDC Authentication Setup:**
+1. Navigate to `https://peertube.{{ main_domain }}`
+2. Click "Login with Authelia" button
+3. Authenticate through Authelia
+4. Your user account will be automatically created in Peertube
+5. The first user may need to be promoted to admin (see below)
+
+**Promoting First User to Admin:**
+```bash
+# Connect to Peertube container
+docker exec -it peertube npm run reset-password -- -u <username>
+
+# Or promote to admin via database
+docker exec -it postgres psql -U peertube -d peertube -c "UPDATE \"user\" SET role = 0 WHERE username = '<username>';"
+```
+
+**Security Notes:**
+- Public registration can be disabled in Admin → Configuration → Signup
+- OIDC users are authenticated through Authelia, providing SSO across your infrastructure
 
 For detailed setup instructions and security considerations, see `SECRETS.md`.

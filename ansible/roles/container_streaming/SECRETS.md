@@ -50,6 +50,20 @@ vault_peertube__smtp_disable_starttls: "false"
 
 # Peertube Admin Email
 vault_peertube__admin_email: "admin@example.com"
+
+# Authelia OIDC Configuration for Peertube
+vault_backbone__authelia__oidc_peertube_clientid: "peertube"
+vault_backbone__authelia__oidc_peertube_clientsecret: "<PASTE_GENERATED_OIDC_SECRET_HERE>"
+vault_backbone__authelia__oidc_peertube_clientsecret_hash: "<PASTE_HASHED_OIDC_SECRET_HERE>"
+```
+
+**Generating OIDC Secrets:**
+```bash
+# Generate OIDC client secret
+openssl rand -base64 32
+
+# Generate hash for the secret (replace <SECRET> with the generated secret)
+docker run --rm authelia/authelia:latest authelia crypto hash generate pbkdf2 --password '<SECRET>'
 ```
 
 ### 3. Update Variables File
@@ -82,6 +96,13 @@ peertube__smtp_from: "{{ vault_peertube__smtp_from }}"
 peertube__smtp_tls: "{{ vault_peertube__smtp_tls }}"
 peertube__smtp_disable_starttls: "{{ vault_peertube__smtp_disable_starttls }}"
 peertube__admin_email: "{{ vault_peertube__admin_email }}"
+peertube__oidc_client_id: "{{ backbone__authelia__oidc_peertube_clientid }}"
+peertube__oidc_client_secret: "{{ backbone__authelia__oidc_peertube_clientsecret }}"
+
+# Authelia OIDC configuration for Peertube
+backbone__authelia__oidc_peertube_clientid: "{{ vault_backbone__authelia__oidc_peertube_clientid }}"
+backbone__authelia__oidc_peertube_clientsecret: "{{ vault_backbone__authelia__oidc_peertube_clientsecret }}"
+backbone__authelia__oidc_peertube_clientsecret_hash: "{{ vault_backbone__authelia__oidc_peertube_clientsecret_hash }}"
 
 # Optional: Override trust proxy networks if your Docker network uses a different subnet
 # Default: ["127.0.0.1", "loopback", "172.18.0.0/16"]
@@ -162,24 +183,28 @@ Once secrets are configured, deploy the stacks in order:
 # 1. Deploy/update the databases stack first to create the Peertube database
 just ansible-playbook playbook=stacks-deploy flags='-i hosts/prod.yml -e "{\"stacks_deploy_list\":[\"databases\"]}"'
 
-# 2. Then deploy the streaming stack with Peertube
+# 2. Deploy/update the backbone stack to add Peertube OIDC client to Authelia
+just ansible-playbook playbook=stacks-deploy flags='-i hosts/prod.yml -e "{\"stacks_deploy_list\":[\"backbone\"]}"'
+
+# 3. Then deploy the streaming stack with Peertube
 just ansible-playbook playbook=stacks-deploy flags='-i hosts/prod.yml -e "{\"stacks_deploy_list\":[\"streaming\"]}"'
 ```
 
 ## Security Notes
 
 1. **Never commit unencrypted secrets** to version control
-2. **Authelia SSO**: Peertube is protected by Authelia middleware, requiring authentication before access
+2. **OIDC Authentication**: Peertube uses OpenID Connect with Authelia for authentication
 3. The `vault_peertube__secret` is particularly sensitive - it's used for:
    - Session management
    - Token generation
    - Cryptographic operations
-3. Changing the secret after deployment will:
+4. The OIDC client secret and its hash must match - always generate the hash from the plaintext secret
+5. Changing the secret after deployment will:
    - Invalidate all existing sessions
    - Break authentication tokens
    - Potentially cause data corruption
-4. Backup your vault passphrase securely
-5. Use strong, randomly generated passwords
+6. Backup your vault passphrase securely
+7. Use strong, randomly generated passwords
 
 ## Troubleshooting
 
@@ -202,11 +227,23 @@ If Peertube cannot connect to the database:
 4. Check shared database logs: `docker logs postgres`
 5. Ensure the databases stack is running: `docker ps | grep postgres`
 
-### Authentication Issues
+### OIDC Authentication Issues
+
+If you cannot log in via Authelia OIDC:
+
+1. Verify the Authelia OIDC client is configured correctly
+2. Check that the client secret hash matches the plaintext secret
+3. Verify the redirect URI in Authelia matches: `https://peertube.yourdomain.com/plugins/auth-openid-connect/router/code-cb`
+4. Check Peertube logs for OIDC errors: `docker logs peertube`
+5. Check Authelia logs: `docker logs authelia`
+6. Verify the discovery URL is accessible: `curl https://auth.yourdomain.com/.well-known/openid-configuration`
+7. Ensure the Peertube OIDC plugin is enabled (it's configured via environment variables)
+
+### General Authentication Issues
 
 If you cannot access Peertube:
 
-1. Verify you can authenticate through Authelia
+1. Verify Authelia is running: `docker ps | grep authelia`
 2. Check Authelia logs: `docker logs authelia`
 3. Ensure you're using the correct domain: `https://peertube.yourdomain.com`
 
@@ -215,16 +252,18 @@ If you cannot access Peertube:
 After deployment:
 
 1. Navigate to `https://peertube.yourdomain.com` (replace with your actual domain)
-2. **Authenticate through Authelia first** - you'll be redirected to the Authelia login page
-3. After Authelia authentication, you'll be redirected to Peertube
-4. **IMPORTANT SECURITY NOTICE**: The first registered user will become the administrator with full control
-5. **IMMEDIATELY** register your admin account after deployment
-6. After creating the admin account, **DISABLE PUBLIC REGISTRATION** to prevent unauthorized admin access:
-   - Go to Admin → Configuration → Signup
-   - Disable "Signup enabled"
-   - Optionally enable "Signup requires email verification" if you want controlled registration
-7. Complete the initial setup wizard
-8. Configure additional settings through the admin interface
+2. Click "Login with Authelia" button on the Peertube login page
+3. You'll be redirected to Authelia for authentication
+4. After successful Authelia authentication, you'll be redirected back to Peertube
+5. Your user account will be automatically created based on your Authelia identity
+6. **IMPORTANT**: The first OIDC user may need to be manually promoted to administrator:
+   ```bash
+   # Promote user to admin via database
+   docker exec -it postgres psql -U peertube -d peertube -c "UPDATE \"user\" SET role = 0 WHERE username = '<your-username>';"
+   ```
+7. Configure public registration settings in Admin → Configuration → Signup
+8. Complete the initial setup wizard
+9. Configure additional settings through the admin interface
 
 ### Performance Tuning
 

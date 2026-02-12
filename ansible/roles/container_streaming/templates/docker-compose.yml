@@ -292,6 +292,16 @@ services:
       - PEERTUBE_SMTP_TLS={{ peertube__smtp_tls }}
       - PEERTUBE_SMTP_DISABLE_STARTTLS={{ peertube__smtp_disable_starttls }}
       - PEERTUBE_ADMIN_EMAIL={{ peertube__admin_email }}
+      # OIDC configuration for Authelia integration
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_ENABLED={{ peertube__oidc_enabled | default('true') }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_BUTTON_LABEL={{ peertube__oidc_button_label | default('Login with Authelia') }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL=https://auth.{{ main_domain }}/.well-known/openid-configuration
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID={{ peertube__oidc_client_id }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET={{ peertube__oidc_client_secret }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_SCOPE=openid profile email
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_USERNAME_PROPERTY=preferred_username
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_EMAIL_PROPERTY=email
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISPLAY_NAME_PROPERTY=name
     user: "33:{{ ansible_user_gid }}"
     labels:
       - traefik.enable=true
@@ -299,7 +309,6 @@ services:
       - traefik.http.routers.peertube.entryPoints=websecure
       - traefik.http.routers.peertube.rule=Host(`peertube.{{ main_domain }}`)
       - traefik.http.services.peertube.loadBalancer.server.port=9000
-      - traefik.http.routers.peertube.middlewares=authelia@docker
     volumes:
       - "{{ docker_mounts_directory }}/peertube/data:/data"
       - "{{ docker_mounts_directory }}/peertube/config:/config"

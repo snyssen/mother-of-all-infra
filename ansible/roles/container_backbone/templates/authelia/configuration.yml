@@ -687,3 +687,14 @@ identity_providers:
         access_token_signed_response_alg: 'none'
         userinfo_signed_response_alg: 'none'
         token_endpoint_auth_method: 'client_secret_basic'
+      - client_name: 'Peertube'
+        client_id: '{{ backbone__authelia__oidc_peertube_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_peertube_clientsecret_hash }}'
+        authorization_policy: 'media_policy'
+        redirect_uris:
+          - 'https://peertube.{{ main_domain }}/plugins/auth-openid-connect/router/code-cb'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+        userinfo_signed_response_alg: 'none'
