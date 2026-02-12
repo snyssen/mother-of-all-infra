@@ -74,6 +74,10 @@ peertube__smtp_from: "{{ vault_peertube__smtp_from }}"
 peertube__smtp_tls: "{{ vault_peertube__smtp_tls }}"
 peertube__smtp_disable_starttls: "{{ vault_peertube__smtp_disable_starttls }}"
 peertube__admin_email: "{{ vault_peertube__admin_email }}"
+
+# Optional: Override trust proxy networks if your Docker network uses a different subnet
+# Default: ["127.0.0.1", "loopback", "172.18.0.0/16"]
+# peertube__trust_proxy_networks: '["127.0.0.1", "loopback", "192.168.0.0/16"]'
 ```
 
 ## Secret Descriptions
@@ -186,7 +190,7 @@ If Peertube cannot connect to the database:
 
 After deployment:
 
-1. Navigate to `https://peertube.{{ main_domain }}`
+1. Navigate to `https://peertube.yourdomain.com` (replace with your actual domain)
 2. **IMPORTANT SECURITY NOTICE**: The first registered user will become the administrator with full control
 3. **IMMEDIATELY** register your admin account after deployment
 4. After creating the admin account, **DISABLE PUBLIC REGISTRATION** to prevent unauthorized admin access:

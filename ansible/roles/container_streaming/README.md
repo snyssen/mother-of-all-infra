@@ -135,6 +135,10 @@ peertube__smtp_from: "{{ vault_peertube__smtp_from }}"
 peertube__smtp_tls: "{{ vault_peertube__smtp_tls }}"
 peertube__smtp_disable_starttls: "{{ vault_peertube__smtp_disable_starttls }}"
 peertube__admin_email: "{{ vault_peertube__admin_email }}"
+
+# Optional: Trust proxy networks (default: ["127.0.0.1", "loopback", "172.18.0.0/16"])
+# Only override if your Docker network uses a different subnet
+# peertube__trust_proxy_networks: '["127.0.0.1", "loopback", "192.168.0.0/16"]'
 ```
 
 ### Generating Secrets

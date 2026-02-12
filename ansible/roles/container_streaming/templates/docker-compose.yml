@@ -281,9 +281,9 @@ services:
       - PEERTUBE_DB_SSL=false
       - PEERTUBE_WEBSERVER_HOSTNAME=peertube.{{ main_domain }}
       - PEERTUBE_WEBSERVER_HTTPS=true
-      # Trust proxy configuration - 172.18.0.0/16 is the default Docker bridge network range
-      # Adjust if your Docker network uses a different subnet
-      - PEERTUBE_TRUST_PROXY=["127.0.0.1", "loopback", "172.18.0.0/16"]
+      # Trust proxy configuration - includes localhost, loopback, and Docker bridge network
+      # Adjust peertube__trust_proxy_networks variable if your Docker network uses a different subnet
+      - PEERTUBE_TRUST_PROXY={{ peertube__trust_proxy_networks | default('["127.0.0.1", "loopback", "172.18.0.0/16"]') }}
       - PEERTUBE_SECRET={{ peertube__secret }}
       - PEERTUBE_SMTP_HOSTNAME={{ peertube__smtp_hostname }}
       - PEERTUBE_SMTP_PORT={{ peertube__smtp_port }}
