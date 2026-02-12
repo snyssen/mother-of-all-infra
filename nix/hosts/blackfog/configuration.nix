@@ -98,8 +98,8 @@ in
 
   stylix = {
     enable = true;
-    image = ../../files/wallpapers/purple_water_splashes.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/stella.yaml";
+    image = ../../files/wallpapers/foggy_night_bridge.jpg;
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/nord.yaml";
     polarity = "dark";
 
     fonts = {
