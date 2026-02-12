@@ -281,6 +281,8 @@ services:
       - PEERTUBE_DB_SSL=false
       - PEERTUBE_WEBSERVER_HOSTNAME=peertube.{{ main_domain }}
       - PEERTUBE_WEBSERVER_HTTPS=true
+      # Trust proxy configuration - 172.18.0.0/16 is the default Docker bridge network range
+      # Adjust if your Docker network uses a different subnet
       - PEERTUBE_TRUST_PROXY=["127.0.0.1", "loopback", "172.18.0.0/16"]
       - PEERTUBE_SECRET={{ peertube__secret }}
       - PEERTUBE_SMTP_HOSTNAME={{ peertube__smtp_hostname }}
@@ -315,6 +317,8 @@ services:
       - POSTGRES_DB=peertube
     volumes:
       - "{{ docker_mounts_directory }}/peertube/db:/var/lib/postgresql/data"
+    # Memory limit: 512MB is a minimum for development/testing
+    # For production with significant usage, consider increasing to 1-2GB
     mem_limit: 512m
 
   peertube_redis:
@@ -325,6 +329,8 @@ services:
       - peertube_internal
     volumes:
       - "{{ docker_mounts_directory }}/peertube/redis:/data"
+    # Memory limit: 64MB is suitable for light usage
+    # May need to increase for high-traffic instances
     mem_limit: 64m
 
 networks:

@@ -163,4 +163,10 @@ Peertube data is stored in the following locations:
 
 ### Access
 
-Once deployed, Peertube will be available at `https://peertube.{{ main_domain }}`. The first user to register will become the administrator of the instance.
+Once deployed, Peertube will be available at `https://peertube.{{ main_domain }}`. 
+
+**IMPORTANT SECURITY NOTICE**: The first user to register will become the administrator of the instance. After deployment:
+1. Immediately register your admin account
+2. Disable public registration in Admin → Configuration → Signup to prevent unauthorized access
+
+For detailed setup instructions and security considerations, see `SECRETS.md`.

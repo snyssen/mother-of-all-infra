@@ -187,6 +187,21 @@ If Peertube cannot connect to the database:
 After deployment:
 
 1. Navigate to `https://peertube.{{ main_domain }}`
-2. The first registered user will become the administrator
-3. Complete the initial setup wizard
-4. Configure additional settings through the admin interface
+2. **IMPORTANT SECURITY NOTICE**: The first registered user will become the administrator with full control
+3. **IMMEDIATELY** register your admin account after deployment
+4. After creating the admin account, **DISABLE PUBLIC REGISTRATION** to prevent unauthorized admin access:
+   - Go to Admin → Configuration → Signup
+   - Disable "Signup enabled"
+   - Optionally enable "Signup requires email verification" if you want controlled registration
+5. Complete the initial setup wizard
+6. Configure additional settings through the admin interface
+
+### Performance Tuning
+
+The default configuration uses conservative memory limits:
+- PostgreSQL: 512MB (minimum for development/testing)
+- Redis: 64MB (suitable for light usage)
+
+For production instances with significant usage, consider adjusting these in the docker-compose.yml:
+- PostgreSQL: Increase to 1-2GB for better performance
+- Redis: Increase to 128-256MB for high-traffic instances
