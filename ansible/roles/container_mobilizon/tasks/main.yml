@@ -37,6 +37,7 @@
     name: snyssen.compose_deploy
   vars:
     stack_name: mobilizon
+    docker_compose_state: absent # TODO: enable once OIDC is fixed
 
 # - name: Create monitors
 #   lucasheld.uptime_kuma.monitor:
