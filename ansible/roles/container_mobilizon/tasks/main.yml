@@ -1,0 +1,50 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ docker_mounts_directory }}/mobilizon/postgres"
+      owner: "70"
+      group: "70"
+      mode: "740"
+    - path: /mnt/storage/backups/mobilizon
+      owner: "5050"
+      group: "{{ ansible_user_gid }}"
+      mode: "750"
+    - path: /mnt/storage/mobilizon
+      owner: "65534" # nobody, user used by mobilizon
+      group: "65534" # nogroup, group used by mobilizon
+      mode: "750"
+    - path: /mnt/storage/mobilizon/uploads
+      owner: "65534" # nobody, user used by mobilizon
+      group: "65534" # nogroup, group used by mobilizon
+      mode: "750"
+
+- name: Deploy Mobilizon configuration
+  become: true
+  ansible.builtin.template:
+    src: config.exs
+    dest: "/mnt/storage/mobilizon/config.exs"
+    owner: "65534" # nobody, user used by mobilizon
+    group: "65534" # nogroup, group used by mobilizon
+    mode: "0600"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: mobilizon
+
+# - name: Create monitors
+#   lucasheld.uptime_kuma.monitor:
+#     name: "{{ item.name }}"
+#     type: http
+#     url: "{{ item.url }}"
+#   loop:
+#     - name: minecraft
+#       url: "https://mc.{{ main_domain }}"
+#     - name: minecraft USW
+#       url: "https://mc-usw.{{ main_domain }}"

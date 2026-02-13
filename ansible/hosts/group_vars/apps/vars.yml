@@ -138,6 +138,9 @@ backbone__authelia__oidc_dawarich_clientsecret_hash: "{{ vault_backbone__autheli
 backbone__authelia__oidc_actual_budget_clientid: "{{ vault_backbone__authelia__oidc_actual_budget_clientid }}"
 backbone__authelia__oidc_actual_budget_clientsecret: "{{ vault_backbone__authelia__oidc_actual_budget_clientsecret }}"
 backbone__authelia__oidc_actual_budget_clientsecret_hash: "{{ vault_backbone__authelia__oidc_actual_budget_clientsecret_hash }}"
+backbone__authelia__oidc_mobilizon_clientid: "{{ vault_backbone__authelia__oidc_mobilizon_clientid }}"
+backbone__authelia__oidc_mobilizon_clientsecret: "{{ vault_backbone__authelia__oidc_mobilizon_clientsecret }}"
+backbone__authelia__oidc_mobilizon_clientsecret_hash: "{{ vault_backbone__authelia__oidc_mobilizon_clientsecret_hash }}"
 
 unifi__mongo_pass: "{{ vault_unifi__mongo_pass }}"
 unifi__mongo_root_pass: "{{ vault_unifi__mongo_root_pass }}"
@@ -584,3 +587,8 @@ attic__postgres_password: "{{ vault_attic__postgres_password }}"
 
 crowdsec__webui_user: "{{ vault_crowdsec__webui_user }}"
 crowdsec__webui_password: "{{ vault_crowdsec__webui_password }}"
+
+mobilizon__db_pass: "{{ vault_mobilizon__db_pass }}"
+mobilizon__db_dump_hc_id: "{{ vault_mobilizon__db_dump_hc_id }}"
+mobilizon__secret_key_base: "{{ vault_mobilizon__secret_key_base }}"
+mobilizon__secret_key: "{{ vault_mobilizon__secret_key }}"

@@ -1,0 +1,88 @@
+services:
+  mobilizon_db:
+    image: postgis/postgis:17-3.5-alpine@sha256:57e27aa2ce05a3b5800253bbfd8777e4ab5c938b8a7727b950c11b546289cff9
+    container_name: mobilizon_db
+    volumes:
+      - "{{ docker_mounts_directory }}/mobilizon/postgres:/var/lib/postgresql/data"
+    networks:
+      - internal
+      - db # So it can be accessed by pgadmin
+    environment:
+      POSTGRES_DB: mobilizon
+      POSTGRES_USER: mobilizon
+      POSTGRES_PASSWORD: "{{ mobilizon__db_pass }}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mobilizon -d mobilizon"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  mobilizon_db_dumper:
+    image: prodrigestivill/postgres-backup-local:17@sha256:e803bd9eb4bfb42e9b3e74ba411227f3d55da292905800395659cc579b6641e8
+    container_name: mobilizon_db_dumper
+    user: "5050:{{ ansible_user_gid }}"
+    environment:
+      POSTGRES_HOST: mobilizon_db
+      POSTGRES_USER: mobilizon
+      POSTGRES_PASSWORD: "{{ mobilizon__db_pass }}"
+      POSTGRES_DB: mobilizon
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: "{{ iana_timezone }}"
+      HEALTHCHECK_ID: "{{ mobilizon__db_dump_hc_id }}"
+      SCHEDULE: 30 */4 * * *
+    volumes:
+      - /mnt/storage/backups/mobilizon:/backups
+      - ../databases/hooks:/hooks
+    depends_on:
+      - mobilizon_db
+    networks:
+      - internal
+    restart: unless-stopped
+
+  mobilizon:
+    image: kaihuri/mobilizon:5.2.2@sha256:fc441dd42ccb3b6017ea3b32b5e7156c345535f8b9d40fa801ceacc05dfc9834
+    environment:
+      MOBILIZON_INSTANCE_NAME: "events.{{ main_domain }}"
+      MOBILIZON_INSTANCE_HOST: "events.{{ main_domain }}"
+      MOBILIZON_INSTANCE_PORT: "4000"
+      MOBILIZON_INSTANCE_EMAIL: "mobilizon@{{ main_domain }}"
+      MOBILIZON_REPLY_EMAIL: "{{ smtp__to }}"
+      MOBILIZON_INSTANCE_REGISTRATIONS_OPEN: "false"
+      MOBILIZON_DATABASE_USERNAME: mobilizon
+      MOBILIZON_DATABASE_PASSWORD: "{{ mobilizon__db_pass }}"
+      MOBILIZON_DATABASE_DBNAME: mobilizon
+      MOBILIZON_DATABASE_HOST: mobilizon_db
+      MOBILIZON_INSTANCE_SECRET_KEY_BASE: "{{ mobilizon__secret_key_base }}"
+      MOBILIZON_INSTANCE_SECRET_KEY: "{{ mobilizon__secret_key }}"
+      MOBILIZON_LOGLEVEL: debug
+      MOBILIZON_SMTP_SERVER: "{{ smtp__host }}"
+      MOBILIZON_SMTP_PORT: "{{ smtp__port }}"
+      MOBILIZON_SMTP_SSL: "{{ smtp__ssl }}"
+      MOBILIZON_SMTP_TLS: "{{ smtp__tls }}"
+      MOBILIZON_SMTP_USERNAME: "{{ smtp__user }}"
+      MOBILIZON_SMTP_PASSWORD: "{{ smtp__pass }}"
+      OAUTH_CONSUMER_STRATEGIES: "ueberauth_oidcc"
+    volumes:
+      - /mnt/storage/mobilizon/uploads:/var/lib/mobilizon/uploads
+      - /mnt/storage/mobilizon/config.exs:/etc/mobilizon/config.exs:ro
+    depends_on:
+      - mobilizon_db
+    networks:
+      - web
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.mobilizon.entryPoints=websecure
+      - traefik.http.routers.mobilizon.rule=Host(`events.{{ main_domain }}`)
+      - traefik.http.routers.mobilizon.service=mobilizon
+      - traefik.http.services.mobilizon.loadBalancer.server.port=4000
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:
