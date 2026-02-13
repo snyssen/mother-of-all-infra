@@ -26,6 +26,15 @@
       "Host": "dawarich_db",
       "SSLMode": "prefer",
       "MaintenanceDB": "postgres"
+    },
+    "4": {
+      "Name": "mobilizon_db",
+      "Group": "Servers",
+      "Port": 5432,
+      "Username": "mobilizon",
+      "Host": "mobilizon_db",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "postgres"
     }
   }
 }

@@ -510,7 +510,7 @@ identity_providers:
       - client_name: 'Grafana'
         client_id: '{{ backbone__authelia__oidc_grafana_clientid }}'
         client_secret: '{{ backbone__authelia__oidc_grafana_clientsecret_hash }}'
-        authorization_policy: 'two_factor'
+        authorization_policy: 'sysadmin_policy'
         redirect_uris:
           - 'https://monitor.{{ main_domain }}/login/generic_oauth'
         scopes:
@@ -698,3 +698,14 @@ identity_providers:
           - 'profile'
           - 'email'
         userinfo_signed_response_alg: 'none'
+      - client_name: 'Mobilizon'
+        client_id: '{{ backbone__authelia__oidc_mobilizon_clientid }}'
+        client_secret: '{{ backbone__authelia__oidc_mobilizon_clientsecret_hash }}'
+        authorization_policy: 'team_member_policy'
+        redirect_uris:
+          - 'https://events.{{ main_domain }}/auth/keycloak/callback'
+        scopes:
+          - 'openid'
+          - 'email'
+          - 'profile'
+        token_endpoint_auth_method: 'client_secret_post'
