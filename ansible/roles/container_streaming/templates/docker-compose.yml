@@ -227,7 +227,7 @@ services:
       - /mnt/storage/streaming/media/tv:/downloads
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.45@sha256:eda42c24c1f84f889c9e28dc5261515132366314692da1138035a8b7b66b3637
+    image: thewicklowwolf/lidatube:0.2.46@sha256:92a13fa97ab860ab30cbfd3be2afe7c1e3cf311e9974fc49af12199ba7a69e09
     container_name: lidatube
     environment:
       - PUID=33
@@ -247,7 +247,7 @@ services:
     restart: unless-stopped
 
   lidify:
-    image: thewicklowwolf/lidify:0.2.3@sha256:958eaddeef8195470b974ee03512d9a5c31ad2af3167f7824448fb026fa9c94a
+    image: thewicklowwolf/lidify:0.2.4@sha256:c6ac8f71a3e869abf944929e221bad0e77edfa4e17a4545ac0b9ab0f51074f97
     container_name: lidify
     environment:
       - PUID=33
