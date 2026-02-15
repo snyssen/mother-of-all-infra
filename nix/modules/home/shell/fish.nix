@@ -20,6 +20,9 @@ in
     programs.fish = {
       enable = true;
       generateCompletions = true;
+      shellAbbrs = {
+        cat = lib.mkIf config.programs.bat.enable "bat";
+      };
     };
 
     programs.fzf = lib.mkIf cfg.fzf.enable {

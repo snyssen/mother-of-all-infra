@@ -37,6 +37,9 @@
 
   # obsidian.vaults.manage = true;
 
+  programs.btop.enable = true;
+  programs.bat.enable = true;
+
   # TODO: move
   home.packages = with pkgs; [
     sweethome3d.application
