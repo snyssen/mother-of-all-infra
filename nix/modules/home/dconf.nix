@@ -1,15 +1,23 @@
-{ lib, pkgs, ... }:
+{
+  lib,
+  pkgs,
+  osConfig,
+  ...
+}:
 {
   dconf = {
     enable = true;
     settings."org/gnome/shell" = {
       disable-user-extensions = false;
-      enabled-extensions = with pkgs.gnomeExtensions; [
-        caffeine.extensionUuid
-        pop-shell.extensionUuid
-        dash-to-dock.extensionUuid
-        gsconnect.extensionUuid
-      ];
+      enabled-extensions =
+        with pkgs.gnomeExtensions;
+        [
+          caffeine.extensionUuid
+          pop-shell.extensionUuid
+          dash-to-dock.extensionUuid
+          gsconnect.extensionUuid
+        ]
+        ++ lib.lists.optional osConfig.gnome.touchScreen.enable touchup.extensionUuid;
     };
     settings."org/gnome/desktop/interface".enable-hot-corners = false;
     settings."org/gnome/desktop/wm/preferences".resize-with-right-button = true;
