@@ -20,6 +20,7 @@
     flake.modules.home.firefox
     flake.modules.home.obsidian
     flake.modules.home.rclone
+    flake.modules.home.matrix-clients
     flake.modules.home.vesktop
   ];
 
@@ -40,7 +41,12 @@
   programs.btop.enable = true;
   programs.bat.enable = true;
 
-  # TODO: move
+  matrix.clients = {
+    element.enable = true;
+    cinny.enable = false;
+    fluffychat.enable = true;
+  };
+
   home.packages = with pkgs; [
     sweethome3d.application
     librewolf
@@ -49,8 +55,6 @@
     picard
     vlc
     annotator
-    element-desktop
-    fluffychat
     moonlight-qt
     gradia
     dbeaver-bin
