@@ -30,16 +30,15 @@
 
   rclone.gui.enable = true;
 
-  # obsidian.vaults.manage = true;
+  programs.btop.enable = true;
+  programs.bat.enable = true;
 
-  # TODO: move
   home.packages = with pkgs; [
     librewolf
     onlyoffice-desktopeditors
     protonmail-desktop
     vlc
     annotator
-    fluffychat
     moonlight-qt
     gradia
     dbeaver-bin
