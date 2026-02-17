@@ -63,7 +63,7 @@ services:
   ###########
   matrix-discord:
     container_name: matrix-discord
-    image: dock.mau.dev/mautrix/discord:v0.7.5@sha256:c447c097124d47824bc446f859ba1aa6ab8fda4b4d0477d1ca28db4a4cbb059b
+    image: dock.mau.dev/mautrix/discord:v0.7.6@sha256:965b25cb81e7c8133d2adda9057f9fd4c25bd645f1649d8d91129edfeb79d53d
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_discord:/data
@@ -73,7 +73,7 @@ services:
 
   matrix-signal:
     container_name: matrix-signal
-    image: dock.mau.dev/mautrix/signal:v26.01@sha256:7123afe68978eb6e7326d0beeb5bae73cf36fe51ec39c0a6fddab50e8a2f67d9
+    image: dock.mau.dev/mautrix/signal:v26.02@sha256:3f1d8921824f24f673d35d3d7506b360ffee6db576921ecdfd688297e95aa065
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_signal:/data
@@ -83,7 +83,7 @@ services:
 
   matrix-whatsapp:
     container_name: matrix-whatsapp
-    image: dock.mau.dev/mautrix/whatsapp:v26.01@sha256:cbd395cc939cdfab127a9bac1d090a12cb10a3f24046c3324c1ba4bc5f6c4b72
+    image: dock.mau.dev/mautrix/whatsapp:v26.02@sha256:07fca07f8746c09e6d5f486d002e638da014d0a134e053e2ed7af9875053104d
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_whatsapp:/data
