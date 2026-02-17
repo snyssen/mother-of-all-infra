@@ -24,12 +24,6 @@
     flake.modules.home.vesktop
   ];
 
-  # specialisation = {
-  #   gnome.configuration = {
-  #     myHomeManager.dconf.enable = true;
-  #   };
-  # };
-
   git.signingKeyFilename = "id_ed25519.pub";
 
   vscode.useUnstable = true;

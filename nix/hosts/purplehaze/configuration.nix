@@ -78,10 +78,6 @@ in
   };
   shell.default = "fish";
 
-  environment.systemPackages = [
-    pkgs.htop
-  ];
-
   syncthing = {
     username = "snyssen";
     devices = syncthingData.devices;
@@ -91,7 +87,6 @@ in
         devices = [
           "sync.snyssen.be"
           "Pixel 8 Pro"
-          "sninful"
           "gaming"
           "blackfog"
         ];

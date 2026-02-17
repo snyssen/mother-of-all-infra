@@ -75,10 +75,6 @@ in
   };
   shell.default = "fish";
 
-  environment.systemPackages = [
-    pkgs.htop
-  ];
-
   syncthing = {
     username = "snyssen";
     devices = syncthingData.devices;
