@@ -22,6 +22,8 @@ in
       generateCompletions = true;
       shellAbbrs = {
         cat = lib.mkIf config.programs.bat.enable "bat";
+        vsc = lib.mkIf config.programs.vscode.enable "code";
+        vscd = lib.mkIf config.programs.vscode.enable "code --diff";
       };
     };
 
