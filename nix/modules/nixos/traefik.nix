@@ -4,10 +4,10 @@ let
 in
 {
   options.traefik = {
-    letsencrypt.email = lib.mkOption {
-      default = "admin@snyssen.be";
-    };
     letsencrypt = {
+      email = lib.mkOption {
+        default = "admin@snyssen.be";
+      };
       challengeType = lib.mkOption {
         type = lib.types.enum [
           "http"
@@ -24,6 +24,18 @@ in
         default = [ "snyssen.be" ];
       };
     };
+    tcpEntrypoints = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            port = lib.mkOption {
+              type = lib.types.port;
+            };
+          };
+        }
+      );
+      default = { };
+    };
   };
 
   config = {
@@ -34,28 +46,33 @@ in
     services.traefik = {
       enable = true;
       staticConfigOptions = {
-        entrypoints = {
-          web = {
-            address = ":80";
-            asDefault = true;
-            http.redirections.entrypoint = {
-              to = "websecure";
-              scheme = "https";
+        entrypoints = lib.mkMerge [
+          {
+            web = {
+              address = ":80";
+              asDefault = true;
+              http.redirections.entrypoint = {
+                to = "websecure";
+                scheme = "https";
+              };
             };
-          };
 
-          websecure = {
-            address = ":443";
-            asDefault = true;
-            http.tls.certResolver = "letsencrypt";
-            http.tls.domains = lib.mkIf (cfg.letsencrypt.challengeType == "dns") (
-              lib.lists.map (domain: {
-                main = "${domain}";
-                sans = [ "*.${domain}" ];
-              }) cfg.letsencrypt.dnsChallenge.domains
-            );
-          };
-        };
+            websecure = {
+              address = ":443";
+              asDefault = true;
+              http.tls.certResolver = "letsencrypt";
+              http.tls.domains = lib.mkIf (cfg.letsencrypt.challengeType == "dns") (
+                lib.lists.map (domain: {
+                  main = "${domain}";
+                  sans = [ "*.${domain}" ];
+                }) cfg.letsencrypt.dnsChallenge.domains
+              );
+            };
+          }
+          (builtins.mapAttrs (entrypointName: entrypoint: {
+            address = ":${builtins.toString entrypoint.port}";
+          }) cfg.tcpEntrypoints)
+        ];
         certificatesResolvers.letsencrypt.acme = lib.mkMerge [
           {
             email = cfg.letsencrypt.email;
