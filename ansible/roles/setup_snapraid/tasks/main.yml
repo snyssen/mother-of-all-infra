@@ -52,5 +52,6 @@
     name: "{{ item }}"
     state: absent
   with_items:
-    - Schedule snapraid sync
-    - Schedule snapraid scrub
+    - snapraid sync
+    - snapraid scrub
+    - snapraid_runner
