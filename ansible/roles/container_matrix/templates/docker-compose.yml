@@ -93,7 +93,7 @@ services:
 
   matrix-meta:
     container_name: matrix-meta
-    image: dock.mau.dev/mautrix/meta:v25.12@sha256:1ba769047d4910675eed1ceb820c5cb6e8f6d0633ef4ce005ab802128c3b904f
+    image: dock.mau.dev/mautrix/meta:v26.02@sha256:3a1e55b0eb86d9841f9382e1b3dd33d768ffcfa9b7d65cdbf672c385f9903ade
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_meta:/data
