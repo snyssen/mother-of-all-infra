@@ -1,8 +1,23 @@
 { lib, ... }:
 let
   services = {
+    attic = {
+      domain = "attic.snyssen.be";
+    };
+    auth-main = {
+      domain = "auth.snyssen.be";
+    };
+    auth-team = {
+      domain = "auth.bigdouf.team";
+    };
+    dashboard = {
+      domain = "dash.snyssen.be";
+    };
     speedtest = {
       domain = "speedtest.snyssen.be";
+    };
+    minecraft = {
+      domain = "mc.snyssen.be";
     };
   };
 in
@@ -12,7 +27,7 @@ in
       ip-allowlist = {
         ipAllowList.sourceRange = [
           # Home
-          "213.49.36.74/32"
+          # "213.49.36.74/32"
           # tailnet
           "100.64.0.0/10"
         ];
