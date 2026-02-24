@@ -7,6 +7,16 @@
 }:
 let
   syncthingData = import ../../data/syncthing.nix;
+  theming = {
+    light = {
+      wallpaper = ../../files/wallpapers/icy_pink_sunrise.jpg;
+      scheme = "atelier-cave-light";
+    };
+    dark = {
+      wallpaper = ../../files/wallpapers/purple_bubbles.jpg;
+      scheme = "stella";
+    };
+  };
 in
 {
 
@@ -34,12 +44,12 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
-    inputs.stylix.nixosModules.stylix
 
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.logitech
+    flake.modules.nixos.stylix
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
     flake.modules.nixos.user
@@ -94,35 +104,27 @@ in
     };
   };
 
-  stylix = {
-    enable = true;
-    image = ../../files/wallpapers/icy_pink_sunrise.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/atelier-cave-light.yaml";
-    polarity = "light";
-
-    fonts = {
-      monospace = {
-        package = pkgs.nerd-fonts.fira-mono;
-        name = "FiraMono Nerd Font Mono";
+  stylix = with theming.light; {
+    wallpaper = wallpaper;
+    schemeName = scheme;
+    isLightTheme = true;
+  };
+  specialisation = with theming.dark; {
+    gnome-dark.configuration.stylix = {
+      wallpaper = lib.mkForce wallpaper;
+      schemeName = lib.mkForce scheme;
+      isLightTheme = false;
+    };
+    cosmic.configuration = {
+      gnome.enable = false;
+      cosmic.enable = true;
+      stylix = {
+        wallpaper = lib.mkForce wallpaper;
+        schemeName = lib.mkForce scheme;
+        isLightTheme = false;
       };
     };
   };
-  specialisation =
-    let
-      stylixDarkTheme = {
-        image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
-        base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
-        polarity = lib.mkForce "dark";
-      };
-    in
-    {
-      gnome-dark.configuration.stylix = stylixDarkTheme;
-      cosmic.configuration = {
-        gnome.enable = false;
-        cosmic.enable = true;
-        stylix = stylixDarkTheme;
-      };
-    };
 
   # TODO: make this part automatically defined
   nix.settings = {
