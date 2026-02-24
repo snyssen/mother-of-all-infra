@@ -265,6 +265,68 @@ services:
       - traefik.http.routers.lidify.middlewares=authelia@docker
     restart: unless-stopped
 
+  peertube:
+    image: chocobozzz/peertube:production-bookworm@sha256:011b0ec43d921bd60a3aa01fc7995e42cf15275925f16bee6f17a6c896ca5060
+    container_name: peertube
+    restart: unless-stopped
+    networks:
+      - web
+      - monitoring
+      - db
+      - peertube_internal
+    environment:
+      - PEERTUBE_DB_USERNAME={{ peertube__db_username }}
+      - PEERTUBE_DB_PASSWORD={{ peertube__db_password }}
+      - PEERTUBE_DB_HOSTNAME=postgres
+      - PEERTUBE_DB_NAME=peertube
+      - PEERTUBE_DB_SSL=false
+      - PEERTUBE_REDIS_HOSTNAME=peertube_redis
+      - PEERTUBE_WEBSERVER_HOSTNAME=peertube.{{ main_domain }}
+      - PEERTUBE_WEBSERVER_HTTPS=true
+      # Trust proxy configuration - includes localhost, loopback, and Docker bridge network
+      # Adjust peertube__trust_proxy_networks variable if your Docker network uses a different subnet
+      - PEERTUBE_TRUST_PROXY={{ peertube__trust_proxy_networks | default('["127.0.0.1", "loopback", "172.18.0.0/16"]') }}
+      - PEERTUBE_SECRET={{ peertube__secret }}
+      - PEERTUBE_SMTP_HOSTNAME={{ smtp__host }}
+      - PEERTUBE_SMTP_PORT={{ smtp__port }}
+      - PEERTUBE_SMTP_USERNAME={{ smtp__user }}
+      - PEERTUBE_SMTP_PASSWORD={{ smtp__pass }}
+      - PEERTUBE_SMTP_FROM=peertube@{{ main_domain }}
+      - PEERTUBE_SMTP_TLS={{ smtp__tls | lower }}
+      - PEERTUBE_SMTP_DISABLE_STARTTLS={{ smtp__ssl | lower }}
+      - PEERTUBE_ADMIN_EMAIL={{ smtp__to }}
+      # OIDC configuration for Authelia integration
+      # TODO: remove ? This is most probably useless as I think config cazn only be done through UI
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_ENABLED={{ peertube__oidc_enabled | default('true') }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_BUTTON_LABEL={{ peertube__oidc_button_label | default('Login with Authelia') }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL=https://auth.{{ main_domain }}/.well-known/openid-configuration
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID={{ peertube__oidc_client_id }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET={{ peertube__oidc_client_secret }}
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_SCOPE=openid profile email groups
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_USERNAME_PROPERTY=preferred_username
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_EMAIL_PROPERTY=email
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISPLAY_NAME_PROPERTY=name
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.peertube.entryPoints=websecure
+      - traefik.http.routers.peertube.rule=Host(`peertube.{{ main_domain }}`)
+      - traefik.http.services.peertube.loadBalancer.server.port=9000
+    volumes:
+      - "/mnt/storage/streaming/peertube/data:/data"
+      - "{{ docker_mounts_directory }}/peertube/config:/config"
+    depends_on:
+      - peertube_redis
+
+  peertube_redis:
+    image: redis:8-alpine@sha256:eaea8264f74a95ea9a0767c794da50788cbd9cf5223951674d491fa1b3f4f2d2
+    container_name: peertube_redis
+    restart: unless-stopped
+    networks:
+      - peertube_internal
+    volumes:
+      - "{{ docker_mounts_directory }}/peertube/redis:/data"
+
 networks:
   web:
     external: true
@@ -272,3 +334,6 @@ networks:
     external: true
   ldap:
     external: true
+  db:
+    external: true
+  peertube_internal:

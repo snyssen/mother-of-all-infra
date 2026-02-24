@@ -141,6 +141,9 @@ backbone__authelia__oidc_actual_budget_clientsecret_hash: "{{ vault_backbone__au
 backbone__authelia__oidc_mobilizon_clientid: "{{ vault_backbone__authelia__oidc_mobilizon_clientid }}"
 backbone__authelia__oidc_mobilizon_clientsecret: "{{ vault_backbone__authelia__oidc_mobilizon_clientsecret }}"
 backbone__authelia__oidc_mobilizon_clientsecret_hash: "{{ vault_backbone__authelia__oidc_mobilizon_clientsecret_hash }}"
+backbone__authelia__oidc_peertube_clientid: "{{ vault_backbone__authelia__oidc_peertube_clientid }}"
+backbone__authelia__oidc_peertube_clientsecret: "{{ vault_backbone__authelia__oidc_peertube_clientsecret }}"
+backbone__authelia__oidc_peertube_clientsecret_hash: "{{ vault_backbone__authelia__oidc_peertube_clientsecret_hash }}"
 
 unifi__mongo_pass: "{{ vault_unifi__mongo_pass }}"
 unifi__mongo_root_pass: "{{ vault_unifi__mongo_root_pass }}"
@@ -185,6 +188,8 @@ db__pg_databases:
     password: "{{ matrix__maubot__db_pass }}"
   - name: attic
     password: "{{ attic__postgres_password }}"
+  - name: "{{ peertube__db_username }}"
+    password: "{{ peertube__db_password }}"
 db__pg_dump_healthcheck_id: "{{ vault_db__pg_dump_healthcheck_id }}"
 db__pgadmin_email: "{{ vault_db__pgadmin_email }}"
 db__pgadmin_password: "{{ vault_db__pgadmin_password }}"
@@ -592,3 +597,9 @@ mobilizon__db_pass: "{{ vault_mobilizon__db_pass }}"
 mobilizon__db_dump_hc_id: "{{ vault_mobilizon__db_dump_hc_id }}"
 mobilizon__secret_key_base: "{{ vault_mobilizon__secret_key_base }}"
 mobilizon__secret_key: "{{ vault_mobilizon__secret_key }}"
+
+peertube__db_username: "peertube"
+peertube__db_password: "{{ vault_peertube__db_password }}"
+peertube__secret: "{{ vault_peertube__secret }}"
+peertube__oidc_client_id: "{{ backbone__authelia__oidc_peertube_clientid }}"
+peertube__oidc_client_secret: "{{ backbone__authelia__oidc_peertube_clientsecret }}"
