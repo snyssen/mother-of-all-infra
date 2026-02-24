@@ -104,24 +104,22 @@ in
     };
   };
 
-  stylix = with theming.light; {
+  stylix = with theming.dark; {
     wallpaper = wallpaper;
     schemeName = scheme;
-    isLightTheme = true;
   };
-  specialisation = with theming.dark; {
-    gnome-dark.configuration.stylix = {
+  specialisation = {
+    gnome-light.configuration.stylix = with theming.light; {
       wallpaper = lib.mkForce wallpaper;
       schemeName = lib.mkForce scheme;
       isLightTheme = false;
     };
-    cosmic.configuration = {
+    cosmic.configuration = with theming.dark; {
       gnome.enable = false;
       cosmic.enable = true;
       stylix = {
         wallpaper = lib.mkForce wallpaper;
         schemeName = lib.mkForce scheme;
-        isLightTheme = false;
       };
     };
   };
