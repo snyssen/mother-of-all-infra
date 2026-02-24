@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.6.8@sha256:90099f8948c828ecf0ababd711a4359a2443eba12261c1df2f548a3b1d815938
+    image: traefik:v3.6.9@sha256:66a872e081b55d1d3641d898f4cd993f5db613095ca71350989ef6a14a188643
     restart: unless-stopped
     container_name: traefik
     networks:
@@ -195,7 +195,7 @@ services:
       - '{{ docker_mounts_directory }}/authelia/config:/config'
 
   authelia_redis:
-    image: redis:8.6.0@sha256:7b6fb55d8b0adcd77269dc52b3cfffe5f59ca5d43dec3c90dbe18aacce7942e1
+    image: redis:8.6.1@sha256:dc123d5a424cbe44d681822c2a620f3f44bdba240b8a58a0eee0048a285532ed
     container_name: authelia_redis
     restart: unless-stopped
     networks:
