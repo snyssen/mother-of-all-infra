@@ -280,29 +280,31 @@ services:
       - PEERTUBE_DB_HOSTNAME=postgres
       - PEERTUBE_DB_NAME=peertube
       - PEERTUBE_DB_SSL=false
+      - PEERTUBE_REDIS_HOSTNAME=peertube_redis
       - PEERTUBE_WEBSERVER_HOSTNAME=peertube.{{ main_domain }}
       - PEERTUBE_WEBSERVER_HTTPS=true
       # Trust proxy configuration - includes localhost, loopback, and Docker bridge network
       # Adjust peertube__trust_proxy_networks variable if your Docker network uses a different subnet
       - PEERTUBE_TRUST_PROXY={{ peertube__trust_proxy_networks | default('["127.0.0.1", "loopback", "172.18.0.0/16"]') }}
       - PEERTUBE_SECRET={{ peertube__secret }}
-      - PEERTUBE_SMTP_HOSTNAME={{ peertube__smtp_hostname }}
-      - PEERTUBE_SMTP_PORT={{ peertube__smtp_port }}
-      - PEERTUBE_SMTP_FROM={{ peertube__smtp_from }}
-      - PEERTUBE_SMTP_TLS={{ peertube__smtp_tls }}
-      - PEERTUBE_SMTP_DISABLE_STARTTLS={{ peertube__smtp_disable_starttls }}
-      - PEERTUBE_ADMIN_EMAIL={{ peertube__admin_email }}
+      - PEERTUBE_SMTP_HOSTNAME={{ smtp__host }}
+      - PEERTUBE_SMTP_PORT={{ smtp__port }}
+      - PEERTUBE_SMTP_USERNAME={{ smtp__user }}
+      - PEERTUBE_SMTP_PASSWORD={{ smtp__pass }}
+      - PEERTUBE_SMTP_FROM=peertube@{{ main_domain }}
+      - PEERTUBE_SMTP_TLS={{ smtp__tls | lower }}
+      - PEERTUBE_SMTP_DISABLE_STARTTLS={{ smtp__ssl | lower }}
+      - PEERTUBE_ADMIN_EMAIL={{ smtp__to }}
       # OIDC configuration for Authelia integration
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_ENABLED={{ peertube__oidc_enabled | default('true') }}
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_BUTTON_LABEL={{ peertube__oidc_button_label | default('Login with Authelia') }}
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL=https://auth.{{ main_domain }}/.well-known/openid-configuration
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID={{ peertube__oidc_client_id }}
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET={{ peertube__oidc_client_secret }}
-      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_SCOPE=openid profile email
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_SCOPE=openid profile email groups
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_USERNAME_PROPERTY=preferred_username
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_EMAIL_PROPERTY=email
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISPLAY_NAME_PROPERTY=name
-    user: "33:{{ ansible_user_gid }}"
     labels:
       - traefik.enable=true
       - traefik.docker.network=web
@@ -310,7 +312,7 @@ services:
       - traefik.http.routers.peertube.rule=Host(`peertube.{{ main_domain }}`)
       - traefik.http.services.peertube.loadBalancer.server.port=9000
     volumes:
-      - "{{ docker_mounts_directory }}/peertube/data:/data"
+      - "/mnt/storage/streaming/peertube/data:/data"
       - "{{ docker_mounts_directory }}/peertube/config:/config"
     depends_on:
       - peertube_redis
@@ -323,9 +325,6 @@ services:
       - peertube_internal
     volumes:
       - "{{ docker_mounts_directory }}/peertube/redis:/data"
-    # Memory limit: 64MB is suitable for light usage
-    # May need to increase for high-traffic instances
-    mem_limit: 64m
 
 networks:
   web:
@@ -337,4 +336,3 @@ networks:
   db:
     external: true
   peertube_internal:
-    driver: bridge

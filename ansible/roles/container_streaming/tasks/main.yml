@@ -66,12 +66,18 @@
     - src: "{{ docker_mounts_directory }}/lidify/config"
       mode: "750"
     # peertube
-    - src: "{{ docker_mounts_directory }}/peertube/data"
+    - src: "/mnt/storage/streaming/peertube/data"
       mode: "750"
+      owner: "999"
+      group: "999"
     - src: "{{ docker_mounts_directory }}/peertube/config"
       mode: "750"
+      owner: "999"
+      group: "999"
     - src: "{{ docker_mounts_directory }}/peertube/redis"
       mode: "750"
+      owner: "999"
+      group: "999"
 
 - name: Deploying Sabnzbd config
   become: true

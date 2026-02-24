@@ -690,22 +690,31 @@ identity_providers:
       - client_name: 'Peertube'
         client_id: '{{ backbone__authelia__oidc_peertube_clientid }}'
         client_secret: '{{ backbone__authelia__oidc_peertube_clientsecret_hash }}'
+        public: false
         authorization_policy: 'media_policy'
+        require_pkce: true
+        pkce_challenge_method: 'S256'
         redirect_uris:
           - 'https://peertube.{{ main_domain }}/plugins/auth-openid-connect/router/code-cb'
         scopes:
           - 'openid'
           - 'profile'
           - 'email'
+          - 'groups'
+        response_types:
+          - 'code'
+        grant_types:
+          - 'authorization_code'
+        access_token_signed_response_alg: 'none'
         userinfo_signed_response_alg: 'none'
-      - client_name: 'Mobilizon'
-        client_id: '{{ backbone__authelia__oidc_mobilizon_clientid }}'
-        client_secret: '{{ backbone__authelia__oidc_mobilizon_clientsecret_hash }}'
-        authorization_policy: 'team_member_policy'
-        redirect_uris:
-          - 'https://events.{{ main_domain }}/auth/keycloak/callback'
-        scopes:
-          - 'openid'
-          - 'email'
-          - 'profile'
         token_endpoint_auth_method: 'client_secret_post'
+      # - client_name: 'Mobilizon'
+      #   client_id: '{{ backbone__authelia__oidc_mobilizon_clientid }}'
+      #   client_secret: '{{ backbone__authelia__oidc_mobilizon_clientsecret_hash }}'
+      #   authorization_policy: 'team_member_policy'
+      #   redirect_uris:
+      #     - 'https://events.{{ main_domain }}/auth/keycloak/callback'
+      #   scopes:
+      #     - 'openid'
+      #     - 'email'
+      #     - 'profile'
