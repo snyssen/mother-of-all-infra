@@ -52,6 +52,8 @@ in
               signageos.signageos-vscode-sops
               github.vscode-github-actions
               github.vscode-pull-request-github
+              ms-azuretools.vscode-containers
+              ms-vscode-remote.remote-containers
             ]
             ++ versionAlignedExtensions;
           defaultUserSettings = {
@@ -152,23 +154,6 @@ in
             userSettings = defaultUserSettings;
             keybindings = defaultKeybindings;
           };
-          dotnet = {
-            extensions =
-              with pkgs.vscode-marketplace;
-              [
-                ms-dotnettools.vscode-dotnet-runtime
-                ms-dotnettools.csharp
-                ms-dotnettools.csdevkit
-                editorconfig.editorconfig
-                ms-azuretools.vscode-containers
-                ms-vscode-remote.remote-containers
-              ]
-              ++ defaultExtensions;
-            userSettings = lib.mkMerge [
-              defaultUserSettings
-            ];
-            keybindings = defaultKeybindings;
-          };
         };
 
     };
@@ -176,7 +161,6 @@ in
       "default"
       "ansible"
       "astro"
-      "dotnet"
     ];
   };
 }

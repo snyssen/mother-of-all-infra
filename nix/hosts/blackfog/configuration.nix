@@ -7,6 +7,16 @@
 }:
 let
   syncthingData = import ../../data/syncthing.nix;
+  theming = {
+    # light = {
+    #   wallpaper = ../../files/wallpapers/icy_pink_sunrise.jpg;
+    #   scheme = "atelier-cave-light";
+    # };
+    dark = {
+      wallpaper = ../../files/wallpapers/foggy_night_bridge.jpg;
+      scheme = "nord";
+    };
+  };
 in
 {
 
@@ -34,12 +44,12 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
-    inputs.stylix.nixosModules.stylix
 
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.logitech
+    flake.modules.nixos.stylix
     flake.modules.nixos.gnome
     flake.modules.nixos.user
     flake.modules.nixos.shell
@@ -91,35 +101,10 @@ in
     };
   };
 
-  stylix = {
-    enable = true;
-    image = ../../files/wallpapers/foggy_night_bridge.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/nord.yaml";
-    polarity = "dark";
-
-    fonts = {
-      monospace = {
-        package = pkgs.nerd-fonts.fira-mono;
-        name = "FiraMono Nerd Font Mono";
-      };
-    };
+  stylix = with theming.dark; {
+    wallpaper = wallpaper;
+    schemeName = scheme;
   };
-  # specialisation =
-  #   let
-  #     stylixDarkTheme = {
-  #       image = lib.mkForce ../../files/wallpapers/purple_bubbles.jpg;
-  #       base16Scheme = lib.mkForce "${pkgs.base16-schemes}/share/themes/stella.yaml";
-  #       polarity = lib.mkForce "dark";
-  #     };
-  #   in
-  #   {
-  #     gnome-dark.configuration.stylix = stylixDarkTheme;
-  #     cosmic.configuration = {
-  #       gnome.enable = false;
-  #       cosmic.enable = true;
-  #       stylix = stylixDarkTheme;
-  #     };
-  #   };
 
   # TODO: make this part automatically defined
   nix.settings = {
