@@ -16,6 +16,10 @@ let
       wallpaper = ../../files/wallpapers/foggy_night_bridge.jpg;
       scheme = "nord";
     };
+    gaming = {
+      wallpaper = ../../files/wallpapers/hazy_dusk_mountains.jpg;
+      scheme = "catppuccin-frappe";
+    };
   };
 in
 {
@@ -102,8 +106,20 @@ in
   };
 
   stylix = with theming.dark; {
-    wallpaper = wallpaper;
-    schemeName = scheme;
+    wallpaper = lib.mkDefault wallpaper;
+    schemeName = lib.mkDefault scheme;
+  };
+
+  specialisation = {
+    gaming.configuration = {
+      imports = [
+        flake.modules.nixos.steam
+      ];
+      stylix = with theming.gaming; {
+        wallpaper = wallpaper;
+        schemeName = scheme;
+      };
+    };
   };
 
   # TODO: make this part automatically defined
