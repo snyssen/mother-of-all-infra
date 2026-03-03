@@ -54,6 +54,7 @@ in
               github.vscode-pull-request-github
               ms-azuretools.vscode-containers
               ms-vscode-remote.remote-containers
+              mechatroner.rainbow-csv
             ]
             ++ versionAlignedExtensions;
           defaultUserSettings = {
