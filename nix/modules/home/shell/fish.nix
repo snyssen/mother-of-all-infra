@@ -14,6 +14,7 @@ in
     intelli-shell.enable = lib.mkEnableOption "intelli-shell";
     direnv.enable = lib.mkEnableOption "direnv integration";
     starship.enable = lib.mkEnableOption "starship prompt";
+    dua.enable = lib.mkEnableOption "dua-cli integration";
   };
 
   config = lib.mkIf cfg.enable {
@@ -51,5 +52,7 @@ in
       enable = true;
       enableFishIntegration = true;
     };
+
+    home.packages = with pkgs; [ ] ++ lib.lists.optional cfg.dua.enable dua;
   };
 }

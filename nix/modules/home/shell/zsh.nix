@@ -14,10 +14,12 @@ in
     fzf.enable = lib.mkEnableOption "fzf history manager";
     intelli-shell.enable = lib.mkEnableOption "intelli-shell";
     direnv.enable = lib.mkEnableOption "direnv integration";
+    dua.enable = lib.mkEnableOption "dua-cli integration";
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = lib.mkIf cfg.atuin.enable [ pkgs.atuin ];
+    home.packages =
+      [ ] ++ lib.lists.optional cfg.atuin.enable pkgs.atuin ++ lib.lists.optional cfg.dua.enable pkgs.dua;
 
     programs.fzf = lib.mkIf cfg.fzf.enable {
       enable = true;
