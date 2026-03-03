@@ -77,7 +77,7 @@ services:
       - "{{ docker_mounts_directory }}/audiobookshelf/metadata:/metadata"
 
   torrent:
-    image: lscr.io/linuxserver/transmission:4.1.0@sha256:3f75efdb5203efb4daecec06f1ecd728b488fc537651df0ba7dca94a3e39b6e4
+    image: lscr.io/linuxserver/transmission:4.1.1@sha256:d2183a00bbd5dbb083b14dcd65419379bfd91e0965b52849642354ec3d246452
     container_name: torrent
     network_mode: container:vpn
     environment:
@@ -187,7 +187,7 @@ services:
     mem_limit: 1g
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.5.5@sha256:c381924dcfd79930e8f3ee75e024671185b810b0f71c984aa8712854c74c1bbb
+    image: lscr.io/linuxserver/bazarr:1.5.6@sha256:b0bc617664dbca25845ac3b1bb6411b145b6a44a6d173071c9d2f426524fdd9f
     container_name: bazarr
     environment:
       - PUID=33
