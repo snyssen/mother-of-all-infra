@@ -2,6 +2,7 @@
   config,
   pkgs,
   lib,
+  osConfig,
   ...
 }:
 let
@@ -57,7 +58,8 @@ in
               ms-vscode-remote.remote-ssh
               mechatroner.rainbow-csv
             ]
-            ++ versionAlignedExtensions;
+            ++ versionAlignedExtensions
+            ++ lib.lists.optional osConfig.services.tailscale.enable pkgs.vscode-marketplace.tailscale.vscode-tailscale;
           defaultUserSettings = {
             "git.autofetch" = "all";
             "git.enableSmartCommit" = true;
