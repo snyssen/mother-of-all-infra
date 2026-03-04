@@ -54,6 +54,7 @@ in
               github.vscode-pull-request-github
               ms-azuretools.vscode-containers
               ms-vscode-remote.remote-containers
+              ms-vscode-remote.remote-ssh
               mechatroner.rainbow-csv
             ]
             ++ versionAlignedExtensions;
