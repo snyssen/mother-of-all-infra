@@ -83,6 +83,9 @@ in
                 "approveResponse" = true;
               };
             };
+            "chat.tools.terminal.autoApprove" = {
+              "dotnet build" = true;
+            };
             "github.copilot.nextEditSuggestions.enabled" = true;
             "remote.autoForwardPorts" = false;
             "remote.autoForwardPortsSource" = "hybrid";
