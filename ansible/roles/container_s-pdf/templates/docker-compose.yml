@@ -15,7 +15,6 @@ services:
     volumes:
       - "{{ docker_mounts_directory }}/s-pdf/ocr:/usr/share/tesseract-ocr/5/tessdata" #Required for extra OCR languages
       - "{{ docker_mounts_directory }}/s-pdf/config:/configs"
-    mem_limit: 512m
 networks:
   web:
     external: true
