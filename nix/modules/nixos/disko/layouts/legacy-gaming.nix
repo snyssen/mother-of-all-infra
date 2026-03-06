@@ -84,55 +84,6 @@ in
               };
             };
           };
-          game-ssd = {
-            device = "/dev/sdb";
-            type = "disk";
-            content = {
-              type = "gpt";
-              partitions = {
-                luks = {
-                  size = "100%";
-                  content = {
-                    type = "luks";
-                    name = "crypted-game-ssd";
-                    passwordFile = "/tmp/secret.key"; # Reuse key
-                    settings = lib.mkMerge [
-                      luksSettings
-                      { allowDiscards = true; }
-                    ];
-                    content = {
-                      type = "filesystem";
-                      format = "ext4";
-                      mountpoint = "/mnt/game-ssd";
-                    };
-                  };
-                };
-              };
-            };
-          };
-          game-hdd = {
-            device = "/dev/sda";
-            type = "disk";
-            content = {
-              type = "gpt";
-              partitions = {
-                luks = {
-                  size = "100%";
-                  content = {
-                    type = "luks";
-                    name = "crypted-game-hdd";
-                    passwordFile = "/tmp/secret.key"; # Reuse key
-                    settings = luksSettings;
-                    content = {
-                      type = "filesystem";
-                      format = "ext4";
-                      mountpoint = "/mnt/game-hdd";
-                    };
-                  };
-                };
-              };
-            };
-          };
         };
       };
   };

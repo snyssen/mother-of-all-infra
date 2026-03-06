@@ -71,8 +71,9 @@ in
 
   disko.layout = "legacy-gaming";
   disko."legacy-gaming".usbKeysIds = [
-    "9FBA-884A"
-    "75E6-4B88"
+    "9FBA-884A" # Generic Flash Disk (no casing)
+    "75E6-4B88" # Kingston Data Traveller
+    "8B34-7D3C" # Philips 8GB
   ];
 
   grub.timeout = 10;
