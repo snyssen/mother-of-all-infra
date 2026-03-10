@@ -3,6 +3,7 @@
   lib,
   inputs,
   flake,
+  config,
   ...
 }:
 let
@@ -44,7 +45,9 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    inputs.sops-nix.nixosModules.sops
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -63,6 +66,13 @@ in
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
   ];
+
+  sops.secrets."paperless/api-token" = {
+    sopsFile = ./data/secrets.yaml;
+    owner = "scanservjs";
+    group = "scanservjs";
+    mode = "0400";
+  };
 
   disko =
     let
@@ -120,6 +130,19 @@ in
       stylix = {
         wallpaper = lib.mkForce wallpaper;
         schemeName = lib.mkForce scheme;
+      };
+    };
+    scanner.configuration = {
+      printing = {
+        enable = true;
+        scanner = {
+          enable = true;
+          paperless = {
+            enable = true;
+            url = "https://paperless.snyssen.be";
+            apiTokenPath = config.sops.secrets."paperless/api-token".path;
+          };
+        };
       };
     };
   };

@@ -105,6 +105,7 @@ in
             {
               name: 'Upload to Paperless',
               async execute(fileInfo) {
+                const Process = require("${pkgs.scanservjs}/lib/node_modules/scanservjs-api/src/classes/process");
                 return await Process.spawn('${paperlessUploadScript}/bin/paperless-upload "' + fileInfo.fullname + '"');
               }
             }
