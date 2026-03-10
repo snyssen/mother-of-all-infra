@@ -6,50 +6,6 @@
 }:
 let
   cfg = config.printing;
-
-  paperlessUploadScript = pkgs.writeShellApplication {
-    name = "paperless-upload";
-    runtimeInputs = [
-      pkgs.curl
-      pkgs.coreutils
-    ];
-    text = ''
-      set -euo pipefail
-
-      if [ $# -ne 1 ]; then
-        echo "Usage: $0 <file-path>" >&2
-        exit 1
-      fi
-
-      FILE="$1"
-
-      if [ ! -f "$FILE" ]; then
-        echo "Error: File '$FILE' does not exist" >&2
-        exit 1
-      fi
-
-      if [ ! -f "${cfg.scanner.paperless.apiTokenPath}" ]; then
-        echo "Error: API token file not found at ${cfg.scanner.paperless.apiTokenPath}" >&2
-        exit 1
-      fi
-
-      TOKEN=$(cat "${cfg.scanner.paperless.apiTokenPath}")
-
-      echo "Uploading $FILE to Paperless at ${cfg.scanner.paperless.url}..."
-
-      if curl -X POST \
-        -H "Authorization: Token $TOKEN" \
-        -F "document=@$FILE" \
-        "${cfg.scanner.paperless.url}/api/documents/post_document/" \
-        --fail --silent --show-error --max-time 30; then
-        echo "Successfully uploaded $FILE to Paperless"
-        exit 0
-      else
-        echo "Failed to upload $FILE to Paperless" >&2
-        exit 1
-      fi
-    '';
-  };
 in
 {
   options.printing = {
@@ -93,12 +49,59 @@ in
 
     # Scanner configuration with scanservjs
     (lib.mkIf cfg.scanner.enable {
-      services.scanservjs = {
-        enable = true;
-        # Add Paperless upload action when integration is enabled
-        extraActions =
-          [ ]
-          ++ lib.lists.optional cfg.scanner.paperless.enable ''
+      services.scanservjs.enable = true;
+    })
+
+    # Paperless integration
+    (lib.mkIf (cfg.scanner.enable && cfg.scanner.paperless.enable) (
+      let
+        paperlessUploadScript = pkgs.writeShellApplication {
+          name = "paperless-upload";
+          runtimeInputs = [
+            pkgs.curl
+            pkgs.coreutils
+          ];
+          text = ''
+            set -euo pipefail
+
+            if [ $# -ne 1 ]; then
+              echo "Usage: $0 <file-path>" >&2
+              exit 1
+            fi
+
+            FILE="$1"
+
+            if [ ! -f "$FILE" ]; then
+              echo "Error: File '$FILE' does not exist" >&2
+              exit 1
+            fi
+
+            if [ ! -f "${cfg.scanner.paperless.apiTokenPath}" ]; then
+              echo "Error: API token file not found at ${cfg.scanner.paperless.apiTokenPath}" >&2
+              exit 1
+            fi
+
+            TOKEN=$(cat "${cfg.scanner.paperless.apiTokenPath}")
+
+            echo "Uploading $FILE to Paperless at ${cfg.scanner.paperless.url}..."
+
+            if curl -X POST \
+              -H "Authorization: Token $TOKEN" \
+              -F "document=@$FILE" \
+              "${cfg.scanner.paperless.url}/api/documents/post_document/" \
+              --fail --silent --show-error --max-time 30; then
+              echo "Successfully uploaded $FILE to Paperless"
+              exit 0
+            else
+              echo "Failed to upload $FILE to Paperless" >&2
+              exit 1
+            fi
+          '';
+        };
+      in
+      {
+        services.scanservjs.extraActions = [
+          ''
             {
               name: 'Upload to Paperless',
               async execute(fileInfo) {
@@ -106,13 +109,12 @@ in
                 return await Process.spawn('${paperlessUploadScript}/bin/paperless-upload "' + fileInfo.fullname + '"');
               }
             }
-          '';
-      };
+          ''
+        ];
 
-      # Make the upload script available for manual use
-      environment.systemPackages = lib.mkIf cfg.scanner.paperless.enable [
-        paperlessUploadScript
-      ];
-    })
+        # Make the upload script available for manual use
+        environment.systemPackages = [ paperlessUploadScript ];
+      }
+    ))
   ];
 }
