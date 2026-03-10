@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   inputs,
@@ -31,8 +32,10 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    inputs.sops-nix.nixosModules.sops
     inputs.stylix.nixosModules.stylix
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -77,6 +80,29 @@ in
   environment.systemPackages = [
     pkgs.htop
   ];
+
+  # Printing and scanning configuration
+  printing = {
+    enable = true;
+    scanner = {
+      enable = true;
+      paperless = {
+        enable = true;
+        url = "https://paperless.snyssen.be";
+        # Only reference the secret path when enabled, otherwise use a dummy path
+        apiTokenPath =
+          if config.printing.scanner.paperless.enable then
+            config.sops.secrets."paperless/api-token".path
+          else
+            "/dev/null"; # Dummy path when disabled
+      };
+    };
+  };
+
+  # SOPS secrets configuration - only declare when scanner integration is enabled
+  sops.secrets."paperless/api-token" = lib.mkIf config.printing.scanner.paperless.enable {
+    sopsFile = ./data/secrets.yaml;
+  };
 
   syncthing = {
     username = "snyssen";

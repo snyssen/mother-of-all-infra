@@ -22,6 +22,12 @@ creation_rules:
       - pgp:
         age:
           - *snyssen_gaming
+  - path_regex: nix/hosts/sninful/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *snyssen_sninful
+          - *snyssen_purplehaze
   - path_regex: nix/hosts/ingress/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
