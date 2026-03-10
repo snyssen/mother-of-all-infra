@@ -88,20 +88,16 @@ in
       enable = true;
       paperless = {
         enable = true;
-        url = "https://paperless.snyssen.be";
-        # Only reference the secret path when enabled, otherwise use a dummy path
-        apiTokenPath =
-          if config.printing.scanner.paperless.enable then
-            config.sops.secrets."paperless/api-token".path
-          else
-            "/dev/null"; # Dummy path when disabled
+        apiTokenPath = config.sops.secrets."paperless/api-token".path;
       };
     };
   };
 
-  # SOPS secrets configuration - only declare when scanner integration is enabled
-  sops.secrets."paperless/api-token" = lib.mkIf config.printing.scanner.paperless.enable {
+  sops.secrets."paperless/api-token" = {
     sopsFile = ./data/secrets.yaml;
+    owner = "scanservjs";
+    group = "scanservjs";
+    mode = "0400";
   };
 
   syncthing = {

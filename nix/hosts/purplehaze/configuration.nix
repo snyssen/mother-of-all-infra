@@ -139,7 +139,6 @@ in
           enable = true;
           paperless = {
             enable = true;
-            url = "https://paperless.snyssen.be";
             apiTokenPath = config.sops.secrets."paperless/api-token".path;
           };
         };
