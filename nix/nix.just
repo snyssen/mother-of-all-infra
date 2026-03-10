@@ -9,3 +9,7 @@ nix-build-cache host=hostname:
 # Update NixOS configuration on a remote host using nh (requires tailscale for DNS and root SSH access)
 nix-remote-install host ip=host:
   nh os switch -H {{host}} --target-host=root@{{ip}}
+
+# Check that flake builds correctly
+nix-check:
+  nix flake check
