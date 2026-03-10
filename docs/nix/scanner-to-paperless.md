@@ -63,7 +63,7 @@ This guide explains how to set up automatic document ingestion from a scanner di
 - **Purpose**: Uploads PDFs to Paperless API with authentication
 - **Features**: Error handling, logging, timeout protection
 - **Called By**: Paperless Upload action
-- **Logging**: View with `journalctl -u scanservjs-paperless-watcher -f`
+- **Logging**: View with `journalctl -u scanservjs -f`
 
 ## Configuration
 
@@ -87,66 +87,7 @@ printing = {
 };
 ```
 
-## Setup Instructions
-
-### Step 1: Generate Paperless API Token
-
-1. Go to your Paperless instance: <https://paperless.snyssen.be>
-2. Log in with your account
-3. Navigate to **Settings** → **API Tokens**
-4. Click **Create New Token**
-5. Give it a descriptive name (e.g., "Scanner Upload - sninful")
-6. Copy the generated token - you'll need it in the next step
-
-### Step 2: Create Encrypted Secrets File
-
-1. Copy the template to create your secrets file:
-
-   ```bash
-   cd nix/hosts/sninful/data
-   cp secrets.yaml.template secrets.yaml
-   ```
-
-2. Edit the file with SOPS (auto-encrypts on save):
-
-   ```bash
-   just sops-update
-   # Navigate to nix/hosts/sninful/data/secrets.yaml when prompted
-   ```
-
-3. Replace `REPLACE_WITH_YOUR_PAPERLESS_API_TOKEN` with your actual token from Step 1
-
-4. Save and exit - the file will be automatically encrypted
-
-### Step 3: Enable Paperless Integration
-
-Edit `/nix/hosts/sninful/configuration.nix` and change:
-
-```nix
-    if config.printing.scanner.paperless.enable
-    then config.sops.secrets."paperless/api-token".path
-    else "/dev/null"
-paperless = {
-  enable = true;  # Changed from false
-  url = "https://paperless.snyssen.be";
-  apiTokenPath = config.sops.secrets."paperless/api-token".path;
-};
-```
-
-### Step 4: Build and Deploy
-
-```bash
-nh os switch -H sninful
-```
-
-This will:
-
-- Install and configure scanservjs
-- Add the "Upload to Paperless" action
-- Make the upload script available
-- Configure SANE scanner drivers
-
-### Step 5: Test the Setup
+### Test the Setup
 
 1. **Test scanner access**:
 
