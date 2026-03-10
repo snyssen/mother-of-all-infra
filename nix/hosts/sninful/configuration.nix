@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   inputs,
@@ -31,8 +32,10 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    inputs.sops-nix.nixosModules.sops
     inputs.stylix.nixosModules.stylix
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -77,6 +80,25 @@ in
   environment.systemPackages = [
     pkgs.htop
   ];
+
+  # Printing and scanning configuration
+  printing = {
+    enable = true;
+    scanner = {
+      enable = true;
+      paperless = {
+        enable = true;
+        apiTokenPath = config.sops.secrets."paperless/api-token".path;
+      };
+    };
+  };
+
+  sops.secrets."paperless/api-token" = {
+    sopsFile = ./data/secrets.yaml;
+    owner = "scanservjs";
+    group = "scanservjs";
+    mode = "0400";
+  };
 
   syncthing = {
     username = "snyssen";
