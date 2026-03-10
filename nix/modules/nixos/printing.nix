@@ -67,6 +67,7 @@ in
           type = lib.types.str;
           example = "https://paperless.snyssen.be";
           description = "Paperless-ngx instance URL (without trailing slash)";
+          default = "https://paperless.snyssen.be";
         };
 
         apiTokenPath = lib.mkOption {
@@ -94,14 +95,10 @@ in
     (lib.mkIf cfg.scanner.enable {
       services.scanservjs = {
         enable = true;
-        settings = {
-          scanImage = "/usr/bin/scanimage";
-          convert = "${pkgs.imagemagick}/bin/convert";
-          tesseract = "${pkgs.tesseract}/bin/tesseract";
-        };
         # Add Paperless upload action when integration is enabled
-        extraActions = lib.mkIf cfg.scanner.paperless.enable [
-          ''
+        extraActions =
+          [ ]
+          ++ lib.lists.optional cfg.scanner.paperless.enable ''
             {
               name: 'Upload to Paperless',
               async execute(fileInfo) {
@@ -109,8 +106,7 @@ in
                 return await Process.spawn('${paperlessUploadScript}/bin/paperless-upload "' + fileInfo.fullname + '"');
               }
             }
-          ''
-        ];
+          '';
       };
 
       # Make the upload script available for manual use
