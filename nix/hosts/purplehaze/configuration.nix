@@ -45,7 +45,6 @@ in
     inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
-    inputs.sops-nix.nixosModules.sops
 
     flake.modules.nixos.sops
     flake.modules.nixos.cache

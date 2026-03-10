@@ -1,8 +1,17 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  inputs,
+  ...
+}:
 let
   cfg = config.sops;
 in
 {
+  imports = [
+    inputs.sops-nix.nixosModules.sops
+  ];
+
   options.sops = { };
 
   config = {
