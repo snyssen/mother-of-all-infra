@@ -53,7 +53,7 @@ in
     })
 
     # Paperless integration
-    (lib.mkIf cfg.scanner.paperless.enable (
+    (lib.mkIf (cfg.scanner.enable && cfg.scanner.paperless.enable) (
       let
         paperlessUploadScript = pkgs.writeShellApplication {
           name = "paperless-upload";
