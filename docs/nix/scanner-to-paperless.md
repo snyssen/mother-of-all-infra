@@ -266,7 +266,7 @@ Potential improvements not yet implemented:
 ### `printing.scanner.paperless.enable`
 
 - **Type**: boolean
-- **Default**: `false`optional upload action
+- **Default**: `false`
 - **Description**: Enable automatic upload to Paperless-ngx
 
 ### `printing.scanner.paperless.url`

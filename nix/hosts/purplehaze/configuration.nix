@@ -67,13 +67,6 @@ in
     flake.modules.nixos.sunshine
   ];
 
-  sops.secrets."paperless/api-token" = {
-    sopsFile = ./data/secrets.yaml;
-    owner = "scanservjs";
-    group = "scanservjs";
-    mode = "0400";
-  };
-
   disko =
     let
       ly = "single-btrfs-luks";
@@ -133,6 +126,12 @@ in
       };
     };
     scanner.configuration = {
+      sops.secrets."paperless/api-token" = {
+        sopsFile = ./data/secrets.yaml;
+        owner = "scanservjs";
+        group = "scanservjs";
+        mode = "0400";
+      };
       printing = {
         enable = true;
         scanner = {
