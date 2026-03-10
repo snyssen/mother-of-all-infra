@@ -29,7 +29,6 @@ in
   #########################
 
   imports = [
-    inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
     inputs.stylix.nixosModules.stylix

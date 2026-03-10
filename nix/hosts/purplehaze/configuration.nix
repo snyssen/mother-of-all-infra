@@ -42,7 +42,6 @@ in
 
   imports = [
     inputs.nixos-hardware.nixosModules.framework-12-13th-gen-intel
-    inputs.disko.nixosModules.disko
     flake.modules.nixos.disko
     ./hardware-configuration.nix
 

@@ -1,4 +1,9 @@
-{ lib, config, ... }:
+{
+  lib,
+  config,
+  inputs,
+  ...
+}:
 let
   cfg = config.disko;
   layouts = lib.lists.map (x: builtins.replaceStrings [ ".nix" ] [ "" ] x) (
@@ -12,5 +17,7 @@ in
     };
   };
 
-  imports = lib.lists.map (x: ./layouts/${x}.nix) layouts;
+  imports = (lib.lists.map (x: ./layouts/${x}.nix) layouts) ++ [
+    inputs.disko.nixosModules.disko
+  ];
 }
