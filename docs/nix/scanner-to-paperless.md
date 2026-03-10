@@ -285,7 +285,7 @@ journalctl -u scanservjs -n 30
 
 ## Security Notes
 
-- **API Token**: Stored encrypted with SOPS, only readable by root
+- **API Token**: Stored encrypted with SOPS and deployed with `owner = "scanservjs"`, `mode = "0400"` — readable only by the `scanservjs` service user, not world-readable or accessible by other users
 - **Transport**: All communication with Paperless uses HTTPS
 - **File Permissions**: Scanner output directory is restricted to scanservjs user
 - **Token Rotation**: Regenerate token periodically in Paperless settings
