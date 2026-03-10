@@ -6,7 +6,7 @@ This guide explains how to set up automatic document ingestion from a scanner di
 
 ## Architecture
 
-```
+```plaintext
 ┌──────────────┐
 │   Scanner    │
 │  (Hardware)  │
@@ -45,17 +45,20 @@ This guide explains how to set up automatic document ingestion from a scanner di
 ## Components
 
 ### scanservjs
+
 - **Web Interface**: Access at `http://localhost:8080` (when enabled)
-- **Purpose**: Provides a user-fwith a customizable action menu
+- **Purpose**: Provides a user with a customizable action menu
 - **Custom Actions**: Displays "Upload to Paperless" as a post-scan action
 
 ### Paperless Upload Action
+
 - **Type**: scanservjs custom action
 - **Trigger**: Manually selected by user after scanning (from action menu)
 - **Execution**: Calls the paperless-upload script with the scanned file
 - **Flexibility**: Can be applied selectively (scan without uploading if desired)
 
 ### paperless-upload Script
+
 - **Location**: Available in system PATH when enabled
 - **Purpose**: Uploads PDFs to Paperless API with authentication
 - **Features**: Error handling, logging, timeout protection
@@ -88,7 +91,7 @@ printing = {
 
 ### Step 1: Generate Paperless API Token
 
-1. Go to your Paperless instance: https://paperless.snyssen.be
+1. Go to your Paperless instance: <https://paperless.snyssen.be>
 2. Log in with your account
 3. Navigate to **Settings** → **API Tokens**
 4. Click **Create New Token**
@@ -98,12 +101,14 @@ printing = {
 ### Step 2: Create Encrypted Secrets File
 
 1. Copy the template to create your secrets file:
+
    ```bash
    cd nix/hosts/sninful/data
    cp secrets.yaml.template secrets.yaml
    ```
 
 2. Edit the file with SOPS (auto-encrypts on save):
+
    ```bash
    just sops-update
    # Navigate to nix/hosts/sninful/data/secrets.yaml when prompted
@@ -135,6 +140,7 @@ nh os switch -H sninful
 ```
 
 This will:
+
 - Install and configure scanservjs
 - Add the "Upload to Paperless" action
 - Make the upload script available
@@ -143,33 +149,39 @@ This will:
 ### Step 5: Test the Setup
 
 1. **Test scanner access**:
+
    ```bash
    scanimage -L
    ```
+
    Should show your connected scanner.
 
 2. **Test scanservjs**:
-   - Open http://localhost:8080 in your browser
+
+   - Open <http://localhost:8080> in your browser
    - Perform a test scan
    - Check the action menu available after the scan completes
 
 3. **Test the Paperless Upload Action**:
+
    - After your test scan, you should see "Upload to Paperless" in the action menu
    - Click it to upload the scanned document
    - Check scanservjs logs for confirmation:
+
      ```bash
      journalctl -u scanservjs -n 20
      ```
 
 4. **Verify in Paperless**:
-   - Go to https://paperless.snyssen.be
+
+   - Go to <https://paperless.snyssen.be>
    - Check if the document appears in your inbox
 
 ## Usage
 
 ### Scanning and Uploading via Web Interface
 
-1. Open http://localhost:8080 in your browser
+1. Open <http://localhost:8080> in your browser
 2. Adjust scan settings (resolution, color mode, etc.) as needed
 3. Click **Scan** to initiate the scan
 4. Wait for the scan to complete
@@ -216,10 +228,13 @@ journalctl -u scanservjs -n 30
 
 1. Check USB connection or network settings
 2. Verify SANE can see the scanner:
+
    ```bash
    scanimage -L
    ```
+
 3. Check if drivers are loaded:
+
    ```bash
    lsusb  # For USB scanners
    ```
@@ -231,16 +246,19 @@ journalctl -u scanservjs -n 30
    - Check token permissions in Paperless
 
 2. **Test connectivity**:
+
    ```bash
    curl -I https://paperless.snyssen.be
    ```
 
 3. **Manual test upload**:
+
    ```bash
    paperless-upload /path/to/test.pdf
    ```
 
 4. **Check service logs**:
+
    ```bash
    journalctl -u scanservjs -n 50
    ```
@@ -248,16 +266,19 @@ journalctl -u scanservjs -n 30
 ### Service Won't Start
 
 1. Check scanservjs service status:
+
    ```bash
    systemctl status scanservjs
    ```
 
 2. Verify secrets file exists and is readable (when Paperless integration enabled):
+
    ```bash
    ls -l /run/secrets/paperless/api-token
    ```
 
 3. Check scanservjs service logs:
+
    ```bash
    journalctl -u scanservjs -n 50
    ```
@@ -290,25 +311,30 @@ Potential improvements not yet implemented:
 ## Module Options Reference
 
 ### `printing.enable`
+
 - **Type**: boolean
 - **Default**: `true`
 - **Description**: Enable printing support (CUPS, HP drivers)
 
 ### `printing.scanner.enable`
+
 - **Type**: boolean
 - **Default**: `false`
 - **Description**: Enable scanner support with scanservjs
 
 ### `printing.scanner.paperless.enable`
+
 - **Type**: boolean
 - **Default**: `false`optional upload action
 - **Description**: Enable automatic upload to Paperless-ngx
 
 ### `printing.scanner.paperless.url`
+
 - **Type**: string
 - **Example**: `"https://paperless.snyssen.be"`
 - **Description**: Paperless-ngx instance URL (without trailing slash)
 
 ### `printing.scanner.paperless.apiTokenPath`
+
 - **Type**: path
 - **Description**: Path to file containing the Paperless API token (provided by SOPS)
