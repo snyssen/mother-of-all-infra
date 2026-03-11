@@ -6,6 +6,7 @@ keys: &all_keys
   - &snyssen_gaming age1qxzfz6w99ptdyen3mwp3wr93yd8690m20s8p4daqn0qqczujhghsua5x28
   - &snyssen_sninful age1n9kh0lcwpcth7ex4n9lc2h5enl45pmmy2wqzhznwulgq9r9elf4qp3vr2k
   - &snyssen_purplehaze age1299cj79spmwd93hjz80v5s743a0vr6cjjkm8wggmc4z0x54e69fs9a0hqs
+  - &snyssen_blackfog age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
 creation_rules:
   # global secrets
