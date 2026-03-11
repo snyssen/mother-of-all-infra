@@ -4,6 +4,12 @@ Welcome to the documentation for Mother of All Infra, a personal monorepo for se
 
 ## Documentation Map
 
+### Hypervisor
+
+Planning documentation for the self-hosted hypervisor:
+
+- **[Plan](hypervisor/plan.md)** — Disk inventory, btrfs RAID1 profiles, USB keyfile boot, network bridge and NFS setup, and NixOS repository architecture overview
+
 ### [Backups](backups.md)
 
 Documentation for backup operations and restore procedures.
