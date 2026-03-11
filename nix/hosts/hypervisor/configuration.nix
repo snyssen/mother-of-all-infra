@@ -61,10 +61,11 @@
     {
       layout = ly;
       "${ly}" = {
-        mainDiskPath = "/dev/nvme0n1";
-        # TODO: set to the actual UUID(s) of the USB key(s) used for LUKS unlock
-        # (see /dev/disk/by-uuid on the installed system)
-        usbKeysIds = [ ];
+        mainDiskPath = "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987";
+        usbKeysIds = [
+          # TODO: generate and add keyfile to USB keys
+          "8B34-7D3C" # Philips 8GB
+        ];
         swap.enable = true;
       };
     };
@@ -73,11 +74,12 @@
 
   services.openssh = {
     enable = true;
+    openFirewall = true;
     settings.PasswordAuthentication = false;
   };
-
-  environment.systemPackages = [
-    pkgs.htop
+  # TODO: remove once Tailscale is set up and can be used for SSH access
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG68A6FS8yzwzaOUsoKHL9bc+2gB1P5OQriFjEWzG/LH snyssen@blackfog"
   ];
 
   networking.firewall = {

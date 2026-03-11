@@ -14,7 +14,6 @@
 
   # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
 
   # Not part of the default gandicloud.nix, even though it is required
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
