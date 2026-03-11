@@ -38,3 +38,10 @@ creation_rules:
           - *root_ingress
           - *snyssen_gaming
           - *snyssen_purplehaze
+  - path_regex: nix/hosts/hypervisor/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *snyssen_gaming
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
