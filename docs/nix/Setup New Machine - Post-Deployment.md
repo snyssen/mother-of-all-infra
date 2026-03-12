@@ -79,30 +79,28 @@ If this fails:
 - Check age key can be found by sops-nix
 - Review systemd logs: `journalctl -u systemd-sops-setup`
 
-### 1.5 Clean Up LUKS Encryption Files (if using disk encryption)
+### 1.5 Verify LUKS Encryption (if using disk encryption)
 
-If you used LUKS encryption with a keyfile, clean up the temporary files on the target:
+If your target uses LUKS encryption, verify it's working:
 
 ```sh
-# Delete the binary keyfile from the target (it's no longer needed after setup)
-ssh root@${TARGET_IP} "rm -f /key/${TARGET_HOSTNAME}"
-
-# Verify it's gone
-ssh root@${TARGET_IP} "ls -la /key/ 2>/dev/null || echo 'Directory empty or removed'"
+# Check that LUKS partition is open
+ssh root@${TARGET_IP} "dmsetup status"
+# Should show something like: luks: 0 [some numbers] crypt
 ```
 
-Also delete the temporary password file from the admin host:
+Delete the temporary password file from the admin host:
 
 ```sh
 # On admin host
 rm -f /tmp/${TARGET_HOSTNAME}-luks-password.txt
-rm -f /tmp/secret.key  # If you used this filename
 ```
 
-**Why**:
-- The binary keyfile on the target is only needed during disk setup. Keeping it in `/key/` is a security risk.
-- The password file on the admin host should be deleted to avoid storing credentials.
-- The actual LUKS encryption keys remain secure in the encrypted LUKS header; these temporary files are just used for initial setup.
+**Note on the USB keyfile**:
+- The USB keyfile remains on your USB device and is used automatically when the USB is present during boot
+- The `/key/` directory on the target is a temporary mount point used during installation
+- You can safely remove the USB from the target now
+- Keep the USB key in a safe place as a backup for unlocking if needed!
 
 ## Step 2: Verify Tailscale (if configured)
 

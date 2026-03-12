@@ -8,12 +8,12 @@ This phase boots the target machine to a live environment and runs `nixos-anywhe
 
 You must have completed [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md):
 
-✅ NixOS configuration created
-✅ SSH keypairs generated and staged
-✅ Age keys authorized in `.sops.yaml`
-✅ Secrets encrypted
-✅ Flake builds successfully
-✅ Deployment credentials prepared
+- ✅ NixOS configuration created
+- ✅ SSH keypairs generated and staged
+- ✅ Age keys authorized in `.sops.yaml`
+- ✅ Secrets encrypted
+- ✅ Flake builds successfully
+- ✅ Deployment credentials prepared
 
 ## Overview
 
@@ -112,12 +112,47 @@ nvme0n1              259:0    0  1.8T  0 disk
 
 If the layout doesn't match your configuration, **stop here** and adjust your disko config on the admin host before continuing.
 
-### A.7 Ready for Deployment
+### A.7 Mount USB Key for LUKS (if using USB-based encryption)
+
+If your disko configuration uses a USB keyfile for LUKS, mount it now so disko can find it during installation.
+
+**Find the USB device**:
+```sh
+lsblk -d -o NAME,SIZE,SERIAL
+# Look for your USB device, e.g., sdc (check the size to identify it)
+```
+
+Also get the USB device's filesystem UUID (you noted this during pre-deployment):
+```sh
+blkid /dev/sdX1
+# Look for the UUID in the output, e.g., UUID="8B34-7D3C"
+```
+
+**Mount the USB to `/key/`**:
+```sh
+sudo mkdir -m 0755 -p /key
+sudo mount -n -t vfat -o ro -U 8B34-7D3C /key
+# Replace 8B34-7D3C with your actual USB UUID
+```
+
+**Verify the keyfile is there**:
+```sh
+ls -la /key/
+# Should show your keyfile, e.g., hypervisor or hypervisor.key
+```
+
+If your disko config expects a specific filename at `/key/${HOSTNAME}`, ensure the file is named correctly. If it's named differently (e.g., `hypervisor.key`), you can rename it:
+```sh
+mv /key/hypervisor.key /key/hypervisor
+```
+
+### A.8 Ready for Deployment
 
 You now have:
 - ✅ Live environment running
 - ✅ Root password set
 - ✅ IP address known
+- ✅ USB keyfile mounted at `/key/` (if using LUKS)
 - ✅ Disks verified
 
 All remaining steps happen on the **admin host**. You can now leave the target machine idle; it will reboot automatically during deployment.
@@ -163,20 +198,20 @@ nix run github:nix-community/nixos-anywhere -- \
   --extra-files "${EXTRA_FILES}"
 ```
 
-#### For LUKS Disk Encryption (Dual-Unlock)
+#### For LUKS with USB Keyfile
 
-If using LUKS with both keyfile and password:
+If using LUKS with both keyfile (on USB) and password:
 
 ```sh
   --disk-encryption-keys \
     "/tmp/secret.key" "/tmp/${TARGET_HOSTNAME}-luks-password.txt"
 ```
 
-This passes the backup password to disko. The binary keyfile is already included via `--extra-files`, which copies `/tmp/${TARGET_HOSTNAME}-deploy/key/${TARGET_HOSTNAME}` → `/key/${TARGET_HOSTNAME}` on the target.
+**Important**: The binary keyfile on USB is already mounted at `/key/${TARGET_HOSTNAME}` in the live environment (from step A.7), so disko will find it there. We only need to pass the **password** via `--disk-encryption-keys` as a fallback unlock method.
 
-**Disko will then**:
-1. Try mounting the USB key and unlocking with the binary keyfile (primary)
-2. Fall back to the password if USB isn't found (secondary)
+This way disko will:
+1. **Primary**: Use the binary keyfile at `/key/${TARGET_HOSTNAME}` (which comes from the mounted USB)
+2. **Fallback**: Use the password if the keyfile is unavailable
 
 #### File Ownership (if needed)
 
@@ -198,7 +233,7 @@ Or for desktop user keys:
 
 ### B.4 Run nixos-anywhere
 
-Execute the full command. For example, with LUKS and SSH keys:
+Execute the full command. For example, with LUKS with USB keyfile and SSH keys:
 
 ```sh
 nix run github:nix-community/nixos-anywhere -- \
@@ -231,7 +266,7 @@ nix run github:nix-community/nixos-anywhere -- \
 1. `nixos-anywhere` prompts for SSH password (enter the temporary password from A.4)
 2. Kexec image boots on target (you'll see progress messages)
 3. Disko partitions and formats disks (watch for warnings about data loss)
-4. If using LUKS: Disko sets up dual unlock (keyfile + password)
+4. If using LUKS: Disko unlocks and formats encrypted partition using the keyfile at `/key/` and password as fallback
 5. Nix closure builds and copies to target
 6. NixOS configuration activates
 7. Target automatically reboots
@@ -293,7 +328,7 @@ Once the target finishes rebooting, it should be reachable. If Tailscale is conf
 
 ```sh
 # On admin host, if target is on Tailscale
-tailscale list | grep ${TARGET_HOSTNAME}
+tailscale status | grep ${TARGET_HOSTNAME}
 # Should show the target in the list
 
 # Try to ping via Tailscale IP

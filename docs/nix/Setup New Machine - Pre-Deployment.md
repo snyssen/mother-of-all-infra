@@ -262,45 +262,28 @@ read -s > /tmp/${HOSTNAME}-root-password.txt
 
 Most LUKS configurations use a **dual-unlock approach**:
 
-- **Primary**: Binary keyfile on USB (convenient, requires USB present)
-- **Secondary**: Password/passphrase (backup, works without USB)
+- **Primary**: Binary keyfile on USB (convenient, requires USB present during installation)
+- **Secondary**: Password/passphrase (backup, works without USB if needed later)
 
-#### 4.2.1 Prepare Binary Keyfile (if using USB-based unlock)
+#### 4.2.1 Create Binary Keyfile on USB (Before Deployment)
 
-If your disko configuration uses a USB keyfile (check for `keyFile` and `usbKeysIds` in the config), prepare it:
+If your disko configuration uses a USB keyfile (check for `keyFile` and `usbKeysIds` in the config):
 
-1. **Use existing USB key** (recommended):
-   - Follow [Full Disk Encryption - Create The Keyfile](./Full%20Disk%20Encryption.md#create-the-keyfile) to create the keyfile on your USB key beforehand
-   - Then copy it to your staging directory:
+1. **Create the keyfile on your USB device** beforehand using the steps in [Full Disk Encryption - Create The Keyfile](./Full%20Disk%20Encryption.md#create-the-keyfile)
+   - Name it something identifiable (e.g., `hypervisor` or `hypervisor.key`)
+   - Remember the USB device's UUID (you'll need it in Deployment Part A)
 
-   ```sh
-   mkdir -p /tmp/${HOSTNAME}-deploy/key
-   cp /path/to/usb/KEYFILENAME /tmp/${HOSTNAME}-deploy/key/${HOSTNAME}
-   chmod 600 /tmp/${HOSTNAME}-deploy/key/${HOSTNAME}
-   ```
-
-2. **Or generate a new keyfile** (for testing):
-
-   ```sh
-   mkdir -p /tmp/${HOSTNAME}-deploy/key
-   dd if=/dev/urandom of=/tmp/${HOSTNAME}-deploy/key/${HOSTNAME}y bs=512 count=1
-   chmod 600 /tmp/${HOSTNAME}-deploy/key/${HOSTNAME}
-   ```
-
-   Then add this same key to your USB device using the steps in [Full Disk Encryption - Add The Keyfile in LUKS](./Full%20Disk%20Encryption.md#add-the-keyfile-in-luks) (perform this on an existing machine, or after first deployment).
+2. **Have the USB key ready** for the deployment. You'll physically insert it into the target machine during the live environment setup (see Deployment Part A, step A.7).
 
 #### 4.2.2 Prepare Backup Password
 
-Generate a strong backup password for cases where the USB key is unavailable:
+Generate a strong backup password for cases where the USB key is unavailable or lost:
 
 ```sh
 read -s > /tmp/${HOSTNAME}-luks-password.txt
 ```
 
-Both the keyfile and password will be passed to `nixos-anywhere`:
-
-- **Keyfile**: Copied into `/key/${HOSTNAME}.key` via `--extra-files`
-- **Password**: Passed to disko via `--disk-encryption-keys` flag
+**Note**: This password is **only** for fallback. Primary unlock will use the USB keyfile.
 
 ## Step 5: Validate Configuration
 

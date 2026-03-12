@@ -8,7 +8,7 @@ keys: &all_keys
   - &snyssen_purplehaze age1299cj79spmwd93hjz80v5s743a0vr6cjjkm8wggmc4z0x54e69fs9a0hqs
   - &snyssen_blackfog age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
-  - &root_hypervisor age1jqc8tjsvg705s09wdczgrgndfz8xzvgqk39lk75e77m8neavegks8snfgw
+  - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
