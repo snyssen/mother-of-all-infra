@@ -1,66 +1,130 @@
 # Setup a New Machine
 
-## Initial Setup
+This guide walks you through deploying a new NixOS machine using `nixos-anywhere`. The process is divided into three phases that happen in sequence:
 
-### 1. Prepare NixOS config
+## Process Overview
 
-Easiest way is to copy an existing machine config. Choose the new machine hostname and create a directory `nix/hosts/${new_machine_name}/`. Then create:
-
-- `configuration.nix`: the main config file
-- `hardware-configuration.nix`: hardware specific configuration. It will be generated, but you need a placeholder one to get started; just copy one from another machine
-- `users/${username}.nix`: home manager config for the specified user
-
-### 2. Boot The New Machine on The NixOS Minimal Image
-
-Prepare a bootable USB with the [NixOS minimal image](https://nixos.org/download/). [Ventoy](https://www.ventoy.net/en/index.html) is a great choice for this. Then boot the new machine off it.
-
-### 3. Prepare Live Environment
-
-We need to be able to SSH as root on the new machine from another machine that has Nix installed. Detailed instructions can be found in the [NixOS manual](https://nixos.org/manual/nixos/stable/#sec-installation-manual), but the operations usually boils down to:
-
-1. Change the keyboard layout if needed (makes every subsequent operation easier), e.g. for belgian layout: `sudo loadkeys /etc/kbd/keymaps/i386/azerty/be-latin1.map.gz`
-2. Connect to Wifi if needed: call `nmtui` then follow on-screen instructions
-3. Set root password: `sudo passwd`; ssh server is automatically enabled by the installer, so you should now be able to login as root using the password you just set
-4. `ip addr` to retrieve the machine's IP
-
-Try to connect from the other machine: `ssh root@x.x.x.x` (with IP from step 4). If you connect successfully, `exit` and continue with instructions.
-
-Check the disks inside the new machine with `lsblk` and confirm that they correspond with the disks you are targeting with your [disko](https://github.com/nix-community/disko) config. If your config is ready (you can try building it with `nh os build -H ${new_machine_name}`), you are ready for formatting the new machine.
-
-### 4. Format The New Machine With nixos-anywhere
-
-[nixos-anywhere](https://nix-community.github.io/nixos-anywhere/quickstart.html) is used to install our configuration on the new machine.
-
-1. If you have LUKS enabled, prepare the password: `echo "my-super-safe-password" > /tmp/secret.key`, as well as the keyfile (see [Create The Keyfile](./Full%20Disk%20Encryption.md#Create%20The%20Keyfile), then copy resulting file to the new machine `scp /tmp/${new_machine_name} root@x.x.x.x:/key/${new_machine_name}`)
-2. Run the nixos-anywhere command:
-
-```sh
-nix run github:nix-community/nixos-anywhere -- \
-    --flake .#${new_machine_name} --target-host root@x.x.x.x \
-    --generate-hardware-config nixos-generate-config ./hosts/${new_machine_name}/hardware-configuration.nix \
-    --disk-encryption-keys /tmp/secret.key /tmp/secret.key
+```
+Admin Host              Target Machine              Admin Host
+├─ Pre-Deployment      (Powered Off)
+│  ├─ Create config
+│  ├─ Generate SSH keys
+│  ├─ Authorize age keys
+│  ├─ Prepare credentials
+│  └─ Validate flake
+│
+├─────────────────────────────────────────────────>
+│                   Boot Live Environment
+│                   Minimal Setup (~5 min)
+│
+│                  Run nixos-anywhere
+│<─────────────────────────────────────────────────
+│                   Automated Deployment
+│                   (~20–60 min)
+│                   Auto-reboot
+│
+└─ Post-Deployment    System Online
+   ├─ Verify basics
+   ├─ Setup cache (optional)
+   └─ Commit config
 ```
 
-(do not include that last flag if you are not using LUKS)
+## The Three Phases
 
-nixos-anywhere will ask for the SSH password, but you can then go grab a coffee as this will take a few minutes. Upon returning, the new machine should be ready for use. Once the command is done, your new machine should automatically reboot. Log into your new NixOS setup and don't forget to change the default user password (usually "123456789")!
+### Phase 1: Pre-Deployment (15–30 minutes on admin host)
 
-## Post Setup Actions
+**What**: Prepare everything needed for deployment
+**Where**: Admin host only (target not yet needed)
+**See**: [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md)
 
-### Generate your SSH keys and allow access to SOPS
+Includes:
+- Create NixOS configuration files
+- Generate SSH keypairs for target
+- Derive and authorize age keys in SOPS
+- Prepare deployment credentials
+- Validate flake builds
 
-TODO
+**Time required**: 15–30 minutes
 
-### Log into attic cache
+### Phase 2: Deployment (30–90 minutes, alternating target/admin)
 
-On the server running attic, generate a new token:
+**What**: Boot target and run automated NixOS installation
+**Where**: Target machine + admin host
+**See**: [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md)
 
-```sh
-docker exec attic atticadm make-token -f /attic/attic.toml --sub snyssen --validity 365d --create-cache "snyssen-*" --push "snyssen-*" --pull "snyssen-*" --configure-cache "snyssen-*"
-```
+Includes:
+- Boot target to NixOS minimal ISO
+- Minimal live environment setup (~5 minutes)
+- Run `nixos-anywhere` from admin host
+- Automated partitioning, formatting, configuration
+- Automatic reboot
 
-Then, back on your new machine, log into attic
+**Time required**: 30–90 minutes (mostly automated)
 
-```sh
-attic login snyssen-infra https://attic.snyssen.be $ATTIC_TOKEN
-```
+### Phase 3: Post-Deployment (5–15 minutes on target)
+
+**What**: Verify system and complete optional setup
+**Where**: Target machine (and optional cache server)
+**See**: [Setup New Machine - Post-Deployment](./Setup%20New%20Machine%20-%20Post-Deployment.md)
+
+Includes:
+- Verify system identity and networking
+- Confirm secrets were decrypted
+- Verify Tailscale connectivity
+- Optional: Set up attic cache authentication
+- Commit configuration to git
+
+**Time required**: 5–15 minutes (mostly manual verification)
+
+## Prerequisites
+
+Before starting, ensure:
+
+- Nix package manager installed on admin host
+- This repository cloned and up to date
+- You are in the devshell: `nix develop`
+- For physical targets: Ability to boot NixOS minimal USB image
+- For cloud VPS targets: IP address/hostname from provider
+- Network connectivity between admin and target (during live environment)
+
+## Quick Start
+
+1. **Start here**: [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md)
+2. **Then**: [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md)
+3. **Finally**: [Setup New Machine - Post-Deployment](./Setup%20New%20Machine%20-%20Post-Deployment.md)
+
+## Key Concepts
+
+### Admin Host
+The machine you are using to orchestrate the setup (usually your development laptop). Must have Nix installed.
+
+### Target Host
+The new NixOS machine being deployed. May have no operating system yet (bare metal) or be a VPS.
+
+### Live Environment
+The NixOS minimal ISO running in RAM on the target during deployment. Used by `nixos-anywhere` to partition disks and install NixOS. Discarded after reboot.
+
+### SSH Keys
+Keypairs generated on the admin host and staged for deployment on the target. Used for:
+- Git operations and commit signing
+- SSH connections to other machines
+- Deriving age keys for SOPS secret decryption
+
+Deleted from admin host immediately after successful deployment.
+
+### Age Keys
+Derived from SSH keys; used for encrypting/decrypting secrets with SOPS. The target's age key is authorized in `.sops.yaml` before deployment, allowing the target to decrypt its own secrets at boot time.
+
+## Terminology
+
+- **Admin host**: Development machine performing the setup orchestration
+- **Target host**: The new NixOS machine being deployed
+- **Deployment**: The automated process of installing and configuring the target
+- **Pre-staging**: Preparing files and credentials on the admin host before deployment
+- **Live environment**: NixOS minimal ISO running in RAM during deployment
+
+## Related Documentation
+
+- [Full Disk Encryption](./Full%20Disk%20Encryption.md): For LUKS configuration and keyfiles
+- [Secrets Management with SOPS](./secrets-management.md): How secrets are encrypted/decrypted
+- [NixOS Anywhere Documentation](https://nix-community.github.io/nixos-anywhere/)

@@ -22,13 +22,13 @@ ssh-connect +hosts:
   for host in {{hosts}}; do ssh "$host" echo "connected to $host."; done
 
 # Generate age key for current host, for use with SOPS
-sops-gen-privkey privKeyPath="~/.ssh/id_ed25519":
-  mkdir -p ~/.config/sops/age
-  ssh-to-age -private-key -i {{ privKeyPath }} > ~/.config/sops/age/keys.txt
+sops-gen-privkey privKeyPath="~/.ssh/id_ed25519" ageKeyPath="~/.config/sops/age/keys.txt":
+  mkdir -p $(dirname {{ ageKeyPath }})
+  ssh-to-age -private-key -i {{ privKeyPath }} > {{ ageKeyPath }}
 
 # Get public age key of current host, for use with SOPS
-sops-get-pubkey:
-  age-keygen -y ~/.config/sops/age/keys.txt
+sops-get-pubkey ageKeyPath="~/.config/sops/age/keys.txt":
+  age-keygen -y {{ ageKeyPath }}
 
 # Use SOPS to create or update secrets in given file
 sops-update file:

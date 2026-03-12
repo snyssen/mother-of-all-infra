@@ -43,16 +43,14 @@
   ];
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  # TODO: once the hypervisor SSH host key is known, add its age-encoded public key to .sops.yaml,
-  # create nix/hosts/hypervisor/data/secrets.yaml with a tailscale/authKey secret, then enable:
-  # sops.secrets."tailscale/authKey" = {
-  #   sopsFile = ./data/secrets.yaml;
-  # };
-  # tailscale.autoconnect = {
-  #   enable = true;
-  #   authKeyPath = config.sops.secrets."tailscale/authKey".path;
-  #   enableSSH = true;
-  # };
+  sops.secrets."tailscale/authKey" = {
+    sopsFile = ./data/secrets.yaml;
+  };
+  tailscale.autoconnect = {
+    enable = true;
+    authKeyPath = config.sops.secrets."tailscale/authKey".path;
+    enableSSH = true;
+  };
 
   disko =
     let
@@ -63,7 +61,6 @@
       "${ly}" = {
         mainDiskPath = "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987";
         usbKeysIds = [
-          # TODO: generate and add keyfile to USB keys
           "8B34-7D3C" # Philips 8GB
         ];
         swap.enable = true;
