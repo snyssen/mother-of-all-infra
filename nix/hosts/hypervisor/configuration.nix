@@ -83,6 +83,11 @@
     enable = true;
   };
 
+  # Use systemd-networkd instead of dhcpcd for more reliable DHCP
+  # As their was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
+  # and dhcpcd would not trust that IP
+  networking.useNetworkd = true;
+
   # TODO: make this part automatically defined
   nix.settings = {
     experimental-features = [
