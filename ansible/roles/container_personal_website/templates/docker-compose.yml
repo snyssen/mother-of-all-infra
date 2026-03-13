@@ -1,6 +1,6 @@
 services:
   personal-website:
-    image: ghcr.io/snyssen/personal-website:2.11.0@sha256:70ad19f3de01bfb2d9237138367202bd53c0208e1ba2ef50c3c123109c187c53
+    image: ghcr.io/snyssen/personal-website:2.12.0@sha256:79552b96e9493558e90b5bb694553f9512300ba97286cb013ae044eaf5cb0880
     restart: unless-stopped
     container_name: personal-website
     networks:
