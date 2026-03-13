@@ -54,7 +54,7 @@
 
   disko =
     let
-      ly = "single-btrfs-luks";
+      ly = "btrfs-luks-bulk-plus-fast-pools";
     in
     {
       layout = ly;
@@ -64,6 +64,13 @@
           "8B34-7D3C" # Philips 8GB
         ];
         swap.enable = true;
+        bulkPool.disks = [
+          # 1× 4 TB HDD
+          "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F"
+          # 2× 2 TB HDD
+          "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
+          "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
+        ];
       };
     };
 
@@ -73,7 +80,7 @@
     enable = true;
     openFirewall = true;
     settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = false;
+    settings.PermitRootLogin = "no";
   };
 
   networking.firewall = {
