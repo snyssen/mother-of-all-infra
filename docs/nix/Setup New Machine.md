@@ -35,7 +35,7 @@ Admin Host              Target Machine              Admin Host
 
 **What**: Prepare everything needed for deployment
 **Where**: Admin host only (target not yet needed)
-**See**: [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md)
+**See**: [Setup New Machine - Pre-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
 
 Includes:
 - Create NixOS configuration files
@@ -50,7 +50,7 @@ Includes:
 
 **What**: Boot target and run automated NixOS installation
 **Where**: Target machine + admin host
-**See**: [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md)
+**See**: [Setup New Machine - Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
 
 Includes:
 - Boot target to NixOS minimal ISO
@@ -65,7 +65,7 @@ Includes:
 
 **What**: Verify system and complete optional setup
 **Where**: Target machine (and optional cache server)
-**See**: [Setup New Machine - Post-Deployment](./Setup%20New%20Machine%20-%20Post-Deployment.md)
+**See**: [Setup New Machine - Post-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Post-Deployment.md)
 
 Includes:
 - Verify system identity and networking
@@ -89,9 +89,9 @@ Before starting, ensure:
 
 ## Quick Start
 
-1. **Start here**: [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md)
-2. **Then**: [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md)
-3. **Finally**: [Setup New Machine - Post-Deployment](./Setup%20New%20Machine%20-%20Post-Deployment.md)
+1. **Start here**: [Setup New Machine - Pre-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
+2. **Then**: [Setup New Machine - Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
+3. **Finally**: [Setup New Machine - Post-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Post-Deployment.md)
 
 ## Key Concepts
 
