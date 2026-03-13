@@ -1,6 +1,6 @@
 { config, lib, ... }:
 let
-  layoutName = "single-btrfs-luks-bulk-pool";
+  layoutName = "btrfs-luks-bulk-plus-fast-pools";
   cfg = config.disko."${layoutName}";
 
   # Return the LUKS mapper name for bulk disk at index i
@@ -10,11 +10,12 @@ let
   bulkLuksDevice = i: "/dev/mapper/${bulkLuksName i}";
 
   # Idempotent USB-key mount script shared by all LUKS containers.
-  # Checks whether /key is already mounted before attempting to mount it, so
-  # that concurrent (or sequential) LUKS pre-open hooks don't race.
+  # Checks /proc/mounts (always available in initrd) to see whether /key is
+  # already mounted before attempting to mount it, preventing races when
+  # multiple LUKS pre-open hooks run in sequence.
   usbMountScript = ''
     mkdir -m 0755 -p /key
-    if [[ ! $(findmnt -M /key) ]]; then
+    if ! grep -q ' /key ' /proc/mounts; then
       echo "Waiting for USB key for LUKS decryption to appear..."
       current_attempt=0
       while true; do
@@ -73,7 +74,7 @@ let
                     extraArgs =
                       [
                         "-L"
-                        "storage"
+                        "bulk"
                         "-d"
                         "raid1"
                         "-m"
@@ -84,8 +85,8 @@ let
                         lib.imap0 (j: _: bulkLuksDevice j) cfg.bulkPool.disks
                       ));
                     subvolumes = {
-                      "/storage" = {
-                        mountpoint = "/mnt/storage";
+                      "/bulk" = {
+                        mountpoint = cfg.bulkPool.mountpoint;
                         mountOptions = [
                           "compress=zstd"
                           "noatime"
@@ -140,7 +141,7 @@ in
         type = lib.types.listOf lib.types.str;
         description = ''
           Ordered list of disk paths (e.g. /dev/disk/by-id/…) that form the
-          bulk storage btrfs RAID1 pool mounted at /mnt/storage.
+          bulk storage btrfs RAID1 pool.
 
           At least two disks are required for RAID1.  The first disk in the
           list is the *primary*: mkfs.btrfs is run there and all other disks
@@ -153,6 +154,12 @@ in
           "/dev/disk/by-id/ata-WDC_WD20EZAZ_WD-XXXXXX1"
           "/dev/disk/by-id/ata-WDC_WD20EZAZ_WD-XXXXXX2"
         ];
+      };
+      mountpoint = lib.mkOption {
+        type = lib.types.str;
+        description = "Mountpoint for the bulk storage btrfs RAID1 pool.";
+        default = "/mnt/bulk";
+        example = "/mnt/storage";
       };
     };
   };
@@ -264,7 +271,7 @@ in
     # Periodic btrfs scrub for the bulk storage pool
     services.btrfs.autoScrub = lib.mkIf (cfg.bulkPool.disks != [ ]) {
       enable = true;
-      mountpoints = [ "/mnt/storage" ];
+      mountpoints = [ cfg.bulkPool.mountpoint ];
     };
   };
 }

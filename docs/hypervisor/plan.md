@@ -77,7 +77,7 @@ Reusable system-level modules. Each file/directory exposes NixOS options that ho
 |--------|---------|
 | `disko/` | Disk partitioning and encryption layouts (wraps [Disko](https://github.com/nix-community/disko)) |
 | `disko/layouts/single-btrfs-luks.nix` | Single OS disk: ESP + LUKS + btrfs subvolumes |
-| `disko/layouts/single-btrfs-luks-bulk-pool.nix` | OS disk (same as above) + configurable bulk HDD pool: per-disk LUKS + btrfs RAID1 at `/mnt/storage` |
+| `disko/layouts/btrfs-luks-bulk-plus-fast-pools.nix` | OS disk (same as above) + configurable bulk HDD pool: per-disk LUKS + btrfs RAID1 at `/mnt/bulk` (default) |
 | `cache.nix` | Nix binary cache configuration |
 | `docker.nix` | Docker / container runtime |
 | `grub.nix` | GRUB bootloader |
