@@ -54,7 +54,7 @@
 
   disko =
     let
-      ly = "single-btrfs-luks";
+      ly = "single-btrfs-luks-bulk-pool";
     in
     {
       layout = ly;
@@ -64,6 +64,14 @@
           "8B34-7D3C" # Philips 8GB
         ];
         swap.enable = true;
+        bulkPool.disks = [
+          # TODO: replace each path with the real disk ID from `ls -l /dev/disk/by-id/` on the hypervisor
+          # 1× 4 TB HDD
+          "/dev/disk/by-id/ata-PLACEHOLDER_4TB_HDD_SERIALNUMBER"
+          # 2× 2 TB HDD
+          "/dev/disk/by-id/ata-PLACEHOLDER_2TB_HDD_SERIALNUMBER_1"
+          "/dev/disk/by-id/ata-PLACEHOLDER_2TB_HDD_SERIALNUMBER_2"
+        ];
       };
     };
 
