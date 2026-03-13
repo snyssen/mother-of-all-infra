@@ -65,12 +65,11 @@
         ];
         swap.enable = true;
         bulkPool.disks = [
-          # TODO: replace each path with the real disk ID from `ls -l /dev/disk/by-id/` on the hypervisor
           # 1× 4 TB HDD
-          "/dev/disk/by-id/ata-PLACEHOLDER_4TB_HDD_SERIALNUMBER"
+          "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F"
           # 2× 2 TB HDD
-          "/dev/disk/by-id/ata-PLACEHOLDER_2TB_HDD_SERIALNUMBER_1"
-          "/dev/disk/by-id/ata-PLACEHOLDER_2TB_HDD_SERIALNUMBER_2"
+          "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
+          "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
         ];
       };
     };
@@ -81,7 +80,7 @@
     enable = true;
     openFirewall = true;
     settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = false;
+    settings.PermitRootLogin = "no";
   };
 
   networking.firewall = {

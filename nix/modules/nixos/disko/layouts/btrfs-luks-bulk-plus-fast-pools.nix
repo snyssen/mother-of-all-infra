@@ -58,43 +58,39 @@ let
           partitions = {
             luks-bulk = {
               size = "100%";
-              content =
-                {
-                  type = "luks";
-                  name = bulkLuksName i;
-                  passwordFile = "/tmp/secret.key";
-                  settings = bulkLuksSettings;
-                }
-                // lib.optionalAttrs (i == 0) {
-                  # Primary disk: create the btrfs RAID1 filesystem.
-                  # The secondary device mapper paths are appended so that a
-                  # single mkfs.btrfs call creates the full multi-device set.
-                  content = {
-                    type = "btrfs";
-                    extraArgs =
-                      [
-                        "-L"
-                        "bulk"
-                        "-d"
-                        "raid1"
-                        "-m"
-                        "raid1"
-                        "-f"
-                      ]
-                      ++ (lib.lists.drop 1 (
-                        lib.imap0 (j: _: bulkLuksDevice j) cfg.bulkPool.disks
-                      ));
-                    subvolumes = {
-                      "/bulk" = {
-                        mountpoint = cfg.bulkPool.mountpoint;
-                        mountOptions = [
-                          "compress=zstd"
-                          "noatime"
-                        ];
-                      };
+              content = {
+                type = "luks";
+                name = bulkLuksName i;
+                passwordFile = "/tmp/secret.key";
+                settings = bulkLuksSettings;
+              }
+              // lib.optionalAttrs (i == 0) {
+                # Primary disk: create the btrfs RAID1 filesystem.
+                # The secondary device mapper paths are appended so that a
+                # single mkfs.btrfs call creates the full multi-device set.
+                content = {
+                  type = "btrfs";
+                  extraArgs = [
+                    "-L"
+                    "bulk"
+                    "-d"
+                    "raid1"
+                    "-m"
+                    "raid1"
+                    "-f"
+                  ]
+                  ++ (lib.lists.drop 1 (lib.imap0 (j: _: bulkLuksDevice j) cfg.bulkPool.disks));
+                  subvolumes = {
+                    "/bulk" = {
+                      mountpoint = cfg.bulkPool.mountpoint;
+                      mountOptions = [
+                        "compress=zstd"
+                        "noatime"
+                      ];
                     };
                   };
                 };
+              };
             };
           };
         };
@@ -183,79 +179,77 @@ in
     ];
 
     disko.devices = {
-      disk =
-        {
-          # ── OS (NVMe) disk ──────────────────────────────────────────────────
-          main = {
-            device = cfg.mainDiskPath;
-            type = "disk";
-            content = {
-              type = "gpt";
-              partitions = {
-                ESP = {
-                  label = "boot";
-                  name = "ESP";
-                  size = "512M";
-                  type = "EF00";
-                  content = {
-                    type = "filesystem";
-                    format = "vfat";
-                    mountpoint = "/boot";
-                    mountOptions = [
-                      "defaults"
-                    ];
-                  };
+      disk = {
+        # ── OS (NVMe) disk ──────────────────────────────────────────────────
+        main = {
+          device = cfg.mainDiskPath;
+          type = "disk";
+          content = {
+            type = "gpt";
+            partitions = {
+              ESP = {
+                label = "boot";
+                name = "ESP";
+                size = "512M";
+                type = "EF00";
+                content = {
+                  type = "filesystem";
+                  format = "vfat";
+                  mountpoint = "/boot";
+                  mountOptions = [
+                    "defaults"
+                  ];
                 };
-                luks = {
-                  size = "100%";
-                  label = "luks";
+              };
+              luks = {
+                size = "100%";
+                label = "luks";
+                content = {
+                  type = "luks";
+                  name = "cryptroot";
+                  passwordFile = "/tmp/secret.key";
+                  settings = {
+                    allowDiscards = true; # Allow TRIM operations on SSD
+                    keyFile = "/key/${cfg.keyFilename}";
+                    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
+                    fallbackToPassword = true;
+                    preOpenCommands = usbMountScript;
+                  };
                   content = {
-                    type = "luks";
-                    name = "cryptroot";
-                    passwordFile = "/tmp/secret.key";
-                    settings = {
-                      allowDiscards = true; # Allow TRIM operations on SSD
-                      keyFile = "/key/${cfg.keyFilename}";
-                      # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-                      fallbackToPassword = true;
-                      preOpenCommands = usbMountScript;
-                    };
-                    content = {
-                      type = "btrfs";
-                      extraArgs = [
-                        "-L"
-                        "nixos"
-                        "-f"
-                      ];
-                      subvolumes = {
-                        "/root" = {
-                          mountpoint = "/";
-                          mountOptions = [
-                            "subvol=root"
-                            "compress=zstd"
-                            "noatime"
-                          ];
-                        };
-                        "/home" = {
-                          mountpoint = "/home";
-                          mountOptions = [
-                            "subvol=home"
-                            "compress=zstd"
-                            "noatime"
-                          ];
-                        };
-                        "/nix" = {
-                          mountpoint = "/nix";
-                          mountOptions = [
-                            "subvol=nix"
-                            "compress=zstd"
-                            "noatime"
-                          ];
-                        };
-                        "/swap" = lib.mkIf cfg.swap.enable {
-                          mountpoint = "/swap";
-                          swap.swapfile.size = cfg.swap.size;
-                        };
+                    type = "btrfs";
+                    extraArgs = [
+                      "-L"
+                      "nixos"
+                      "-f"
+                    ];
+                    subvolumes = {
+                      "/root" = {
+                        mountpoint = "/";
+                        mountOptions = [
+                          "subvol=root"
+                          "compress=zstd"
+                          "noatime"
+                        ];
+                      };
+                      "/home" = {
+                        mountpoint = "/home";
+                        mountOptions = [
+                          "subvol=home"
+                          "compress=zstd"
+                          "noatime"
+                        ];
+                      };
+                      "/nix" = {
+                        mountpoint = "/nix";
+                        mountOptions = [
+                          "subvol=nix"
+                          "compress=zstd"
+                          "noatime"
+                        ];
+                      };
+                      "/swap" = lib.mkIf cfg.swap.enable {
+                        mountpoint = "/swap";
+                        swap.swapfile.size = cfg.swap.size;
                       };
                     };
                   };
@@ -263,15 +257,13 @@ in
               };
             };
           };
-        }
-        # ── Bulk HDD pool disks (conditionally appended) ──────────────────────
-        // lib.optionalAttrs (cfg.bulkPool.disks != [ ]) bulkDiskEntries;
+        };
+      }
+      # ── Bulk HDD pool disks (conditionally appended) ──────────────────────
+      // lib.optionalAttrs (cfg.bulkPool.disks != [ ]) bulkDiskEntries;
     };
 
-    # Periodic btrfs scrub for the bulk storage pool
-    services.btrfs.autoScrub = lib.mkIf (cfg.bulkPool.disks != [ ]) {
-      enable = true;
-      mountpoints = [ cfg.bulkPool.mountpoint ];
-    };
+    # Enable autoscrubbing for all btrfs subvolumes (OS disk and bulk pool), to proactively detect and work around potential data corruption on the HDDs.
+    services.btrfs.autoScrub.enable = true;
   };
 }
