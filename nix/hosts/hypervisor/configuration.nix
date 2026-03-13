@@ -73,18 +73,15 @@
     enable = true;
     openFirewall = true;
     settings.PasswordAuthentication = false;
+    settings.PermitRootLogin = false;
   };
-  # TODO: remove once Tailscale is set up and can be used for SSH access
-  users.users.root.openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG68A6FS8yzwzaOUsoKHL9bc+2gB1P5OQriFjEWzG/LH snyssen@blackfog"
-  ];
 
   networking.firewall = {
     enable = true;
   };
 
   # Use systemd-networkd instead of dhcpcd for more reliable DHCP
-  # As their was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
+  # As there was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
   # and dhcpcd would not trust that IP
   networking.useNetworkd = true;
 

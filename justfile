@@ -25,6 +25,7 @@ ssh-connect +hosts:
 sops-gen-privkey privKeyPath="~/.ssh/id_ed25519" ageKeyPath="~/.config/sops/age/keys.txt":
   mkdir -p $(dirname {{ ageKeyPath }})
   ssh-to-age -private-key -i {{ privKeyPath }} > {{ ageKeyPath }}
+  chmod 600 {{ ageKeyPath }}
 
 # Get public age key of current host, for use with SOPS
 sops-get-pubkey ageKeyPath="~/.config/sops/age/keys.txt":
