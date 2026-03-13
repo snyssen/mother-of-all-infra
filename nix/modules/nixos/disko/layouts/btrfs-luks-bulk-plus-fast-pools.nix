@@ -9,6 +9,12 @@ let
   # Return the /dev/mapper path for bulk disk at index i
   bulkLuksDevice = i: "/dev/mapper/${bulkLuksName i}";
 
+  # Return the LUKS mapper name for vmstore disk at index i
+  vmstoreLuksName = i: "crypt-vmstore-${builtins.toString i}";
+
+  # Return the /dev/mapper path for vmstore disk at index i
+  vmstoreLuksDevice = i: "/dev/mapper/${vmstoreLuksName i}";
+
   # Idempotent USB-key mount script shared by all LUKS containers.
   # Checks /proc/mounts (always available in initrd) to see whether /key is
   # already mounted before attempting to mount it, preventing races when
@@ -37,6 +43,14 @@ let
   bulkLuksSettings = {
     keyFile = "/key/${cfg.keyFilename}";
     # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
+    fallbackToPassword = true;
+    preOpenCommands = usbMountScript;
+  };
+
+  # LUKS settings for the vmstore pool NVMe drives (allowDiscards enabled for TRIM support)
+  vmstoreLuksSettings = {
+    allowDiscards = true;
+    keyFile = "/key/${cfg.keyFilename}";
     fallbackToPassword = true;
     preOpenCommands = usbMountScript;
   };
@@ -96,6 +110,58 @@ let
         };
       };
     }) cfg.bulkPool.disks
+  );
+
+  # Build one disko disk entry per vmstore pool disk.
+  # Same pattern as bulkDiskEntries: index 0 is the primary (runs mkfs.btrfs),
+  # indexes 1…n are secondary (LUKS opened, no mkfs).
+  vmstoreDiskEntries = lib.listToAttrs (
+    lib.imap0 (i: diskPath: {
+      name = "vmstore-${builtins.toString i}";
+      value = {
+        device = diskPath;
+        type = "disk";
+        content = {
+          type = "gpt";
+          partitions = {
+            luks-vmstore = {
+              size = "100%";
+              content = {
+                type = "luks";
+                name = vmstoreLuksName i;
+                passwordFile = "/tmp/secret.key";
+                settings = vmstoreLuksSettings;
+              }
+              // lib.optionalAttrs (i == 0) {
+                # Primary disk: create the btrfs RAID1 filesystem.
+                content = {
+                  type = "btrfs";
+                  extraArgs = [
+                    "-L"
+                    "vmstore"
+                    "-d"
+                    "raid1"
+                    "-m"
+                    "raid1"
+                    "-f"
+                  ]
+                  ++ (lib.lists.drop 1 (lib.imap0 (j: _: vmstoreLuksDevice j) cfg.vmstorePool.disks));
+                  subvolumes = {
+                    "/vmstore" = {
+                      mountpoint = cfg.vmstorePool.mountpoint;
+                      mountOptions = [
+                        "compress=zstd"
+                        "noatime"
+                      ];
+                    };
+                  };
+                };
+              };
+            };
+          };
+        };
+      };
+    }) cfg.vmstorePool.disks
   );
 in
 {
@@ -158,6 +224,35 @@ in
         example = "/mnt/storage";
       };
     };
+
+    # ── VM store pool (NVMe) ──────────────────────────────────────────────────
+    vmstorePool = {
+      disks = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        description = ''
+          Ordered list of disk paths (e.g. /dev/disk/by-id/…) that form the
+          VM store btrfs RAID1 pool on NVMe drives.
+
+          At least two disks are required for RAID1.  The first disk in the
+          list is the *primary*: mkfs.btrfs is run there and all other disks
+          are passed as additional devices.  All disks are given their own LUKS
+          container (with TRIM/discard support) and share the same USB keyfile /
+          passphrase as the OS disk.
+        '';
+        default = [ ];
+        example = [
+          "/dev/disk/by-id/nvme-SAMSUNG_MZVLB1T0HBLR-000L7_XXXXXXXX"
+          "/dev/disk/by-id/nvme-SAMSUNG_MZVLB1T0HBLR-000L7_YYYYYYYY"
+          "/dev/disk/by-id/nvme-WD_Blue_SN570_500GB_ZZZZZZZZ"
+        ];
+      };
+      mountpoint = lib.mkOption {
+        type = lib.types.str;
+        description = "Mountpoint for the VM store btrfs RAID1 pool.";
+        default = "/mnt/vmstore";
+        example = "/mnt/vmstore";
+      };
+    };
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
@@ -165,6 +260,10 @@ in
       {
         assertion = cfg.bulkPool.disks == [ ] || builtins.length cfg.bulkPool.disks >= 2;
         message = "disko.${layoutName}.bulkPool.disks: btrfs RAID1 requires at least 2 disks.";
+      }
+      {
+        assertion = cfg.vmstorePool.disks == [ ] || builtins.length cfg.vmstorePool.disks >= 2;
+        message = "disko.${layoutName}.vmstorePool.disks: btrfs RAID1 requires at least 2 disks.";
       }
     ];
 
@@ -260,7 +359,9 @@ in
         };
       }
       # ── Bulk HDD pool disks (conditionally appended) ──────────────────────
-      // lib.optionalAttrs (cfg.bulkPool.disks != [ ]) bulkDiskEntries;
+      // lib.optionalAttrs (cfg.bulkPool.disks != [ ]) bulkDiskEntries
+      # ── VM store NVMe pool disks (conditionally appended) ─────────────────
+      // lib.optionalAttrs (cfg.vmstorePool.disks != [ ]) vmstoreDiskEntries;
     };
 
     # Enable autoscrubbing for all btrfs subvolumes (OS disk and bulk pool), to proactively detect and work around potential data corruption on the HDDs.

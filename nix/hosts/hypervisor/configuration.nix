@@ -71,6 +71,13 @@
           "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
           "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
         ];
+        vmstorePool.disks = [
+          # 2× 1 TB NVMe
+          "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_XXXXXXXXXXXXXXXX"
+          "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_YYYYYYYYYYYYYYYY"
+          # 1× 500 GB NVMe
+          "/dev/disk/by-id/nvme-WD_Blue_SN570_500GB_ZZZZZZZZZZZZZZZZ"
+        ];
       };
     };
 
