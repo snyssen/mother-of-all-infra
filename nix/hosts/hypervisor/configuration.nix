@@ -42,8 +42,6 @@
     flake.modules.nixos.tailscale
     flake.modules.nixos.libvirtd
 
-    inputs.NixVirt.nixosModules.default
-
     ./network.nix
   ];
 
@@ -112,85 +110,21 @@
     enable = true;
   };
 
-  libvirtd.enable = true;
-
-  virtualisation.libvirt = {
+  libvirtd = {
     enable = true;
-    connections."qemu:///system" = {
-      pools = [
-        {
-          definition = inputs.NixVirt.lib.pool.writeXML {
-            type = "dir";
-            name = "vmstore";
-            target.path = "/mnt/vmstore";
-          };
-          active = true;
-          volumes = [
-            {
-              definition = inputs.NixVirt.lib.volume.writeXML {
-                name = "apps-vm.qcow2";
-                capacity = {
-                  count = 80;
-                  unit = "GiB";
-                };
-                target.format.type = "qcow2";
-              };
-            }
-            {
-              definition = inputs.NixVirt.lib.volume.writeXML {
-                name = "homeassistant-vm.qcow2";
-                capacity = {
-                  count = 32;
-                  unit = "GiB";
-                };
-                target.format.type = "qcow2";
-              };
-            }
-          ];
-        }
-      ];
-      domains = [
-        {
-          definition = inputs.NixVirt.lib.domain.writeXML (
-            inputs.NixVirt.lib.domain.templates.linux {
-              name = "apps-vm";
-              uuid = "ba7c2df4-81f4-422d-9cec-074718c95d07";
-              vcpu = {
-                count = 4;
-              };
-              memory = {
-                count = 4;
-                unit = "GiB";
-              };
-              storage_vol = {
-                pool = "vmstore";
-                volume = "apps-vm.qcow2";
-              };
-              bridge_name = "br0";
-            }
-          );
-        }
-        {
-          definition = inputs.NixVirt.lib.domain.writeXML (
-            inputs.NixVirt.lib.domain.templates.linux {
-              name = "homeassistant-vm";
-              uuid = "d1fa0fc8-e862-47cc-9700-014336b7c26c";
-              vcpu = {
-                count = 2;
-              };
-              memory = {
-                count = 2;
-                unit = "GiB";
-              };
-              storage_vol = {
-                pool = "vmstore";
-                volume = "homeassistant-vm.qcow2";
-              };
-              bridge_name = "br0";
-            }
-          );
-        }
-      ];
+    vms = {
+      "apps-vm" = {
+        uuid = "ba7c2df4-81f4-422d-9cec-074718c95d07";
+        vcpus = 4;
+        memoryGiB = 4;
+        diskSizeGiB = 80;
+      };
+      "homeassistant-vm" = {
+        uuid = "d1fa0fc8-e862-47cc-9700-014336b7c26c";
+        vcpus = 2;
+        memoryGiB = 2;
+        diskSizeGiB = 32;
+      };
     };
   };
 
