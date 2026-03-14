@@ -35,16 +35,19 @@ in
     virtualisation.libvirtd = {
       enable = true;
       qemu = {
-        # UEFI firmware for modern guests
-        ovmf.enable = true;
         # Software TPM for guests that need a TPM device
         swtpm.enable = true;
       };
+      # TODO: we might need to set "br0" as an allowed bridge?
+      # Below is the default value
+      # allowedBridges = [ "virbr0" ];
     };
 
     # Give configured users access to the libvirt socket and KVM device
     users.extraGroups.libvirtd.members = cfg.users;
     users.extraGroups.kvm.members = cfg.users;
+
+    programs.virt-manager.enable = true;
 
     # Ensure the vmstore pool is defined, set to autostart, and started
     systemd.services.libvirt-setup-vmstore-pool = lib.mkIf cfg.vmstorePool.enable {
