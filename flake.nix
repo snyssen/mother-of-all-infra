@@ -31,6 +31,9 @@
 
     nixcord.url = "github:FlameFlag/nixcord";
     nixcord.inputs.nixpkgs.follows = "nixpkgs";
+
+    NixVirt.url = "https://flakehub.com/f/AshleyYakeley/NixVirt/*.tar.gz";
+    NixVirt.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   # Load the blueprint
