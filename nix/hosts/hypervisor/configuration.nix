@@ -110,7 +110,23 @@
     enable = true;
   };
 
-  libvirtd.enable = true;
+  libvirtd = {
+    enable = true;
+    vms = {
+      "apps-vm" = {
+        vcpus = 4;
+        memoryMiB = 4096;
+        diskPath = "/mnt/vmstore/apps-vm.qcow2";
+        diskSize = "80G";
+      };
+      "homeassistant-vm" = {
+        vcpus = 2;
+        memoryMiB = 2048;
+        diskPath = "/mnt/vmstore/homeassistant-vm.qcow2";
+        diskSize = "32G";
+      };
+    };
+  };
 
   # Use systemd-networkd instead of dhcpcd for more reliable DHCP
   # As there was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
