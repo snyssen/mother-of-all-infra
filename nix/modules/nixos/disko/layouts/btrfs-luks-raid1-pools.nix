@@ -1,6 +1,6 @@
 { config, lib, ... }:
 let
-  layoutName = "btrfs-luks-bulk-plus-fast-pools";
+  layoutName = "btrfs-luks-raid1-pools";
   cfg = config.disko."${layoutName}";
 
   # Idempotent USB-key mount script shared by all LUKS containers.

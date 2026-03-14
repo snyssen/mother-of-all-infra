@@ -54,7 +54,7 @@
 
   disko =
     let
-      ly = "btrfs-luks-bulk-plus-fast-pools";
+      ly = "btrfs-luks-raid1-pools";
     in
     {
       layout = ly;
