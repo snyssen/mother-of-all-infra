@@ -235,10 +235,19 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
-    assertions = lib.mapAttrsToList (poolName: poolCfg: {
-      assertion = poolCfg.disks == [ ] || builtins.length poolCfg.disks >= 2;
-      message = "disko.${layoutName}.pools.${poolName}.disks: btrfs RAID1 requires at least 2 disks.";
-    }) cfg.pools;
+    assertions =
+      # Ensure each pool configured for btrfs RAID1 has at least 2 disks.
+      (lib.mapAttrsToList (poolName: poolCfg: {
+        assertion = poolCfg.disks == [ ] || builtins.length poolCfg.disks >= 2;
+        message = "disko.${layoutName}.pools.${poolName}.disks: btrfs RAID1 requires at least 2 disks.";
+      }) cfg.pools)
+      # Prevent pool names from colliding with reserved disk keys (e.g. \"main\")
+      # which are used under `disko.devices.disk` and merged via `//`.
+      ++ (lib.mapAttrsToList (poolName: poolCfg: {
+        assertion = !(builtins.elem poolName [ "main" ]);
+        message =
+          "disko.${layoutName}.pools.${poolName}: pool name '${poolName}' conflicts with reserved disk name 'main' used for the OS disk. Please choose a different pool name.";
+      }) cfg.pools);
 
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
