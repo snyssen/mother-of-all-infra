@@ -63,9 +63,21 @@ Virtual machines need L2 access to the LAN. A bridge interface `br0` is created 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | Bridge name | `br0` | Used by VMs as their uplink |
-| Physical NIC | `enp3s0` | Default; configurable in host config |
+| Physical NIC | `enp5s0` | Default; configurable in `nix/hosts/hypervisor/network.nix` |
 
-The bridge is configured in NixOS via `networking.bridges` and `networking.interfaces`. The physical interface name `enp3s0` is the expected default but can be overridden per-machine in the host's `configuration.nix` (or a dedicated hardware configuration file) if the actual interface name differs.
+**Rationale:** By bridging the physical NIC, any VM with a NIC attached to `br0` appears as a first-class host on the LAN. It can obtain its own DHCP lease or static IP without NAT or port-forwarding on the hypervisor. The host's own LAN IP is assigned to `br0` (not to the physical NIC directly).
+
+The bridge is configured in `nix/hosts/hypervisor/network.nix` using `networking.bridges` and `networking.interfaces` (which generate systemd-networkd units because `networking.useNetworkd = true`):
+
+```nix
+networking.bridges.br0.interfaces = [ "enp5s0" ];
+networking.interfaces = {
+  br0.useDHCP = true;       # host LAN IP lives here
+  "enp5s0".useDHCP = false; # enslaved NIC has no IP
+};
+```
+
+**To change the physical NIC:** edit the `lanNic` variable at the top of `nix/hosts/hypervisor/network.nix` to match the actual interface name (discover it with `ip link` on the host). Common alternatives: `"enp3s0"`, `"eth0"`.
 
 ## Repository Architecture
 
