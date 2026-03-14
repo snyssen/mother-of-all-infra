@@ -28,12 +28,21 @@ let
   '';
 
   # Build all disko disk entries for a single named pool.
-  # Index 0 is the *primary* disk: it runs mkfs.btrfs and references all other
-  # opened LUKS devices in extraArgs so they join the same RAID1 set.
-  # Indexes 1…n are *secondary* disks: their LUKS containers are opened but no
-  # filesystem is created on them (Disko's `content` defaults to null), because
-  # the primary's mkfs.btrfs already includes them.
-  poolDiskEntries = poolName: poolCfg:
+  #
+  # Disko processes disks in alphabetical order of their attribute name.
+  # For btrfs RAID1 over LUKS, we need every secondary LUKS container to be
+  # opened *before* mkfs.btrfs runs on the primary disk.
+  #
+  # Inspired by https://discourse.nixos.org/t/btrfs-raid-with-disko/52503:
+  # ‣ Secondary disks (indexes 1…n) are named "0-before:${poolName}:${i}".
+  #   The '0-' prefix sorts before any letter, so disko will partition and
+  #   open these LUKS containers first.  They carry no btrfs content — the
+  #   primary's mkfs.btrfs already includes them.
+  # ‣ The primary disk (index 0) is named "${poolName}" (no prefix).
+  #   It runs mkfs.btrfs with the secondary /dev/mapper/* paths in extraArgs
+  #   so they all join the same RAID1 set.
+  poolDiskEntries =
+    poolName: poolCfg:
     let
       luksName = i: "crypt-${poolName}-${builtins.toString i}";
       luksDevice = i: "/dev/mapper/${luksName i}";
@@ -42,16 +51,43 @@ let
         # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
         fallbackToPassword = true;
         preOpenCommands = usbMountScript;
-      } // lib.optionalAttrs (poolCfg.storageMedia == "ssd") {
+      }
+      // lib.optionalAttrs (poolCfg.storageMedia == "ssd") {
         # Allow TRIM operations on SSDs/NVMe drives
         allowDiscards = true;
       };
-    in
-    lib.listToAttrs (
-      lib.imap0 (i: diskPath: {
-        name = "${poolName}-${builtins.toString i}";
-        value = {
-          device = diskPath;
+
+      # ── Secondary disks (processed first thanks to '0-before-' prefix) ────
+      # Digits sort before letters in ASCII, so these are formatted before the
+      # primary disk entry whose name starts with a letter (the pool name).
+      secondaryDiskEntries = lib.listToAttrs (
+        lib.imap0 (i: diskPath: {
+          name = "0-before-${poolName}-${builtins.toString i}";
+          value = {
+            device = diskPath;
+            type = "disk";
+            content = {
+              type = "gpt";
+              partitions = {
+                "luks-${poolName}" = {
+                  size = "100%";
+                  content = {
+                    type = "luks";
+                    name = luksName (i + 1); # offset by 1 since index 0 is reserved for primary
+                    passwordFile = "/tmp/secret.key";
+                    settings = luksSettings;
+                  };
+                };
+              };
+            };
+          };
+        }) (lib.lists.drop 1 poolCfg.disks)
+      );
+
+      # ── Primary disk (processed after secondaries due to name sorting) ────
+      primaryDiskEntry = {
+        "${poolName}" = {
+          device = builtins.head poolCfg.disks;
           type = "disk";
           content = {
             type = "gpt";
@@ -60,14 +96,9 @@ let
                 size = "100%";
                 content = {
                   type = "luks";
-                  name = luksName i;
+                  name = luksName 0;
                   passwordFile = "/tmp/secret.key";
                   settings = luksSettings;
-                }
-                // lib.optionalAttrs (i == 0) {
-                  # Primary disk: create the btrfs RAID1 filesystem.
-                  # The secondary device mapper paths are appended so that a
-                  # single mkfs.btrfs call creates the full multi-device set.
                   content = {
                     type = "btrfs";
                     extraArgs = [
@@ -95,13 +126,12 @@ let
             };
           };
         };
-      }) poolCfg.disks
-    );
+      };
+    in
+    secondaryDiskEntries // primaryDiskEntry;
 
   # Merge disk entries from every configured pool into a single attrset.
-  allPoolDiskEntries = lib.foldl' lib.mergeAttrs { } (
-    lib.mapAttrsToList poolDiskEntries cfg.pools
-  );
+  allPoolDiskEntries = lib.foldl' lib.mergeAttrs { } (lib.mapAttrsToList poolDiskEntries cfg.pools);
 in
 {
   options.disko."${layoutName}" = {

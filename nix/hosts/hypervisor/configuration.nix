@@ -59,7 +59,8 @@
     {
       layout = ly;
       "${ly}" = {
-        mainDiskPath = "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987";
+        # Micron 1 TB NVMe
+        mainDiskPath = "/dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517";
         usbKeysIds = [
           "8B34-7D3C" # Philips 8GB
         ];
@@ -71,17 +72,21 @@
               "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F"
               # 2× 2 TB HDD
               "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
-              "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
+              # TODO: re-enable to run pool extension test
+              # "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
             ];
             storageMedia = "hdd";
           };
           vmstore = {
             disks = [
-              # 2× 1 TB NVMe
-              "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_XXXXXXXXXXXXXXXX"
-              "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_YYYYYYYYYYYYYYYY"
-              # 1× 500 GB NVMe
-              "/dev/disk/by-id/nvme-WD_Blue_SN570_500GB_ZZZZZZZZZZZZZZZZ"
+              # 1× 1 TB NVMe
+              "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
+              # 2× 500 GB NVMe/SATA
+              # TODO: re-enable to run pool extension test
+              #! WARN: this disk might be failing (could not format it with Disko, lots of I/O errors), but it might also just be a SATA cable issue
+              # TODO: re-seat cables and check SMART status of the disk
+              # "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_181146803034"
+              "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987"
             ];
             storageMedia = "ssd";
           };
