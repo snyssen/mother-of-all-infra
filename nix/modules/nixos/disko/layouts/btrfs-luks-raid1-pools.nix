@@ -131,7 +131,13 @@ let
     secondaryDiskEntries // primaryDiskEntry;
 
   # Merge disk entries from every configured pool into a single attrset.
-  allPoolDiskEntries = lib.foldl' lib.mergeAttrs { } (lib.mapAttrsToList poolDiskEntries cfg.pools);
+  # Only include pools with at least 2 disks to avoid builtins.head crashing
+  # on invalid pools before assertions fire.
+  allPoolDiskEntries = lib.foldl' lib.mergeAttrs { } (
+    lib.mapAttrsToList poolDiskEntries (
+      lib.filterAttrs (_: poolCfg: builtins.length poolCfg.disks >= 2) cfg.pools
+    )
+  );
 in
 {
   options.disko."${layoutName}" = {
@@ -238,8 +244,8 @@ in
     assertions =
       # Ensure each pool configured for btrfs RAID1 has at least 2 disks.
       (lib.mapAttrsToList (poolName: poolCfg: {
-        assertion = poolCfg.disks == [ ] || builtins.length poolCfg.disks >= 2;
-        message = "disko.${layoutName}.pools.${poolName}.disks: btrfs RAID1 requires at least 2 disks.";
+        assertion = builtins.length poolCfg.disks >= 2;
+        message = "disko.${layoutName}.pools.${poolName}.disks: btrfs RAID1 requires at least 2 disks (got ${toString (builtins.length poolCfg.disks)}).";
       }) cfg.pools)
       # Prevent pool names from colliding with reserved disk keys (e.g. \"main\")
       # which are used under `disko.devices.disk` and merged via `//`.
