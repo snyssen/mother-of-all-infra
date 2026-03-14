@@ -79,6 +79,126 @@ networking.interfaces = {
 
 **To change the physical NIC:** edit the `lanNic` variable at the top of `nix/hosts/hypervisor/network.nix` to match the actual interface name (discover it with `ip link` on the host). Common alternatives: `"enp3s0"`, `"eth0"`.
 
+## Virtualisation — libvirtd
+
+The hypervisor runs [libvirtd](https://libvirt.org/) to manage QEMU/KVM virtual machines.  The NixOS module lives at `nix/modules/nixos/libvirtd.nix` and is imported from `nix/hosts/hypervisor/configuration.nix` with:
+
+```nix
+libvirtd.enable = true;
+```
+
+Key options exposed by the module (all have sensible defaults):
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `libvirtd.users` | `[ "snyssen" ]` | Users added to the `libvirtd` and `kvm` groups |
+| `libvirtd.vmstorePool.enable` | `true` | Define and autostart the `vmstore` pool |
+| `libvirtd.vmstorePool.path` | `/mnt/vmstore` | Target directory for the `vmstore` pool |
+
+A systemd oneshot service (`libvirt-setup-vmstore-pool`) runs after `libvirtd.service` at every boot to ensure the pool is defined, set to autostart, and started.  The service declares `RequiresMountsFor = /mnt/vmstore`, so systemd guarantees the btrfs RAID1 volume is mounted before any pool operations are attempted.
+
+### Verifying the storage pool
+
+After a successful `nixos-rebuild switch`, confirm that libvirtd is running and the pool is active:
+
+```sh
+# Check the daemon
+systemctl status libvirtd.service
+
+# List pools (should show vmstore as active)
+virsh pool-list --all
+
+# Show pool details
+virsh pool-info vmstore
+```
+
+Expected output:
+
+```
+Name:           vmstore
+UUID:           <uuid>
+State:          running
+Persistent:     yes
+Autostart:      yes
+Capacity:       ...
+Allocation:     ...
+Available:      ...
+```
+
+### Creating a VM disk image (volume)
+
+Use `virsh vol-create-as` to allocate a new disk inside the `vmstore` pool:
+
+```sh
+# Create a 20 GiB qcow2 disk for a new VM
+virsh vol-create-as vmstore my-vm.qcow2 20G --format qcow2
+```
+
+The resulting image is stored at `/mnt/vmstore/my-vm.qcow2`.
+
+### Listing and deleting volumes
+
+```sh
+# List all volumes in the pool
+virsh vol-list vmstore
+
+# Get detailed info on a single volume
+virsh vol-info my-vm.qcow2 --pool vmstore
+
+# Delete a volume (removes the file)
+virsh vol-delete my-vm.qcow2 --pool vmstore
+```
+
+### Defining and starting a VM
+
+The simplest way to define a VM interactively is `virt-install`:
+
+```sh
+# Example: install Debian from an ISO into the previously created disk
+virt-install \
+  --name my-vm \
+  --memory 2048 \
+  --vcpus 2 \
+  --disk vol=vmstore/my-vm.qcow2 \
+  --cdrom /mnt/bulk/isos/debian.iso \
+  --network bridge=br0 \
+  --os-variant debiantesting \
+  --graphics vnc
+```
+
+The `--network bridge=br0` argument connects the VM directly to the LAN bridge, giving it a first-class LAN IP (see [Network Bridge](#network-bridge) above).
+
+### Managing VMs with virsh
+
+```sh
+# List all VMs (running + defined)
+virsh list --all
+
+# Start a VM
+virsh start my-vm
+
+# Gracefully shut down a VM
+virsh shutdown my-vm
+
+# Force-off a VM
+virsh destroy my-vm
+
+# Remove the VM definition (does NOT delete its disk)
+virsh undefine my-vm
+```
+
+### Permissions
+
+The pool directory (`/mnt/vmstore`) is owned and writable by `root`.  libvirtd spawns QEMU processes under the `qemu-libvirtd` system user.  Members of the `libvirtd` group (configured via `libvirtd.users`) can interact with the system libvirt socket (`/run/libvirt/libvirt.sock`) without `sudo`.
+
+If a permission error occurs when starting a VM, verify group membership:
+
+```sh
+id $USER   # should list libvirtd and kvm
+```
+
+---
+
 ## Repository Architecture
 
 ### NixOS Modules (`nix/modules/nixos/`)
@@ -93,6 +213,7 @@ Reusable system-level modules. Each file/directory exposes NixOS options that ho
 | `cache.nix` | Nix binary cache configuration |
 | `docker.nix` | Docker / container runtime |
 | `grub.nix` | GRUB bootloader |
+| `libvirtd.nix` | libvirtd / QEMU-KVM hypervisor daemon + vmstore pool |
 | `locale.nix` | Locale and timezone |
 | `nvidia.nix` | NVIDIA GPU drivers |
 | `sops.nix` | [SOPS](https://github.com/getsops/sops) secrets management |
@@ -134,8 +255,9 @@ Current hosts:
 | `blackfog` | Secondary desktop |
 | `gaming` | Gaming PC (multi-disk LUKS setup) |
 | `ingress` | Remote VPS (Gandi Cloud) — reverse proxy / ingress |
+| `hypervisor` | KVM hypervisor with btrfs RAID1 VM store |
 
-The **hypervisor** host will be added as `nix/hosts/hypervisor/` following the same structure, with a new Disko layout covering the multi-disk btrfs RAID1 configuration described above.
+The **hypervisor** host lives at `nix/hosts/hypervisor/` and follows the same structure as the other hosts.
 
 ### Flake & Blueprint (`flake.nix`)
 
