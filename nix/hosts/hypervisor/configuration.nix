@@ -40,6 +40,7 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
+    flake.modules.nixos.libvirtd
 
     ./network.nix
   ];
@@ -108,6 +109,8 @@
   networking.firewall = {
     enable = true;
   };
+
+  libvirtd.enable = true;
 
   # Use systemd-networkd instead of dhcpcd for more reliable DHCP
   # As there was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
