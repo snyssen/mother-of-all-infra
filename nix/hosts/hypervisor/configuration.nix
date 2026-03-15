@@ -106,19 +106,15 @@
     settings.PermitRootLogin = "no";
   };
 
-  networking.firewall = {
-    enable = true;
-  };
-
   libvirtd = {
     enable = true;
     vms = {
-      "apps-vm" = {
-        uuid = "ba7c2df4-81f4-422d-9cec-074718c95d07";
-        vcpus = 4;
-        memoryGiB = 4;
-        diskSizeGiB = 80;
-      };
+      # "apps-vm" = {
+      #   uuid = "ba7c2df4-81f4-422d-9cec-074718c95d07";
+      #   vcpus = 4;
+      #   memoryGiB = 4;
+      #   diskSizeGiB = 80;
+      # };
       "homeassistant-vm" = {
         uuid = "d1fa0fc8-e862-47cc-9700-014336b7c26c";
         vcpus = 2;
@@ -127,11 +123,6 @@
       };
     };
   };
-
-  # Use systemd-networkd instead of dhcpcd for more reliable DHCP
-  # As there was an issue with my DHCP server being on 192.168.1.2 instead of 192.168.1.1
-  # and dhcpcd would not trust that IP
-  networking.useNetworkd = true;
 
   # TODO: make this part automatically defined
   nix.settings = {

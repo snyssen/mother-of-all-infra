@@ -2,6 +2,7 @@
   config,
   lib,
   inputs,
+  pkgs,
   ...
 }:
 let
@@ -24,7 +25,9 @@ let
       nixvirt.lib.domain.templates.linux {
         inherit name;
         uuid = vm.uuid;
-        vcpu = { count = vm.vcpus; };
+        vcpu = {
+          count = vm.vcpus;
+        };
         memory = {
           count = vm.memoryGiB;
           unit = "GiB";
@@ -94,26 +97,28 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    virtualisation.libvirtd = {
-      enable = true;
-      qemu = {
-        # Software TPM for guests that need a TPM device
-        swtpm.enable = true;
-      };
-    };
-
     # Give configured users access to the libvirt socket and KVM device
     users.extraGroups.libvirtd.members = cfg.users;
     users.extraGroups.kvm.members = cfg.users;
 
     programs.virt-manager.enable = true;
 
-    virtualisation.libvirt = lib.mkIf (cfg.vms != { }) {
+    virtualisation.libvirtd = {
       enable = true;
+      allowedBridges = [ "br0" ];
+      # qemu.package = pkgs.qemu_kvm;
+      qemu.runAsRoot = true;
+    };
+    virtualisation.libvirt = {
+      enable = true;
+      # TODO: disable verbose
+      verbose = true;
+      swtpm.enable = true;
       connections."qemu:///system" = {
         pools = [
           {
             definition = nixvirt.lib.pool.writeXML {
+              uuid = "a9b2c3d4-e5f6-7890-1234-56789abcdef0";
               type = "dir";
               name = "vmstore";
               target.path = cfg.vmstorePath;
@@ -125,5 +130,12 @@ in
         domains = vmDomains;
       };
     };
+
+    # Drivers
+    environment.systemPackages = with pkgs; [
+      mesa
+      libglvnd
+    ];
+    hardware.opengl.enable = true;
   };
 }
