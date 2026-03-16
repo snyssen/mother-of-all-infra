@@ -56,6 +56,10 @@
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
+    tags = [
+      "server"
+      "nm-exit-node"
+    ];
   };
   tailscale.advertiseExitNode = true;
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
