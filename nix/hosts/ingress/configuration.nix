@@ -52,16 +52,19 @@
     sopsFile = ./data/secrets.yaml;
   };
 
-  tailscale.autoconnect = {
-    enable = true;
-    authKeyPath = config.sops.secrets."tailscale/authKey".path;
-    enableSSH = true;
-    tags = [
-      "server"
-      "nm-exit-node"
-    ];
+  tailscale = {
+    autoconnect = {
+      enable = true;
+      authKeyPath = config.sops.secrets."tailscale/authKey".path;
+      enableSSH = true;
+      tags = [
+        "server"
+        "nm-exit-node"
+      ];
+    };
+    advertiseExitNode = true;
+    advertiseConnector = true;
   };
-  tailscale.advertiseExitNode = true;
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
   grafana-alloy = {
     varlogs.enable = true;

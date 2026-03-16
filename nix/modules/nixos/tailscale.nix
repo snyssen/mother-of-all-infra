@@ -35,6 +35,7 @@ in
       '';
     };
     advertiseExitNode = lib.mkEnableOption "advertise this node as an exit node";
+    advertiseConnector = lib.mkEnableOption "advertise this node as a connector node (for subnet routing)";
   };
 
   config = {
@@ -46,6 +47,9 @@ in
       }
       (lib.mkIf cfg.advertiseExitNode {
         extraUpFlags = [ "--advertise-exit-node" ];
+      })
+      (lib.mkIf cfg.advertiseConnector {
+        extraUpFlags = [ "--advertise-connector" ];
       })
       (lib.mkIf cfg.autoconnect.enable {
         authKeyFile = cfg.autoconnect.authKeyPath;
