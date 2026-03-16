@@ -1,13 +1,51 @@
 {
   config,
   lib,
+  inputs,
   pkgs,
   ...
 }:
 let
   cfg = config.libvirtd;
+  nixvirt = inputs.NixVirt;
+
+  vmVolumes = lib.mapAttrsToList (name: vm: {
+    definition = nixvirt.lib.volume.writeXML {
+      name = "${name}.qcow2";
+      capacity = {
+        count = vm.diskSizeGiB;
+        unit = "GiB";
+      };
+      target.format.type = "qcow2";
+    };
+  }) cfg.vms;
+
+  vmDomains = lib.mapAttrsToList (name: vm: {
+    definition = nixvirt.lib.domain.writeXML (
+      nixvirt.lib.domain.templates.linux {
+        inherit name;
+        uuid = vm.uuid;
+        vcpu = {
+          count = vm.vcpus;
+        };
+        memory = {
+          count = vm.memoryGiB;
+          unit = "GiB";
+        };
+        storage_vol = {
+          pool = "vmstore";
+          volume = "${name}.qcow2";
+        };
+        bridge_name = vm.bridge;
+      }
+    );
+  }) cfg.vms;
 in
 {
+  imports = [
+    nixvirt.nixosModules.default
+  ];
+
   options.libvirtd = {
     enable = lib.mkEnableOption "libvirtd virtualization daemon";
 
@@ -17,71 +55,87 @@ in
       description = "Users to add to the libvirtd and kvm groups.";
     };
 
-    vmstorePool = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = "Whether to define and autostart the 'vmstore' storage pool.";
-      };
-      path = lib.mkOption {
-        type = lib.types.str;
-        default = "/mnt/vmstore";
-        description = "Filesystem path used as the libvirt 'vmstore' storage pool target.";
-      };
+    vmstorePath = lib.mkOption {
+      type = lib.types.str;
+      default = "/mnt/vmstore";
+      description = "Path to the directory used as the libvirt vmstore storage pool.";
+    };
+
+    vms = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            uuid = lib.mkOption {
+              type = lib.types.str;
+              description = "Stable UUID for the libvirt domain (generate once with uuidgen).";
+            };
+            vcpus = lib.mkOption {
+              type = lib.types.ints.positive;
+              default = 2;
+              description = "Number of virtual CPUs.";
+            };
+            memoryGiB = lib.mkOption {
+              type = lib.types.ints.positive;
+              default = 2;
+              description = "Amount of RAM in GiB.";
+            };
+            diskSizeGiB = lib.mkOption {
+              type = lib.types.ints.positive;
+              description = "Disk image size in GiB (created in vmstorePath if absent).";
+            };
+            bridge = lib.mkOption {
+              type = lib.types.str;
+              default = "br0";
+              description = "Network bridge to attach the VM NIC to.";
+            };
+          };
+        }
+      );
+      default = { };
+      description = "Declarative libvirt VM definitions managed via NixVirt.";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    virtualisation.libvirtd = {
-      enable = true;
-      qemu = {
-        # Software TPM for guests that need a TPM device
-        swtpm.enable = true;
-      };
-      # TODO: we might need to set "br0" as an allowed bridge?
-      # Below is the default value
-      # allowedBridges = [ "virbr0" ];
-    };
-
     # Give configured users access to the libvirt socket and KVM device
     users.extraGroups.libvirtd.members = cfg.users;
     users.extraGroups.kvm.members = cfg.users;
 
     programs.virt-manager.enable = true;
 
-    # Ensure the vmstore pool is defined, set to autostart, and started
-    systemd.services.libvirt-setup-vmstore-pool = lib.mkIf cfg.vmstorePool.enable {
-      description = "Configure libvirt 'vmstore' storage pool at ${cfg.vmstorePool.path}";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "libvirtd.service" ];
-      requires = [ "libvirtd.service" ];
-      path = [ pkgs.libvirt ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        RequiresMountsFor = [ cfg.vmstorePool.path ];
-      };
-      script = ''
-        poolPath="${cfg.vmstorePool.path}"
-
-        # Define the pool if it does not already exist
-        if ! virsh pool-info vmstore >/dev/null 2>&1; then
-          virsh pool-define-as vmstore dir --target "$poolPath"
-        fi
-
-        # Build the pool metadata (creates the target directory if absent);
-        # ignore "already exists" errors, propagate unexpected ones
-        buildOut=$(virsh pool-build vmstore 2>&1) || {
-          echo "$buildOut" | grep -qi "already exists" || { echo "$buildOut" >&2; exit 1; }
-        }
-
-        # Enable autostart so the pool survives reboots
-        virsh pool-autostart vmstore
-
-        # Start the pool; virsh pool-start is effectively idempotent —
-        # it errors only when the pool is already running, which we ignore
-        virsh pool-start vmstore 2>&1 | grep -v "already active" || true
-      '';
+    virtualisation.libvirtd = {
+      enable = true;
+      allowedBridges = [ "br0" ];
+      # qemu.package = pkgs.qemu_kvm;
+      qemu.runAsRoot = true;
     };
+    virtualisation.libvirt = {
+      enable = true;
+      # TODO: disable verbose
+      verbose = true;
+      swtpm.enable = true;
+      connections."qemu:///system" = {
+        pools = [
+          {
+            definition = nixvirt.lib.pool.writeXML {
+              uuid = "a9b2c3d4-e5f6-7890-1234-56789abcdef0";
+              type = "dir";
+              name = "vmstore";
+              target.path = cfg.vmstorePath;
+            };
+            active = true;
+            volumes = vmVolumes;
+          }
+        ];
+        domains = vmDomains;
+      };
+    };
+
+    # Drivers
+    environment.systemPackages = with pkgs; [
+      mesa
+      libglvnd
+    ];
+    hardware.opengl.enable = true;
   };
 }
