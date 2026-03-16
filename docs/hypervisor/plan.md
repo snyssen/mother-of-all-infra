@@ -54,7 +54,16 @@ Services exported via NFS default to allowing the entire local subnet:
 192.168.1.0/24
 ```
 
-This can be narrowed per-export in the NixOS `services.nfs.server.exports` configuration.
+NFS exports are managed by the `nfsExports` NixOS module (`nix/modules/nixos/nfs-exports.nix`).  It exposes a declarative list of exports, each with a configurable path, client CIDR, and mount options.  The module-wide `nfsExports.lanCidr` option (default `192.168.1.0/24`) is applied to every export that does not specify its own `clients` list, and can be narrowed per-export when needed.
+
+The hypervisor exports two bulk-storage directories for VM use:
+
+| Export path | Clients |
+|-------------|---------|
+| `/mnt/storage/apps-vm` | `192.168.1.0/24` |
+| `/mnt/storage/homeassistant-vm` | `192.168.1.0/24` |
+
+These directories must exist on the host filesystem before clients attempt to mount them.  See [docs/nix/modules/nfs-exports.md](../nix/modules/nfs-exports.md) for full module documentation, firewall details, and client mount instructions.
 
 ### Network Bridge
 
@@ -215,6 +224,7 @@ Reusable system-level modules. Each file/directory exposes NixOS options that ho
 | `grub.nix` | GRUB bootloader |
 | `libvirtd.nix` | libvirtd / QEMU-KVM hypervisor daemon + vmstore pool |
 | `locale.nix` | Locale and timezone |
+| `nfs-exports.nix` | NFS server with a declarative, per-export list of exported directories |
 | `nvidia.nix` | NVIDIA GPU drivers |
 | `sops.nix` | [SOPS](https://github.com/getsops/sops) secrets management |
 | `tailscale.nix` | Tailscale VPN mesh |

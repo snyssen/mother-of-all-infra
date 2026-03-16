@@ -41,6 +41,7 @@
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.libvirtd
+    flake.modules.nixos.nfs-exports
 
     ./network.nix
   ];
@@ -122,6 +123,15 @@
         diskSizeGiB = 32;
       };
     };
+  };
+
+  nfsExports = {
+    enable = true;
+    # lanCidr defaults to "192.168.1.0/24" — override here if your LAN differs
+    exports = [
+      { path = "/mnt/storage/apps-vm"; }
+      { path = "/mnt/storage/homeassistant-vm"; }
+    ];
   };
 
   # TODO: make this part automatically defined
