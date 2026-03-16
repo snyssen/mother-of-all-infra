@@ -6,6 +6,7 @@ The `nfsExports` NixOS module (`nix/modules/nixos/nfs-exports.nix`) configures a
 
 - Declarative list of NFS exports (paths, client CIDRs, and mount options).
 - Module-wide default LAN CIDR applied to every export that does not specify its own client list.
+- Automatic creation of exported directories via `systemd-tmpfiles` (mode `0755`, owned by `root`).
 - Automatic firewall rules for ports 111 (rpcbind) and 2049 (NFS) on both TCP and UDP.
 
 ## Module Options
@@ -101,14 +102,9 @@ No additional firewall configuration is required for NFSv3 or NFSv4 clients.
 
 ## Prerequisites
 
-The exported directories **must exist on the host** before clients attempt to mount them.  Create them manually or via another NixOS option such as `systemd.tmpfiles.rules`:
+The module automatically creates each exported directory via `systemd-tmpfiles` (mode `0755`, owner `root:root`) if it does not already exist.  This is a no-op when the path is already present, so it is safe for directories that live on external mounts (e.g. btrfs pools).
 
-```nix
-systemd.tmpfiles.rules = [
-  "d /mnt/storage/apps-vm          0755 root root -"
-  "d /mnt/storage/homeassistant-vm 0755 root root -"
-];
-```
+No manual directory creation is needed.
 
 ## Verifying the Configuration
 
