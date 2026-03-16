@@ -56,12 +56,12 @@ in
 
             options = lib.mkOption {
               type = lib.types.str;
-              default = "rw,sync,no_subtree_check";
+              default = "rw,sync,no_subtree_check,fsid=0";
               description = ''
                 NFS export options placed inside the parentheses for each
                 client entry.  See exports(5) for the full list of options.
               '';
-              example = "ro,sync,no_subtree_check";
+              example = "ro,sync,no_subtree_check,fsid=0";
             };
           };
         }
@@ -83,7 +83,7 @@ in
     systemd.tmpfiles.rules = lib.map (export: "d ${export.path} 0755 root root -") cfg.exports;
 
     # Open the NFS port (2049) and the portmapper port (111) on both TCP and
-    # UDP so that NFSv3 and NFSv4 clients on the LAN can reach the server.
+    # UDP for NFSv4 clients.
     networking.firewall = {
       allowedTCPPorts = [
         111 # rpcbind / portmapper
