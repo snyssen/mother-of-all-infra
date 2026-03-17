@@ -129,7 +129,7 @@
     enable = true;
     # lanCidr defaults to "192.168.1.0/24" — override here if your LAN differs
     exports = [
-      # { path = "/mnt/bulk/apps-vm"; }
+      { path = "/mnt/bulk/apps-vm"; }
       {
         path = "/mnt/bulk/homeassistant-vm";
         clients = [

@@ -7,14 +7,23 @@ let
   #   <path>  <cidr>(<options>) [<cidr>(<options>) ...]
   # If an export does not specify its own clients list the module-wide
   # lanCidr is used as the sole client.
-  exportsContent = lib.concatMapStrings (
-    export:
+  #
+  # For NFSv4, each export must have a unique fsid. If not explicitly provided
+  # in the options, one is automatically appended based on the export's index.
+  exportsContent = lib.concatMapStringsSep "" (
+    { index, export }:
     let
       clients = if export.clients != [ ] then export.clients else [ cfg.lanCidr ];
-      clientsStr = lib.concatMapStringsSep " " (c: "${c}(${export.options})") clients;
+      # Append fsid to options if not already present
+      options =
+        if lib.hasInfix "fsid=" export.options then
+          export.options
+        else
+          "${export.options},fsid=${toString index}";
+      clientsStr = lib.concatMapStringsSep " " (c: "${c}(${options})") clients;
     in
     "${export.path}  ${clientsStr}\n"
-  ) cfg.exports;
+  ) (lib.imap1 (index: export: { inherit index export; }) cfg.exports);
 in
 {
   options.nfsExports = {
@@ -56,12 +65,14 @@ in
 
             options = lib.mkOption {
               type = lib.types.str;
-              default = "rw,sync,no_subtree_check,fsid=0";
+              default = "rw,sync,no_subtree_check";
               description = ''
                 NFS export options placed inside the parentheses for each
-                client entry.  See exports(5) for the full list of options.
+                client entry. The fsid parameter is automatically appended based
+                on the export's index (1, 2, 3, ...) unless explicitly provided
+                in this string. See exports(5) for the full list of options.
               '';
-              example = "ro,sync,no_subtree_check,fsid=0";
+              example = "ro,sync,no_subtree_check";
             };
           };
         }
