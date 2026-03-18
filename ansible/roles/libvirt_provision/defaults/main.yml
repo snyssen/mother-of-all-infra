@@ -1,0 +1,11 @@
+---
+# Default variables for the libvirt_provision role
+
+# Root directory for VM disk images and assets
+libvirt_vmstore_root: /mnt/vmstore
+
+# Default network bridge for VM NICs
+libvirt_default_bridge: br0
+
+# libvirt connection URI
+libvirt_uri: qemu:///system

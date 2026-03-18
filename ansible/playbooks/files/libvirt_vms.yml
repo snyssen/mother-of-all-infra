@@ -1,0 +1,33 @@
+---
+# VM definitions for the hypervisor host.
+# This file is loaded as vars for the libvirt-provision playbook.
+# To add a new VM, append an entry to the list below and re-run the playbook.
+
+libvirt_vms:
+  # Home Assistant OS appliance (qcow2 image)
+  - name: haos
+    vcpu: 2
+    ram_mb: 4096
+    mac_address: "52:54:00:12:34:56"
+    disk_gb: 32 # only resizes up; leave unset to skip resize
+    disk_image:
+      url: "https://os-download.home-assistant.io/qcow2/haos_ova-14.2.qcow2.xz"
+      dest: "/mnt/vmstore/haos/haos.qcow2"
+      # extract: true   # optional; auto-detected from file extension when omitted
+      # checksum: "sha256:<hash>"  # optional but recommended for integrity verification
+    # USB passthrough devices (e.g. Zigbee/Matter dongles)
+    # usb_devices:
+    #   - vendor_id: "0x1a86"
+    #     product_id: "0x7523"
+
+  # Example ISO-based VM (commented out — uncomment and adapt to use)
+  # - name: testvm
+  #   vcpu: 2
+  #   ram_mb: 4096
+  #   mac_address: "52:54:00:34:ab:cd"
+  #   disk_gb: 20
+  #   iso_image:
+  #     url: "https://example.invalid/downloads/test.iso"
+  #     dest: "/mnt/vmstore/testvm/installer.iso"
+  #     # checksum: "sha256:<hash>"  # optional but recommended for integrity verification
+  #   usb_devices: []

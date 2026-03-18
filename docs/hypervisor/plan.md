@@ -101,110 +101,117 @@ Key options exposed by the module (all have sensible defaults):
 | Option | Default | Description |
 |--------|---------|-------------|
 | `libvirtd.users` | `[ "snyssen" ]` | Users added to the `libvirtd` and `kvm` groups |
-| `libvirtd.vmstorePool.enable` | `true` | Define and autostart the `vmstore` pool |
-| `libvirtd.vmstorePool.path` | `/mnt/vmstore` | Target directory for the `vmstore` pool |
+| `libvirtd.vmstorePath` | `/mnt/vmstore` | Path to the VM store directory |
 
-A systemd oneshot service (`libvirt-setup-vmstore-pool`) runs after `libvirtd.service` at every boot to ensure the pool is defined, set to autostart, and started.  The service declares `RequiresMountsFor = /mnt/vmstore`, so systemd guarantees the btrfs RAID1 volume is mounted before any pool operations are attempted.
+> **Important:** Individual VM lifecycle (creation, disk provisioning, domain definition, autostart) is **fully managed by Ansible**, not NixOS/NixVirt.  The NixOS module only configures the libvirtd daemon, user group memberships, and system packages.  See [Ansible — libvirt VM provisioning](#ansible--libvirt-vm-provisioning) below.
 
-### Verifying the storage pool
-
-After a successful `nixos-rebuild switch`, confirm that libvirtd is running and the pool is active:
+### Verifying libvirtd is running
 
 ```sh
 # Check the daemon
 systemctl status libvirtd.service
 
-# List pools (should show vmstore as active)
-virsh pool-list --all
-
-# Show pool details
-virsh pool-info vmstore
+# List all defined VMs
+virsh list --all
 ```
 
-Expected output:
+---
 
+## Ansible — libvirt VM provisioning
+
+VM provisioning and lifecycle management is handled by the `libvirt_provision` Ansible role invoked from the `libvirt-provision` playbook.
+
+### VM definitions
+
+VMs are defined in `ansible/playbooks/files/libvirt_vms.yml`.  Each entry in `libvirt_vms` describes one VM:
+
+```yaml
+libvirt_vms:
+  - name: haos               # VM name / directory key
+    vcpu: 2                  # vCPUs
+    ram_mb: 4096             # RAM in MiB
+    mac_address: "52:54:00:12:34:56"  # static MAC for DHCP reservation
+    disk_gb: 32              # optional: only enlarges, never shrinks
+    disk_image:              # mutually exclusive with iso_image
+      url: "https://..."     # download URL
+      dest: "/mnt/vmstore/haos/haos.qcow2"  # final path on host
+      # extract: true        # optional; auto-detected from extension
+    # usb_devices:
+    #   - vendor_id: "0x1a86"
+    #     product_id: "0x7523"
 ```
-Name:           vmstore
-UUID:           <uuid>
-State:          running
-Persistent:     yes
-Autostart:      yes
-Capacity:       ...
-Allocation:     ...
-Available:      ...
+
+For ISO-based VMs use `iso_image` instead of `disk_image`:
+
+```yaml
+    iso_image:
+      url: "https://..."
+      dest: "/mnt/vmstore/testvm/installer.iso"
 ```
 
-### Creating a VM disk image (volume)
-
-Use `virsh vol-create-as` to allocate a new disk inside the `vmstore` pool:
+### Running the playbook
 
 ```sh
-# Create a 20 GiB qcow2 disk for a new VM
-virsh vol-create-as vmstore my-vm.qcow2 20G --format qcow2
+just ansible-playbook playbook=libvirt-provision flags='-i ansible/hosts/prod.yml'
 ```
 
-The resulting image is stored at `/mnt/vmstore/my-vm.qcow2`.
-
-### Listing and deleting volumes
+Or directly:
 
 ```sh
-# List all volumes in the pool
-virsh vol-list vmstore
-
-# Get detailed info on a single volume
-virsh vol-info my-vm.qcow2 --pool vmstore
-
-# Delete a volume (removes the file)
-virsh vol-delete my-vm.qcow2 --pool vmstore
+ansible-playbook ansible/playbooks/libvirt-provision.ansible.yml -i ansible/hosts/prod.yml
 ```
 
-### Defining and starting a VM
+### What the playbook does (per VM)
 
-The simplest way to define a VM interactively is `virt-install`:
+1. Creates `/mnt/vmstore/<name>/` directory
+2. Downloads the disk/ISO image (skipped if already present)
+3. Extracts archives (`.xz`, `.gz`, `.bz2`, `.zip`, `.tar.*`) automatically
+4. Resizes the disk image to `disk_gb` if larger than current virtual size
+5. Creates an empty qcow2 disk for ISO-based VMs (if absent)
+6. Renders a Jinja2 libvirt domain XML template and saves it to `/mnt/vmstore/<name>/domain.xml`
+7. Runs `virsh define` to apply the XML (only when the template changes)
+8. Sets the domain to autostart
+9. Starts the domain (idempotent — skips if already running)
 
-```sh
-# Example: install Debian from an ISO into the previously created disk
-virt-install \
-  --name my-vm \
-  --memory 2048 \
-  --vcpus 2 \
-  --disk vol=vmstore/my-vm.qcow2 \
-  --cdrom /mnt/bulk/isos/debian.iso \
-  --network bridge=br0 \
-  --os-variant debiantesting \
-  --graphics vnc
-```
+### Domain XML templates
 
-The `--network bridge=br0` argument connects the VM directly to the LAN bridge, giving it a first-class LAN IP (see [Network Bridge](#network-bridge) above).
+Jinja2 templates are stored in `ansible/roles/libvirt_provision/templates/`:
 
-### Managing VMs with virsh
+| Template | Used for |
+|----------|----------|
+| `domain-disk-image.xml.j2` | qcow2 appliance images (e.g. HAOS) |
+| `domain-iso.xml.j2` | ISO installer-based VMs |
+
+### Role defaults
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `libvirt_vmstore_root` | `/mnt/vmstore` | Root path for VM disks/assets |
+| `libvirt_default_bridge` | `br0` | Default network bridge |
+| `libvirt_uri` | `qemu:///system` | libvirt connection URI |
+
+### Managing VMs manually
 
 ```sh
 # List all VMs (running + defined)
 virsh list --all
 
 # Start a VM
-virsh start my-vm
+virsh start haos
 
 # Gracefully shut down a VM
-virsh shutdown my-vm
+virsh shutdown haos
 
 # Force-off a VM
-virsh destroy my-vm
+virsh destroy haos
 
 # Remove the VM definition (does NOT delete its disk)
-virsh undefine my-vm
+virsh undefine haos
 ```
 
 ### Permissions
 
 The pool directory (`/mnt/vmstore`) is owned and writable by `root`.  libvirtd spawns QEMU processes under the `qemu-libvirtd` system user.  Members of the `libvirtd` group (configured via `libvirtd.users`) can interact with the system libvirt socket (`/run/libvirt/libvirt.sock`) without `sudo`.
-
-If a permission error occurs when starting a VM, verify group membership:
-
-```sh
-id $USER   # should list libvirtd and kvm
-```
 
 ---
 
@@ -222,7 +229,7 @@ Reusable system-level modules. Each file/directory exposes NixOS options that ho
 | `cache.nix` | Nix binary cache configuration |
 | `docker.nix` | Docker / container runtime |
 | `grub.nix` | GRUB bootloader |
-| `libvirtd.nix` | libvirtd / QEMU-KVM hypervisor daemon + vmstore pool |
+| `libvirtd.nix` | libvirtd / QEMU-KVM hypervisor daemon; VM lifecycle is managed by Ansible |
 | `locale.nix` | Locale and timezone |
 | `nfs-exports.nix` | NFS server with a declarative, per-export list of exported directories |
 | `nvidia.nix` | NVIDIA GPU drivers |

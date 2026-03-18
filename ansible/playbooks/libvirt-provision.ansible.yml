@@ -1,0 +1,12 @@
+- hosts: hypervisor
+  vars_files:
+    - files/libvirt_vms.yml
+  tasks:
+    - name: Provision each libvirt VM
+      ansible.builtin.include_role:
+        name: libvirt_provision
+      vars:
+        vm: "{{ item }}"
+      loop: "{{ libvirt_vms }}"
+      loop_control:
+        label: "{{ item.name }}"

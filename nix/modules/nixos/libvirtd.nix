@@ -1,51 +1,13 @@
 {
   config,
   lib,
-  inputs,
   pkgs,
   ...
 }:
 let
   cfg = config.libvirtd;
-  nixvirt = inputs.NixVirt;
-
-  vmVolumes = lib.mapAttrsToList (name: vm: {
-    definition = nixvirt.lib.volume.writeXML {
-      name = "${name}.qcow2";
-      capacity = {
-        count = vm.diskSizeGiB;
-        unit = "GiB";
-      };
-      target.format.type = "qcow2";
-    };
-  }) cfg.vms;
-
-  vmDomains = lib.mapAttrsToList (name: vm: {
-    definition = nixvirt.lib.domain.writeXML (
-      nixvirt.lib.domain.templates.linux {
-        inherit name;
-        uuid = vm.uuid;
-        vcpu = {
-          count = vm.vcpus;
-        };
-        memory = {
-          count = vm.memoryGiB;
-          unit = "GiB";
-        };
-        storage_vol = {
-          pool = "vmstore";
-          volume = "${name}.qcow2";
-        };
-        bridge_name = vm.bridge;
-      }
-    );
-  }) cfg.vms;
 in
 {
-  imports = [
-    nixvirt.nixosModules.default
-  ];
-
   options.libvirtd = {
     enable = lib.mkEnableOption "libvirtd virtualization daemon";
 
@@ -60,40 +22,6 @@ in
       default = "/mnt/vmstore";
       description = "Path to the directory used as the libvirt vmstore storage pool.";
     };
-
-    vms = lib.mkOption {
-      type = lib.types.attrsOf (
-        lib.types.submodule {
-          options = {
-            uuid = lib.mkOption {
-              type = lib.types.str;
-              description = "Stable UUID for the libvirt domain (generate once with uuidgen).";
-            };
-            vcpus = lib.mkOption {
-              type = lib.types.ints.positive;
-              default = 2;
-              description = "Number of virtual CPUs.";
-            };
-            memoryGiB = lib.mkOption {
-              type = lib.types.ints.positive;
-              default = 2;
-              description = "Amount of RAM in GiB.";
-            };
-            diskSizeGiB = lib.mkOption {
-              type = lib.types.ints.positive;
-              description = "Disk image size in GiB (created in vmstorePath if absent).";
-            };
-            bridge = lib.mkOption {
-              type = lib.types.str;
-              default = "br0";
-              description = "Network bridge to attach the VM NIC to.";
-            };
-          };
-        }
-      );
-      default = { };
-      description = "Declarative libvirt VM definitions managed via NixVirt.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -106,36 +34,15 @@ in
     virtualisation.libvirtd = {
       enable = true;
       allowedBridges = [ "br0" ];
-      # qemu.package = pkgs.qemu_kvm;
       qemu.runAsRoot = true;
     };
-    virtualisation.libvirt = {
-      enable = true;
-      # TODO: disable verbose
-      verbose = true;
-      swtpm.enable = true;
-      connections."qemu:///system" = {
-        pools = [
-          {
-            definition = nixvirt.lib.pool.writeXML {
-              uuid = "a9b2c3d4-e5f6-7890-1234-56789abcdef0";
-              type = "dir";
-              name = "vmstore";
-              target.path = cfg.vmstorePath;
-            };
-            active = true;
-            volumes = vmVolumes;
-          }
-        ];
-        domains = vmDomains;
-      };
-    };
+
+    # Ensure Python3 is available for Ansible
+    environment.systemPackages = with pkgs; [
+      python3
+    ];
 
     # Drivers
-    environment.systemPackages = with pkgs; [
-      mesa
-      libglvnd
-    ];
     hardware.opengl.enable = true;
   };
 }

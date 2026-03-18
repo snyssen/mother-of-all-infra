@@ -109,20 +109,6 @@
 
   libvirtd = {
     enable = true;
-    vms = {
-      # "apps-vm" = {
-      #   uuid = "ba7c2df4-81f4-422d-9cec-074718c95d07";
-      #   vcpus = 4;
-      #   memoryGiB = 4;
-      #   diskSizeGiB = 80;
-      # };
-      "homeassistant-vm" = {
-        uuid = "d1fa0fc8-e862-47cc-9700-014336b7c26c";
-        vcpus = 2;
-        memoryGiB = 2;
-        diskSizeGiB = 32;
-      };
-    };
   };
 
   nfsExports = {
