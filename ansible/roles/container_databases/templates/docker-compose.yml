@@ -12,7 +12,6 @@ services:
       - "127.0.0.1:5432:5432"
     networks:
       - db
-    mem_limit: 1g
 
   pgadmin:
     image: dpage/pgadmin4:9.13@sha256:d243a4bcc02d2ee6b447c601692813531d2d0fbca18b583d9f7f9658da835d81
@@ -23,9 +22,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: "{{ db__pgadmin_password }}"
       PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "10" # debug
       PGADMIN_CONFIG_SHARED_STORAGE: >-
-        [{'name':'Backups',
-        'path': '/backups',
-        'restricted_access': False}]
+        [{'name':'Backups', 'path': '/backups', 'restricted_access': False}]
       PGADMIN_CONFIG_AUTHENTICATION_SOURCES: "['oauth2']"
     volumes:
       - "{{ docker_mounts_directory }}/databases/postgres/servers.json:/pgadmin4/servers.json:ro"
