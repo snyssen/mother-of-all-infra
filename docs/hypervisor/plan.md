@@ -123,7 +123,7 @@ VM provisioning and lifecycle management is handled by the `libvirt_provision` A
 
 ### VM definitions
 
-VMs are defined in `ansible/playbooks/files/libvirt_vms.yml`.  Each entry in `libvirt_vms` describes one VM:
+VMs are defined in `ansible/hosts/host_vars/hypervisor/vars.yml`.  Each entry in `libvirt_vms` describes one VM:
 
 ```yaml
 libvirt_vms:

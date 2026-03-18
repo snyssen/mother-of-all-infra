@@ -1,8 +1,8 @@
----
-# VM definitions for the hypervisor host.
-# This file is loaded as vars for the libvirt-provision playbook.
-# To add a new VM, append an entry to the list below and re-run the playbook.
+ansible_user: "{{ vault_ansible_user }}"
+ansible_become_pass: "{{ vault_ansible_become_pass }}"
 
+# VM definitions managed by the libvirt-provision playbook.
+# To add a new VM, append an entry to libvirt_vms and re-run the playbook.
 libvirt_vms:
   # Home Assistant OS appliance (qcow2 image)
   - name: haos

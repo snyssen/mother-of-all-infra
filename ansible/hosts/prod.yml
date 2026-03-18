@@ -25,5 +25,5 @@ livecams:
 
 hypervisor:
   hosts:
-    hypervisor.lan:
-      ansible_host: "hypervisor.lan"
+    hypervisor:
+      ansible_host: "hypervisor"

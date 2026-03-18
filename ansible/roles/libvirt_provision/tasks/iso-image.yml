@@ -1,0 +1,22 @@
+---
+- name: "{{ vm.name }} | Download ISO image"
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ vm.iso_image.url }}"
+    dest: "{{ vm.iso_image.dest }}"
+    mode: "0644"
+    checksum: "{{ vm.iso_image.checksum | default(omit) }}"
+    force: false
+
+- name: "{{ vm.name }} | Create base qcow2 disk for ISO-based VM"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - create
+      - -f
+      - qcow2
+      - "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
+      - "{{ vm.disk_gb | default(20) }}G"
+    creates: "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
+  changed_when: true
