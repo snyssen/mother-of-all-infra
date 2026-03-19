@@ -1,85 +1,18 @@
 ---
-- name: "{{ vm.name }} | Check if disk image already exists"
-  ansible.builtin.stat:
-    path: "{{ vm.disk_image.dest }}"
-  register: _disk_image_stat
-
-- name: "{{ vm.name }} | Determine whether disk_image archive should be extracted"
-  ansible.builtin.set_fact:
-    _disk_image_extract: >-
+- name: "{{ vm.name }} | Download and extract disk image"
+  ansible.builtin.include_tasks:
+    file: extract.yml
+  vars:
+    _image_url: "{{ vm.disk_image.url }}"
+    _image_dest: "{{ vm.disk_image.dest }}"
+    _image_checksum: "{{ vm.disk_image.checksum | default(omit) }}"
+    _image_extract: >-
       {{
         (vm.disk_image.extract | default(
           vm.disk_image.url | regex_search('\.(xz|gz|bz2|zip|tar(\.(xz|gz|bz2))?)$')
           is not none
         )) | bool
       }}
-
-- name: "{{ vm.name }} | Download disk image (no extraction needed)"
-  become: true
-  ansible.builtin.get_url:
-    url: "{{ vm.disk_image.url }}"
-    dest: "{{ vm.disk_image.dest }}"
-    mode: "0644"
-    checksum: "{{ vm.disk_image.checksum | default(omit) }}"
-  when:
-    - not _disk_image_extract
-    - not _disk_image_stat.stat.exists
-
-- name: "{{ vm.name }} | Download disk image archive"
-  become: true
-  ansible.builtin.get_url:
-    url: "{{ vm.disk_image.url }}"
-    dest: "/tmp/{{ vm.disk_image.url | basename }}"
-    mode: "0644"
-    checksum: "{{ vm.disk_image.checksum | default(omit) }}"
-  when:
-    - _disk_image_extract
-    - not _disk_image_stat.stat.exists
-
-- name: "{{ vm.name }} | Extract .xz disk image"
-  become: true
-  ansible.builtin.shell:
-    cmd: "xz --decompress --keep --stdout -- '{{ '/tmp/' + (vm.disk_image.url | basename) }}' > '{{ vm.disk_image.dest }}'"
-    creates: "{{ vm.disk_image.dest }}"
-  when:
-    - _disk_image_extract
-    - not _disk_image_stat.stat.exists
-    - vm.disk_image.url | regex_search('\.xz$') is not none
-    - vm.disk_image.url | regex_search('\.tar\.xz$') is none
-
-- name: "{{ vm.name }} | Extract .gz disk image"
-  become: true
-  ansible.builtin.shell:
-    cmd: "gunzip --keep --stdout -- '{{ '/tmp/' + (vm.disk_image.url | basename) }}' > '{{ vm.disk_image.dest }}'"
-    creates: "{{ vm.disk_image.dest }}"
-  when:
-    - _disk_image_extract
-    - not _disk_image_stat.stat.exists
-    - vm.disk_image.url | regex_search('\.gz$') is not none
-    - vm.disk_image.url | regex_search('\.tar\.gz$') is none
-
-- name: "{{ vm.name }} | Extract .bz2 disk image"
-  become: true
-  ansible.builtin.shell:
-    cmd: "bunzip2 --keep --stdout -- '{{ '/tmp/' + (vm.disk_image.url | basename) }}' > '{{ vm.disk_image.dest }}'"
-    creates: "{{ vm.disk_image.dest }}"
-  when:
-    - _disk_image_extract
-    - not _disk_image_stat.stat.exists
-    - vm.disk_image.url | regex_search('\.bz2$') is not none
-    - vm.disk_image.url | regex_search('\.tar\.bz2$') is none
-
-- name: "{{ vm.name }} | Extract .zip / .tar.* disk image archive"
-  become: true
-  ansible.builtin.unarchive:
-    src: "/tmp/{{ vm.disk_image.url | basename }}"
-    dest: "{{ vm.disk_image.dest | dirname }}"
-    remote_src: true
-    creates: "{{ vm.disk_image.dest }}"
-  when:
-    - _disk_image_extract
-    - not _disk_image_stat.stat.exists
-    - vm.disk_image.url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
 
 - name: "{{ vm.name }} | Get current disk image virtual size"
   become: true
