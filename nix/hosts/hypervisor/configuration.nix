@@ -162,6 +162,10 @@
     ];
   };
 
+  environment.systemPackages = [
+    pkgs.btop
+  ];
+
   # TODO: make this part automatically defined
   nix.settings = {
     experimental-features = [
