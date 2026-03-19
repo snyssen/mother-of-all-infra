@@ -1,6 +1,6 @@
 services:
   unifi-network-application:
-    image: lscr.io/linuxserver/unifi-network-application:10.1.85@sha256:05e8e7e5003263adc0e714c32ae5f9543279f324e54ff8750c4550924b25c79c
+    image: lscr.io/linuxserver/unifi-network-application:10.1.89@sha256:f86da30498d3f6c00b403e6d2e32dfd012b531f87cad5bd9a270c35aceedbd7a
     container_name: unifi-network-application
     environment:
       - PUID=1000
@@ -60,7 +60,7 @@ services:
     depends_on:
       - unifi-db
   unifi-db:
-    image: docker.io/mongo:8.2.5@sha256:60aa240412f473f672ec8b282fd5651aa156dcc7a220f81f5381ce768ccc3167
+    image: docker.io/mongo:8.2.6@sha256:d343c378b5c6e2fe373174abcf4a877be0dfc721b5d0b9d582204dccb1c00b86
     container_name: unifi-db
     volumes:
       - "{{ docker_mounts_directory }}/unifi/mongodb:/data/db"
