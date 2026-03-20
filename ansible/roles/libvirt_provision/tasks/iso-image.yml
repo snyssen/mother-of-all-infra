@@ -1,4 +1,9 @@
 ---
+- name: "{{ vm.name }} | Check if base qcow2 disk already exists"
+  ansible.builtin.stat:
+    path: "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
+  register: _qcow2_disk_stat
+
 - name: "{{ vm.name }} | Download and extract ISO image"
   ansible.builtin.include_tasks:
     file: extract.yml
@@ -13,6 +18,8 @@
           is not none
         )) | bool
       }}
+  when: not _qcow2_disk_stat.stat.exists
+
 
 - name: "{{ vm.name }} | Create base qcow2 disk for ISO-based VM"
   become: true
@@ -24,5 +31,11 @@
       - qcow2
       - "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
       - "{{ vm.disk_gb | default(20) }}G"
-    creates: "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
+  when: not _qcow2_disk_stat.stat.exists
   changed_when: true
+
+- name: "{{ vm.name }} | Resize disk image if needed"
+  ansible.builtin.include_tasks:
+    file: resize-qcow2-disk.yml
+  vars:
+    _qcow2_disk_path: "{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"

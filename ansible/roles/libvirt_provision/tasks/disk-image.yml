@@ -14,29 +14,8 @@
         )) | bool
       }}
 
-- name: "{{ vm.name }} | Get current disk image virtual size"
-  become: true
-  ansible.builtin.command:
-    argv:
-      - qemu-img
-      - info
-      - --force-share
-      - --output=json
-      - "{{ vm.disk_image.dest }}"
-  register: _disk_image_info
-  changed_when: false
-  when: vm.disk_gb is defined
-
-- name: "{{ vm.name }} | Resize disk image if target size is larger than current"
-  become: true
-  ansible.builtin.command:
-    argv:
-      - qemu-img
-      - resize
-      - "{{ vm.disk_image.dest }}"
-      - "{{ vm.disk_gb }}G"
-  when:
-    - vm.disk_gb is defined
-    - _disk_image_info is defined
-    - (_disk_image_info.stdout | from_json)['virtual-size'] < (vm.disk_gb | int * 1024 * 1024 * 1024)
-  changed_when: true
+- name: "{{ vm.name }} | Resize disk image if needed"
+  ansible.builtin.include_tasks:
+    file: resize-qcow2-disk.yml
+  vars:
+    _qcow2_disk_path: "{{ vm.disk_image.dest }}"
