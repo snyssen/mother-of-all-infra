@@ -1,0 +1,46 @@
+---
+- name: "{{ vm.name }} | Check libvirt domain state"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - --connect
+      - "{{ libvirt_uri }}"
+      - domstate
+      - "{{ vm.name }}"
+  register: _domain_state
+  changed_when: false
+  failed_when: false
+
+- name: "{{ vm.name }} | Destroy domain (force off)"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - --connect
+      - "{{ libvirt_uri }}"
+      - destroy
+      - "{{ vm.name }}"
+  when:
+    - _domain_state.rc == 0
+    - "'running' in _domain_state.stdout"
+  changed_when: true
+
+- name: "{{ vm.name }} | Undefine domain"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - --connect
+      - "{{ libvirt_uri }}"
+      - undefine
+      - --nvram
+      - "{{ vm.name }}"
+  when: _domain_state.rc == 0
+  changed_when: true
+
+- name: "{{ vm.name }} | Remove VM directory and disk files"
+  become: true
+  ansible.builtin.file:
+    path: "{{ libvirt_vmstore_root }}/{{ vm.name }}"
+    state: absent

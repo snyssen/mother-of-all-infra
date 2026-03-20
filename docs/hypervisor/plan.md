@@ -127,6 +127,7 @@ VMs are defined in `ansible/hosts/host_vars/hypervisor/vars.yml`.  Each entry in
 ```yaml
 libvirt_vms:
   - name: haos               # VM name / directory key
+    state: present           # optional: present (default) or absent
     vcpu: 2                  # vCPUs
     ram_mb: 4096             # RAM in MiB
     mac_address: "52:54:00:12:34:56"  # static MAC for DHCP reservation
@@ -148,6 +149,15 @@ For ISO-based VMs use `iso_image` instead of `disk_image`:
       dest: "/mnt/vmstore/testvm/installer.iso"
 ```
 
+The `state` field controls the VM lifecycle:
+
+| Value | Behaviour |
+|-------|-----------|
+| `present` (default) | Provisions/updates the VM as described (current behaviour) |
+| `absent` | Destroys (force-off) the VM, undefines it from libvirt, and **permanently deletes** its entire directory under `libvirt_vmstore_root` (default: `/mnt/vmstore`) |
+
+> **Warning:** `state: absent` is destructive and irreversible. All disk images and configuration files for the VM will be deleted.
+
 ### Running the playbook
 
 ```sh
@@ -162,6 +172,8 @@ ansible-playbook ansible/playbooks/libvirt-provision.ansible.yml -i ansible/host
 
 ### What the playbook does (per VM)
 
+**When `state: present` (default):**
+
 1. Creates `/mnt/vmstore/<name>/` directory
 2. Downloads the disk/ISO image (skipped if already present)
 3. Extracts archives (`.xz`, `.gz`, `.bz2`, `.zip`, `.tar.*`) automatically
@@ -171,6 +183,33 @@ ansible-playbook ansible/playbooks/libvirt-provision.ansible.yml -i ansible/host
 7. Runs `virsh define` to apply the XML (only when the template changes)
 8. Sets the domain to autostart
 9. Starts the domain (idempotent — skips if already running)
+
+**When `state: absent`:**
+
+1. Checks whether the libvirt domain exists
+2. If the domain is running, force-stops it (`virsh destroy`)
+3. Undefines the domain from libvirt (`virsh undefine --nvram`)
+4. Removes the entire `/mnt/vmstore/<name>/` directory and all disk files
+
+### Removing a VM
+
+To remove a VM, set `state: absent` in its entry in `ansible/hosts/host_vars/hypervisor/vars.yml`:
+
+```yaml
+libvirt_vms:
+  - name: myvm
+    state: absent
+```
+
+Then run the playbook:
+
+```sh
+just ansible-playbook playbook=libvirt-provision flags='-i hosts/prod.yml'
+```
+
+> **Warning:** This operation is **irreversible**. The VM's disk directory (e.g. `/mnt/vmstore/myvm/`) will be permanently deleted. Back up any data before proceeding.
+
+The role is idempotent: if the VM no longer exists when the playbook runs again, all `absent` tasks are safely skipped.
 
 ### Domain XML templates
 
