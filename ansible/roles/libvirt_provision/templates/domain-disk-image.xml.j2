@@ -4,7 +4,7 @@
   <vcpu placement="static">{{ vm.vcpu }}</vcpu>
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
-    <loader readonly="yes" type="pflash">/run/libvirt/nix-ovmf/edk2-x86_64-code.fd</loader>
+    <loader readonly="yes" type="pflash">{{ libvirt_ovmf_loader }}</loader>
     <boot dev="hd"/>
   </os>
   <features>
@@ -25,7 +25,6 @@
     <suspend-to-disk enabled="no"/>
   </pm>
   <devices>
-    <emulator>/run/libvirt/nix-emulators/qemu-system-x86_64</emulator>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2" discard="unmap"/>
       <source file="{{ vm.disk_image.dest }}"/>

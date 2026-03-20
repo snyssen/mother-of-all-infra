@@ -28,7 +28,10 @@ in
     virtualisation.libvirtd = {
       enable = true;
       allowedBridges = [ "br0" ];
-      qemu.runAsRoot = true;
+      qemu = {
+        runAsRoot = true;
+        ovmf.enable = true;
+      };
     };
 
     # Ensure Python3 is available for Ansible
