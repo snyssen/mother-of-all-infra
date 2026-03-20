@@ -16,12 +16,6 @@ in
       default = [ "snyssen" ];
       description = "Users to add to the libvirtd and kvm groups.";
     };
-
-    vmstorePath = lib.mkOption {
-      type = lib.types.str;
-      default = "/mnt/vmstore";
-      description = "Path to the directory used as the libvirt vmstore storage pool.";
-    };
   };
 
   config = lib.mkIf cfg.enable {

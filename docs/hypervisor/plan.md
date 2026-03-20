@@ -101,7 +101,6 @@ Key options exposed by the module (all have sensible defaults):
 | Option | Default | Description |
 |--------|---------|-------------|
 | `libvirtd.users` | `[ "snyssen" ]` | Users added to the `libvirtd` and `kvm` groups |
-| `libvirtd.vmstorePath` | `/mnt/vmstore` | Path to the VM store directory |
 
 > **Important:** Individual VM lifecycle (creation, disk provisioning, domain definition, autostart) is **fully managed by Ansible**, not NixOS/NixVirt.  The NixOS module only configures the libvirtd daemon, user group memberships, and system packages.  See [Ansible — libvirt VM provisioning](#ansible--libvirt-vm-provisioning) below.
 
