@@ -152,7 +152,7 @@ For ISO-based VMs use `iso_image` instead of `disk_image`:
 ### Running the playbook
 
 ```sh
-just ansible-playbook playbook=libvirt-provision flags='-i ansible/hosts/prod.yml'
+just ansible-playbook playbook=libvirt-provision flags='-i hosts/prod.yml'
 ```
 
 Or directly:
