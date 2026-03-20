@@ -14,13 +14,14 @@ libvirt_vms:
       url: "https://github.com/home-assistant/operating-system/releases/download/17.1/haos_ova-17.1.qcow2.xz"
       dest: "/mnt/vmstore/haos/haos.qcow2"
       # extract: true   # optional; auto-detected from file extension when omitted
-      checksum: "sha256:a4c320c38109357a5a3d7b42ee26c7cde4704197c9ea7f4c393f1ffca42fe376"  # optional but recommended for integrity verification
+      checksum: "sha256:a4c320c38109357a5a3d7b42ee26c7cde4704197c9ea7f4c393f1ffca42fe376" # optional but recommended for integrity verification
     # USB passthrough devices (e.g. Zigbee/Matter dongles)
     # usb_devices:
     #   - vendor_id: "0x1a86"
     #     product_id: "0x7523"
   # NixOS VM installed from ISO image
   - name: testvm
+    state: absent
     vcpu: 1
     ram_mb: 2048
     mac_address: "52:54:00:34:ab:cd"
