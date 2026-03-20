@@ -145,6 +145,7 @@
 
   libvirtd = {
     enable = true;
+    vncLanAccess = true;
   };
 
   nfsExports = {
