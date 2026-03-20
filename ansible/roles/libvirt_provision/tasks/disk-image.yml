@@ -20,6 +20,7 @@
     argv:
       - qemu-img
       - info
+      - --force-share
       - --output=json
       - "{{ vm.disk_image.dest }}"
   register: _disk_image_info
