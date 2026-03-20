@@ -1,0 +1,80 @@
+<domain type="kvm">
+  <name>{{ vm.name }}</name>
+  <memory unit="MiB">{{ vm.ram_mb }}</memory>
+  <vcpu placement="static">{{ vm.vcpu }}</vcpu>
+  <os>
+    <type arch="x86_64" machine="q35">hvm</type>
+    <loader readonly="yes" type="pflash">{{ libvirt_ovmf_loader }}</loader>
+    <boot dev="cdrom"/>
+    <boot dev="hd"/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode="host-passthrough" check="none" migratable="on"/>
+  <clock offset="utc">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
+  <devices>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" discard="unmap"/>
+      <source file="{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"/>
+      <target dev="vda" bus="virtio"/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <source file="{{ vm.iso_image.dest }}"/>
+      <target dev="sda" bus="sata"/>
+      <readonly/>
+    </disk>
+    <interface type="bridge">
+      <mac address="{{ vm.mac_address }}"/>
+      <source bridge="{{ vm.bridge | default(libvirt_default_bridge) }}"/>
+      <model type="virtio"/>
+    </interface>
+    <serial type="pty">
+      <target type="isa-serial" port="0">
+        <model name="isa-serial"/>
+      </target>
+    </serial>
+    <console type="pty">
+      <target type="serial" port="0"/>
+    </console>
+    <channel type="unix">
+      <target type="virtio" name="org.qemu.guest_agent.0"/>
+    </channel>
+    <input type="tablet" bus="usb">
+      <address type="usb" bus="0" port="1"/>
+    </input>
+    <graphics type="vnc" port="-1" autoport="yes" listen="0.0.0.0">
+      <listen type="address" address="0.0.0.0"/>
+    </graphics>
+    <video>
+      <model type="vga" vram="16384" heads="1" primary="yes"/>
+    </video>
+{% if vm.usb_devices is defined and vm.usb_devices | length > 0 %}
+{% for usb in vm.usb_devices %}
+    <hostdev mode="subsystem" type="usb" managed="yes">
+      <source>
+        <vendor id="{{ usb.vendor_id }}"/>
+        <product id="{{ usb.product_id }}"/>
+      </source>
+    </hostdev>
+{% endfor %}
+{% endif %}
+    <memballoon model="virtio"/>
+    <rng model="virtio">
+      <backend model="random">/dev/urandom</backend>
+    </rng>
+  </devices>
+</domain>

@@ -1,0 +1,16 @@
+---
+# Default variables for the libvirt_provision role
+
+# Root directory for VM disk images and assets
+libvirt_vmstore_root: /mnt/vmstore
+
+# Default network bridge for VM NICs
+libvirt_default_bridge: br0
+
+# libvirt connection URI
+libvirt_uri: qemu:///system
+
+# Path to the OVMF UEFI firmware code file on the hypervisor.
+# On NixOS with virtualisation.libvirtd.qemu.ovmf.enable = true this is the
+# standard location populated by the NixOS libvirtd module.
+libvirt_ovmf_loader: /run/libvirt/nix-ovmf/edk2-x86_64-code.fd

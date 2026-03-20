@@ -1,0 +1,138 @@
+---
+# Generic image download and optional extraction helper.
+# Input vars (set by caller via include_tasks vars:):
+#   _image_url       – download URL
+#   _image_dest      – final destination path on the remote host
+#   _image_checksum  – optional checksum string (omit if absent)
+#   _image_extract   – bool; whether to treat the download as an archive
+
+- name: "{{ vm.name }} | Set temporary archive path"
+  ansible.builtin.set_fact:
+    _image_archive: "/tmp/{{ vm.name }}-{{ _image_url | urlsplit('path') | basename }}"
+
+- name: "{{ vm.name }} | Check if image already exists"
+  ansible.builtin.stat:
+    path: "{{ _image_dest }}"
+  register: _image_stat
+
+- name: "{{ vm.name }} | Download image (no extraction needed)"
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ _image_url }}"
+    dest: "{{ _image_dest }}"
+    mode: "0644"
+    checksum: "{{ _image_checksum | default(omit) }}"
+  when:
+    - not _image_extract
+    - not _image_stat.stat.exists
+
+- name: "{{ vm.name }} | Download image archive"
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ _image_url }}"
+    dest: "{{ _image_archive }}"
+    mode: "0644"
+    checksum: "{{ _image_checksum | default(omit) }}"
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+
+- name: "{{ vm.name }} | Extract .xz image"
+  become: true
+  ansible.builtin.shell:
+    cmd: "xz --decompress --keep --stdout -- {{ _image_archive | quote }} > {{ _image_dest | quote }}"
+    creates: "{{ _image_dest }}"
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.xz$') is not none
+    - _image_url | regex_search('\.tar\.xz$') is none
+
+- name: "{{ vm.name }} | Extract .gz image"
+  become: true
+  ansible.builtin.shell:
+    cmd: "gunzip --keep --stdout -- {{ _image_archive | quote }} > {{ _image_dest | quote }}"
+    creates: "{{ _image_dest }}"
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.gz$') is not none
+    - _image_url | regex_search('\.tar\.gz$') is none
+
+- name: "{{ vm.name }} | Extract .bz2 image"
+  become: true
+  ansible.builtin.shell:
+    cmd: "bunzip2 --keep --stdout -- {{ _image_archive | quote }} > {{ _image_dest | quote }}"
+    creates: "{{ _image_dest }}"
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.bz2$') is not none
+    - _image_url | regex_search('\.tar\.bz2$') is none
+
+- name: "{{ vm.name }} | Create temporary directory for archive extraction"
+  become: true
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: ".unpack"
+  register: _image_extract_tmp
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+
+- name: "{{ vm.name }} | Extract .zip / .tar.* image archive into temporary directory"
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ _image_archive }}"
+    dest: "{{ _image_extract_tmp.path }}"
+    remote_src: true
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+
+- name: "{{ vm.name }} | Locate extracted image matching destination basename"
+  become: true
+  ansible.builtin.find:
+    paths: "{{ _image_extract_tmp.path }}"
+    patterns: "{{ _image_dest | basename }}"
+    recurse: true
+  register: _image_extracted_files
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+
+- name: "{{ vm.name }} | Fail if extracted image filename does not match expected destination"
+  ansible.builtin.fail:
+    msg: >-
+      Expected archive {{ _image_archive }} to contain a single file named
+      {{ _image_dest | basename }}, but found {{ _image_extracted_files.matched }} matches.
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+    - _image_extracted_files.matched | default(0) != 1
+
+- name: "{{ vm.name }} | Move extracted image into final destination path"
+  become: true
+  ansible.builtin.command:
+    cmd: "mv {{ _image_extracted_files.files[0].path | quote }} {{ _image_dest | quote }}"
+    creates: "{{ _image_dest }}"
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+    - _image_extracted_files.matched | default(0) == 1
+
+- name: "{{ vm.name }} | Remove temporary archive extraction directory"
+  become: true
+  ansible.builtin.file:
+    path: "{{ _image_extract_tmp.path }}"
+    state: absent
+  when:
+    - _image_extract
+    - not _image_stat.stat.exists
+    - _image_url | regex_search('\.(zip|tar(\.(xz|gz|bz2))?)$') is not none
+    - _image_extract_tmp is defined

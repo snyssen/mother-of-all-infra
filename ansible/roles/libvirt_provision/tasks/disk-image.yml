@@ -1,0 +1,21 @@
+---
+- name: "{{ vm.name }} | Download and extract disk image"
+  ansible.builtin.include_tasks:
+    file: extract.yml
+  vars:
+    _image_url: "{{ vm.disk_image.url }}"
+    _image_dest: "{{ vm.disk_image.dest }}"
+    _image_checksum: "{{ vm.disk_image.checksum | default(omit) }}"
+    _image_extract: >-
+      {{
+        (vm.disk_image.extract | default(
+          vm.disk_image.url | regex_search('\.(xz|gz|bz2|zip|tar(\.(xz|gz|bz2))?)$')
+          is not none
+        )) | bool
+      }}
+
+- name: "{{ vm.name }} | Resize disk image if needed"
+  ansible.builtin.include_tasks:
+    file: resize-qcow2-disk.yml
+  vars:
+    _qcow2_disk_path: "{{ vm.disk_image.dest }}"

@@ -1,0 +1,68 @@
+---
+# Reusable task to resize a qcow2 disk image if needed.
+# Input vars (set by caller via include_tasks vars:):
+#   _qcow2_disk_path – full path to the qcow2 disk image
+# Uses vars:
+#   vm.name – VM name
+#   vm.disk_gb – target disk size in GB
+#   libvirt_uri – libvirt connection URI
+
+- name: "{{ vm.name }} | Get current disk image virtual size"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - info
+      - --force-share
+      - --output=json
+      - "{{ _qcow2_disk_path }}"
+  register: _disk_image_info
+  changed_when: false
+  when: vm.disk_gb is defined
+
+- name: "{{ vm.name }} | Check if domain is running (for resize operation)"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - --connect
+      - "{{ libvirt_uri }}"
+      - list
+      - --name
+      - --state-running
+  register: _running_domains
+  changed_when: false
+  when:
+    - vm.disk_gb is defined
+    - _disk_image_info is defined
+    - (_disk_image_info.stdout | from_json)['virtual-size'] < (vm.disk_gb | int * 1024 * 1024 * 1024)
+
+- name: "{{ vm.name }} | Stop domain before resize if needed"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - --connect
+      - "{{ libvirt_uri }}"
+      - destroy
+      - "{{ vm.name }}"
+  when:
+    - vm.disk_gb is defined
+    - _disk_image_info is defined
+    - (_disk_image_info.stdout | from_json)['virtual-size'] < (vm.disk_gb | int * 1024 * 1024 * 1024)
+    - vm.name in _running_domains.stdout_lines
+  changed_when: true
+
+- name: "{{ vm.name }} | Resize disk image if target size is larger than current"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - resize
+      - "{{ _qcow2_disk_path }}"
+      - "{{ vm.disk_gb }}G"
+  when:
+    - vm.disk_gb is defined
+    - _disk_image_info is defined
+    - (_disk_image_info.stdout | from_json)['virtual-size'] < (vm.disk_gb | int * 1024 * 1024 * 1024)
+  changed_when: true

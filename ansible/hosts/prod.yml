@@ -22,3 +22,8 @@ monitored:
 livecams:
   hosts:
     livecam1.lan:
+
+hypervisor:
+  hosts:
+    hypervisor:
+      ansible_host: "hypervisor"
