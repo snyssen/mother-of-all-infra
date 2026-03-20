@@ -8,8 +8,8 @@ libvirt_vms:
   - name: haos
     vcpu: 2
     ram_mb: 4096
-    mac_address: "52:54:00:12:34:56"
-    disk_gb: 32 # only resizes up; leave unset to skip resize
+    mac_address: "52:54:00:12:34:56" # always start with "52:54:00" for QEMU/KVM; last 3 octets can be random but must be unique per VM
+    disk_gb: 64 # only resizes up; leave unset to skip resize
     disk_image:
       url: "https://github.com/home-assistant/operating-system/releases/download/17.1/haos_ova-17.1.qcow2.xz"
       dest: "/mnt/vmstore/haos/haos.qcow2"
@@ -19,15 +19,15 @@ libvirt_vms:
     # usb_devices:
     #   - vendor_id: "0x1a86"
     #     product_id: "0x7523"
-
-  # Example ISO-based VM (commented out — uncomment and adapt to use)
-  # - name: testvm
-  #   vcpu: 2
-  #   ram_mb: 4096
-  #   mac_address: "52:54:00:34:ab:cd"
-  #   disk_gb: 20
-  #   iso_image:
-  #     url: "https://example.invalid/downloads/test.iso"
-  #     dest: "/mnt/vmstore/testvm/installer.iso"
-  #     # checksum: "sha256:<hash>"  # optional but recommended for integrity verification
-  #   usb_devices: []
+  # NixOS VM installed from ISO image
+  - name: testvm
+    vcpu: 1
+    ram_mb: 2048
+    mac_address: "52:54:00:34:ab:cd"
+    disk_gb: 64
+    iso_image:
+      url: "https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso"
+      dest: "/mnt/vmstore/testvm/installer.iso"
+      # Unfortunately, the NixOS checksum url contains more than only the checksum.
+      # checksum: "sha256:https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso.sha256"
+      checksum: "sha256:f6bf547c17fc1e7bb38f127f2152fc575859f3b7d56073c9ebb43d5d086d9ceb"
