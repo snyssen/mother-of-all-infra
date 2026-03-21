@@ -26,7 +26,12 @@
   home.packages = with pkgs; [
     prismlauncher
     dconf-editor
-    retroarch
+    (retroarch.override {
+      cores = with libretro; [
+        beetle-psx-hw # PS1
+        pcsx2 # PS2
+      ];
+    })
     sweethome3d.application
     obsidian
     librewolf
