@@ -26,7 +26,7 @@
   home.packages = with pkgs; [
     prismlauncher
     dconf-editor
-    retroarch-full
+    retroarch
     sweethome3d.application
     obsidian
     librewolf
