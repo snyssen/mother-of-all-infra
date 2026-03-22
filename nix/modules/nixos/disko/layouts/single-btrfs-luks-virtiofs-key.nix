@@ -7,7 +7,7 @@ in
   options.disko."${layoutName}" = {
     mainDiskPath = lib.mkOption {
       type = lib.types.str;
-      default = "/dev/sda";
+      default = "/dev/vda";
       description = "Device path of the main disk (e.g. /dev/vda for a KVM virtio disk)";
     };
     virtiofsTag = lib.mkOption {
@@ -26,7 +26,9 @@ in
       description = "Filename of the LUKS key file inside the virtiofs share";
     };
     swap = {
-      enable = lib.mkEnableOption "swap partition";
+      enable = lib.mkEnableOption "swap partition" // {
+        default = true;
+      };
       size = lib.mkOption {
         type = lib.types.str;
         default = "8G";

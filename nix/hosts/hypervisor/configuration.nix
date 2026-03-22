@@ -107,7 +107,6 @@
       };
     };
 
-  grub.timeout = 5;
   shell.default = "fish";
 
   users = {

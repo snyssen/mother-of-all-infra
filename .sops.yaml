@@ -9,10 +9,7 @@ keys: &all_keys
   - &snyssen_blackfog age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
-  # TODO: replace the placeholder below with the real age public key from the scrypted VM.
-  # Generate it on the VM with: sudo ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
-  # then extract the age key with: nix run nixpkgs#ssh-to-age -- -i /etc/ssh/ssh_host_ed25519_key.pub
-  - &root_scrypted age1PLACEHOLDER_REPLACE_WITH_SCRYPTED_HOST_AGE_PUBLIC_KEY
+  - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
@@ -55,5 +52,6 @@ creation_rules:
     key_groups:
       - pgp:
         age:
-          - *root_scrypted # TODO: replace placeholder above with real scrypted VM age key
+          - *root_scrypted
           - *snyssen_purplehaze
+          - *snyssen_blackfog
