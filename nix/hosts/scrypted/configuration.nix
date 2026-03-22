@@ -53,6 +53,10 @@
     };
   };
 
+  networking = {
+    useNetworkd = true;
+    firewall.enable = true;
+  };
   tailscale.autoconnect = {
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
