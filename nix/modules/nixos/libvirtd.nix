@@ -33,6 +33,9 @@ in
       allowedBridges = [ "br0" ];
       qemu = {
         runAsRoot = true;
+        vhostUserPackages = with pkgs; [
+          virtiofsd
+        ];
       };
     };
 
