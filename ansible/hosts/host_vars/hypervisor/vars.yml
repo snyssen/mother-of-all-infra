@@ -26,6 +26,8 @@ libvirt_vms:
     ram_mb: 4096
     mac_address: "52:54:00:34:ab:cd"
     disk_gb: 64
+    virtiofs_luks_key:
+      enable: true
     iso_image:
       url: "https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso"
       dest: "/mnt/vmstore/scrypted/installer.iso"

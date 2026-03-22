@@ -2,6 +2,12 @@
   <name>{{ vm.name }}</name>
   <memory unit="MiB">{{ vm.ram_mb }}</memory>
   <vcpu placement="static">{{ vm.vcpu }}</vcpu>
+{% if (vm.virtiofs_luks_key | default({})).enable | default(false) %}
+  <memoryBacking>
+    <source type="memfd"/>
+    <access mode="shared"/>
+  </memoryBacking>
+{% endif %}
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <loader readonly="yes" type="pflash">{{ libvirt_ovmf_loader }}</loader>
@@ -71,6 +77,13 @@
       </source>
     </hostdev>
 {% endfor %}
+{% endif %}
+{% if (vm.virtiofs_luks_key | default({})).enable | default(false) %}
+    <filesystem type="mount" accessmode="passthrough">
+      <driver type="virtiofs"/>
+      <source dir="{{ libvirt_vm_keys_root }}/{{ vm.name }}"/>
+      <target dir="{{ (vm.virtiofs_luks_key | default({})).tag | default('keys') }}"/>
+    </filesystem>
 {% endif %}
     <memballoon model="virtio"/>
     <rng model="virtio">

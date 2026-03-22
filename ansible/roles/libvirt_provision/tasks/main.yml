@@ -23,6 +23,32 @@
         group: root
         mode: "0755"
 
+    - name: "{{ vm.name }} | Set up virtiofs LUKS key"
+      when: (vm.virtiofs_luks_key | default({})).enable | default(false)
+      block:
+        - name: "{{ vm.name }} | Ensure LUKS keys directory exists"
+          become: true
+          ansible.builtin.file:
+            path: "{{ libvirt_vm_keys_root }}/{{ vm.name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0700"
+
+        - name: "{{ vm.name }} | Generate LUKS key (idempotent)"
+          become: true
+          ansible.builtin.command:
+            cmd: "dd if=/dev/urandom bs=2048 count=1 of={{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+            creates: "{{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+
+        - name: "{{ vm.name }} | Restrict LUKS key file permissions"
+          become: true
+          ansible.builtin.file:
+            path: "{{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+            owner: root
+            group: root
+            mode: "0400"
+
     - name: "{{ vm.name }} | Provision disk image boot source"
       ansible.builtin.include_tasks: disk-image.yml
       when: vm.disk_image is defined

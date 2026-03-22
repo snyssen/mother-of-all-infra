@@ -14,3 +14,12 @@ libvirt_uri: qemu:///system
 # On NixOS with virtualisation.libvirtd.qemu.ovmf.enable = true this is the
 # standard location populated by the NixOS libvirtd module.
 libvirt_ovmf_loader: /run/libvirt/nix-ovmf/edk2-x86_64-code.fd
+
+# Root directory for per-VM LUKS key files exposed via virtiofs.
+# Each VM gets its own subdirectory: <libvirt_vm_keys_root>/<vm.name>/
+# The LUKS key file inside is named luks.key and has mode 0400.
+# The virtiofs share is exposed to the VM under the tag set in
+# vm.virtiofs_luks_key.tag (default: "keys"). The NixOS disko layout
+# single-btrfs-luks-virtiofs-key mounts this tag at /run/keys during
+# initrd to unlock the LUKS root partition.
+libvirt_vm_keys_root: /var/lib/vm-keys
