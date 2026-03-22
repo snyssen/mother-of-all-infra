@@ -25,6 +25,7 @@
   #########################
 
   imports = [
+    flake.modules.nixos.disko
     ./hardware-configuration.nix
 
     flake.modules.nixos.sops
@@ -35,6 +36,8 @@
     flake.modules.nixos.tailscale
     flake.modules.nixos.docker
   ];
+
+  disko.layout = "single-btrfs-luks-virtiofs-key";
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets."tailscale/authKey" = {
