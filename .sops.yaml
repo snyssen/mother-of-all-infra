@@ -9,6 +9,7 @@ keys: &all_keys
   - &snyssen_blackfog age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
+  - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
@@ -45,5 +46,12 @@ creation_rules:
         age:
           - *root_hypervisor
           - *snyssen_gaming
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
+  - path_regex: nix/hosts/scrypted/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *root_scrypted
           - *snyssen_purplehaze
           - *snyssen_blackfog

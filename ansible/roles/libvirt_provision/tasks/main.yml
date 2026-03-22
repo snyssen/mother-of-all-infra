@@ -23,6 +23,32 @@
         group: root
         mode: "0755"
 
+    - name: "{{ vm.name }} | Set up virtiofs LUKS key"
+      when: (vm.virtiofs_luks_key | default({})).enable | default(false)
+      block:
+        - name: "{{ vm.name }} | Ensure LUKS keys directory exists"
+          become: true
+          ansible.builtin.file:
+            path: "{{ libvirt_vm_keys_root }}/{{ vm.name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0700"
+
+        - name: "{{ vm.name }} | Generate LUKS key (idempotent)"
+          become: true
+          ansible.builtin.command:
+            cmd: "dd if=/dev/urandom bs=2048 count=1 of={{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+            creates: "{{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+
+        - name: "{{ vm.name }} | Restrict LUKS key file permissions"
+          become: true
+          ansible.builtin.file:
+            path: "{{ libvirt_vm_keys_root }}/{{ vm.name }}/luks.key"
+            owner: root
+            group: root
+            mode: "0400"
+
     - name: "{{ vm.name }} | Provision disk image boot source"
       ansible.builtin.include_tasks: disk-image.yml
       when: vm.disk_image is defined
@@ -53,6 +79,66 @@
       register: _domain_info
       changed_when: false
       failed_when: false
+
+    - name: "{{ vm.name }} | Gracefully shut down domain if XML changed (to apply updates)"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - --connect
+          - "{{ libvirt_uri }}"
+          - shutdown
+          - "{{ vm.name }}"
+      when: _domain_xml.changed and _domain_info.rc == 0
+      changed_when: true
+      register: _shutdown_result
+      failed_when: false
+
+    - name: "{{ vm.name }} | Wait for domain to shut down (max 3min)"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - --connect
+          - "{{ libvirt_uri }}"
+          - domstate
+          - "{{ vm.name }}"
+      register: _domain_state
+      until: "'shut off' in _domain_state.stdout or 'crashed' in _domain_state.stdout"
+      # 36 x 5s = 180s = 3min max wait time for graceful shutdown before force stop
+      retries: 36
+      delay: 5
+      changed_when: false
+      failed_when: false
+      when: _domain_xml.changed and _domain_info.rc == 0
+
+    - name: "{{ vm.name }} | Force stop domain if shutdown timeout exceeded"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - --connect
+          - "{{ libvirt_uri }}"
+          - destroy
+          - "{{ vm.name }}"
+      when:
+        - _domain_xml.changed and _domain_info.rc == 0
+        - _domain_state is defined
+        - "'shut off' not in _domain_state.stdout"
+      changed_when: true
+
+    - name: "{{ vm.name }} | Undefine domain to apply updates"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - --connect
+          - "{{ libvirt_uri }}"
+          - undefine
+          - --nvram
+          - "{{ vm.name }}"
+      when: _domain_xml.changed and _domain_info.rc == 0
+      changed_when: true
 
     - name: "{{ vm.name }} | Define libvirt domain from XML"
       become: true

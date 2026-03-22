@@ -107,7 +107,6 @@
       };
     };
 
-  grub.timeout = 5;
   shell.default = "fish";
 
   users = {
@@ -161,6 +160,7 @@
           "100.64.0.0/10" # Tailnet
         ];
       }
+      { path = "/mnt/bulk/scrypted"; }
     ];
   };
 

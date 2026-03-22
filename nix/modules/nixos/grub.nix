@@ -5,9 +5,9 @@ in
 {
   options.grub = {
     timeout = lib.mkOption {
-      default = null;
+      default = 5;
       description = ''
-        Duration (in seconds) until grub boots in default menu item. Defaults to null, i.e. waits indefinitely
+        Duration (in seconds) until grub boots in default menu item.
       '';
     };
   };

@@ -56,12 +56,13 @@ Services exported via NFS default to allowing the entire local subnet:
 
 NFS exports are managed by the `nfsExports` NixOS module (`nix/modules/nixos/nfs-exports.nix`).  It exposes a declarative list of exports, each with a configurable path, client CIDR, and mount options.  The module-wide `nfsExports.lanCidr` option (default `192.168.1.0/24`) is applied to every export that does not specify its own `clients` list, and can be narrowed per-export when needed.
 
-The hypervisor exports two bulk-storage directories for VM use:
+The hypervisor exports bulk-storage directories for VM use:
 
 | Export path | Clients |
 |-------------|---------|
-| `/mnt/storage/apps-vm` | `192.168.1.0/24` |
-| `/mnt/storage/homeassistant-vm` | `192.168.1.0/24` |
+| `/mnt/bulk/apps-vm` | `192.168.1.0/24` |
+| `/mnt/bulk/homeassistant-vm` | `192.168.1.0/24`, `100.64.0.0/10` (Tailnet) |
+| `/mnt/bulk/scrypted` | `192.168.1.0/24` |
 
 These directories must exist on the host filesystem before clients attempt to mount them.  See [docs/nix/modules/nfs-exports.md](../nix/modules/nfs-exports.md) for full module documentation, firewall details, and client mount instructions.
 
@@ -311,6 +312,7 @@ Current hosts:
 | `gaming` | Gaming PC (multi-disk LUKS setup) |
 | `ingress` | Remote VPS (Gandi Cloud) — reverse proxy / ingress |
 | `hypervisor` | KVM hypervisor with btrfs RAID1 VM store |
+| `scrypted` | KVM VM — Scrypted home automation / camera bridge |
 
 The **hypervisor** host lives at `nix/hosts/hypervisor/` and follows the same structure as the other hosts.
 
