@@ -34,3 +34,4 @@ libvirt_vms:
       # Unfortunately, the NixOS checksum url contains more than only the checksum.
       # checksum: "sha256:https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso.sha256"
       checksum: "sha256:65ac2bb636619a1eae37a9605c1ed9bbc94da5c655878d35d1162772ea5adc98"
+      enable_mount: false # Set to false once initial setup is done, so iso is removed from boot options

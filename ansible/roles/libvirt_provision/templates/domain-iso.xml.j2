@@ -11,7 +11,9 @@
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <loader readonly="yes" type="pflash">{{ libvirt_ovmf_loader }}</loader>
+{% if (vm.iso_image.enable_mount | default(true)) | bool %}
     <boot dev="cdrom"/>
+{% endif %}
     <boot dev="hd"/>
   </os>
   <features>
@@ -37,12 +39,14 @@
       <source file="{{ libvirt_vmstore_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"/>
       <target dev="vda" bus="virtio"/>
     </disk>
+{% if (vm.iso_image.enable_mount | default(true)) | bool %}
     <disk type="file" device="cdrom">
       <driver name="qemu" type="raw"/>
       <source file="{{ vm.iso_image.dest }}"/>
       <target dev="sda" bus="sata"/>
       <readonly/>
     </disk>
+{% endif %}
     <interface type="bridge">
       <mac address="{{ vm.mac_address }}"/>
       <source bridge="{{ vm.bridge | default(libvirt_default_bridge) }}"/>

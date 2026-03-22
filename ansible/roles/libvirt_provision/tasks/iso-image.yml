@@ -18,7 +18,7 @@
           is not none
         )) | bool
       }}
-  when: not _qcow2_disk_stat.stat.exists
+  when: (vm.iso_image.enable_mount | default(true)) | bool
 
 
 - name: "{{ vm.name }} | Create base qcow2 disk for ISO-based VM"
