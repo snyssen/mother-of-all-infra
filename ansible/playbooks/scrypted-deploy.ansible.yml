@@ -1,0 +1,3 @@
+- hosts: scrypted
+  roles:
+    - container_scrypted

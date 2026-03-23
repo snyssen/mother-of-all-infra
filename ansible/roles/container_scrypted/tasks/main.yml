@@ -1,0 +1,13 @@
+- name: Creating folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "755"
+  loop:
+    - path: "{{ docker_mounts_directory }}/scrypted"
+
+- ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: scrypted
