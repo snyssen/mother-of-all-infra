@@ -38,29 +38,43 @@ in
     advertiseConnector = lib.mkEnableOption "advertise this node as a connector node (for subnet routing)";
   };
 
-  config = {
-    services.tailscale = lib.mkMerge [
-      {
-        enable = true;
-        openFirewall = true;
-        useRoutingFeatures = cfg.useRoutingFeatures;
-      }
-      (lib.mkIf cfg.advertiseExitNode {
-        extraUpFlags = [ "--advertise-exit-node" ];
-      })
-      (lib.mkIf cfg.advertiseConnector {
-        extraUpFlags = [ "--advertise-connector" ];
-      })
-      (lib.mkIf cfg.autoconnect.enable {
-        authKeyFile = cfg.autoconnect.authKeyPath;
-        extraUpFlags =
-          [ ]
-          ++ lib.lists.optional cfg.autoconnect.enableSSH "--ssh"
-          ++
-            lib.lists.optional (cfg.autoconnect.tags != [ ])
-              # e.g. for function below: tags = [ "server" "dns" ] -> "--advertise-tags=tag:server,tag:dns"
-              "--advertise-tags=${lib.strings.concatMapStringsSep "," (x: "tag:" + x) cfg.autoconnect.tags}";
-      })
-    ];
-  };
+  config = lib.mkMerge [
+    {
+      services.tailscale = lib.mkMerge [
+        {
+          enable = true;
+          openFirewall = true;
+          useRoutingFeatures = cfg.useRoutingFeatures;
+        }
+        (lib.mkIf cfg.advertiseExitNode {
+          extraUpFlags = [ "--advertise-exit-node" ];
+        })
+        (lib.mkIf cfg.advertiseConnector {
+          extraUpFlags = [ "--advertise-connector" ];
+        })
+        (lib.mkIf cfg.autoconnect.enable {
+          authKeyFile = cfg.autoconnect.authKeyPath;
+          extraUpFlags =
+            [ ]
+            ++ lib.lists.optional cfg.autoconnect.enableSSH "--ssh"
+            ++
+              lib.lists.optional (cfg.autoconnect.tags != [ ])
+                # e.g. for function below: tags = [ "server" "dns" ] -> "--advertise-tags=tag:server,tag:dns"
+                "--advertise-tags=${lib.strings.concatMapStringsSep "," (x: "tag:" + x) cfg.autoconnect.tags}";
+        })
+      ];
+    }
+    (lib.mkIf cfg.autoconnect.enable {
+      systemd.services.tailscale-autoconnect = {
+        serviceConfig = {
+          Restart = "on-failure";
+          RestartSec = "5s";
+        };
+        unitConfig = {
+          # Disable restart rate-limiting so the service retries indefinitely
+          StartLimitIntervalSec = 0;
+        };
+      };
+    })
+  ];
 }
