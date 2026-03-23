@@ -43,19 +43,19 @@ in
         after = [
           "docker.service"
           "network-online.target"
-        ] ++ stack.extraAfter;
+        ]
+        ++ stack.extraAfter;
         requires = [ "docker.service" ];
         wantedBy = [ "multi-user.target" ];
-        serviceConfig =
-          {
-            Type = "oneshot";
-            RemainAfterExit = true;
-            ExecStart = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg (toString stack.composeFile)} up -d --remove-orphans";
-            ExecStop = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg (toString stack.composeFile)} down";
-          }
-          // lib.optionalAttrs (stack.environmentFile != null) {
-            EnvironmentFile = stack.environmentFile;
-          };
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} up -d --remove-orphans";
+          ExecStop = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} down";
+        }
+        // lib.optionalAttrs (stack.environmentFile != null) {
+          EnvironmentFile = stack.environmentFile;
+        };
       }
     ) cfg.stacks;
 

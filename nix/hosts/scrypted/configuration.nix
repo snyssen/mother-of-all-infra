@@ -38,6 +38,7 @@
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.docker
+    flake.modules.nixos.compose-stacks
   ];
 
   disko.layout = "single-btrfs-luks-virtiofs-key";
@@ -75,6 +76,12 @@
       "hard"
       "x-systemd.mount-timeout=30"
     ];
+  };
+
+  compose-stacks.stacks = {
+    whoami = {
+      composeFile = "${./.}/compose/whoami.yml";
+    };
   };
 
   services.openssh = {
