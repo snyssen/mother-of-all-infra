@@ -27,8 +27,3 @@ hypervisor:
   hosts:
     hypervisor:
       ansible_host: "hypervisor"
-
-scrypted:
-  hosts:
-    scrypted:
-      ansible_host: "scrypted"
