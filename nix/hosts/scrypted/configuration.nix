@@ -73,7 +73,7 @@
       path = "/mnt/bulk";
       host = "hypervisor";
       remotePath = "/mnt/bulk/scrypted";
-      dependsOn.tailscale = false;
+      dependsOn.tailscale = true;
       # options = [ "hard" ];
     };
   };
