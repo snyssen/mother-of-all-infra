@@ -37,6 +37,7 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
+    flake.modules.nixos.nfs-mounts
     flake.modules.nixos.docker
     flake.modules.nixos.compose-stacks
   ];
@@ -64,20 +65,18 @@
     enableSSH = true;
   };
 
-  # NFS mount for Scrypted bulk storage.
-  # Intentionally required at boot: boot will fail if the hypervisor NFS export is
-  # unreachable. Do not add "nofail" — an unmounted share would silently break Scrypted.
-  # Once local DNS is configured, replace the IP with the hypervisor hostname.
-  # TODO: Switch to systemd mount and depend on tailscale -> https://nixos.wiki/wiki/NFS#Using_systemd.mounts_and_systemd.automounts
-  fileSystems."/mnt/bulk" = {
-    device = "hypervisor:/mnt/bulk/scrypted";
-    fsType = "nfs";
-    options = [
-      "hard"
-      "x-systemd.mount-timeout=30"
-    ];
+  # NFS mount for Scrypted bulk storage via systemd.mounts + systemd.automounts.
+  # This provides lazy mounting and explicit Tailscale dependency support.
+  nfsMounts.enable = true;
+  nfsMounts.mounts = {
+    bulk = {
+      path = "/mnt/bulk";
+      host = "hypervisor";
+      remotePath = "/mnt/bulk/scrypted";
+      dependsOn.tailscale = false;
+      # options = [ "hard" ];
+    };
   };
-  boot.supportedFilesystems = [ "nfs" ];
 
   compose-stacks.stacks = {
     whoami = {

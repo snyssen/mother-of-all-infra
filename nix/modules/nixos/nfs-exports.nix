@@ -91,7 +91,7 @@ in
     # Ensure every exported directory exists on the host filesystem.
     # systemd-tmpfiles creates the directory if absent; it is a no-op when it
     # already exists, so this is safe for paths that live on external mounts.
-    systemd.tmpfiles.rules = lib.map (export: "d ${export.path} 0755 root root -") cfg.exports;
+    systemd.tmpfiles.rules = lib.map (export: "d ${export.path} 0777 root root -") cfg.exports;
 
     # Open the NFS port (2049) and the portmapper port (111) on both TCP and
     # UDP for NFSv4 clients.
