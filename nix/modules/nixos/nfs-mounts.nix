@@ -24,9 +24,9 @@ let
       # If Tailscale dependency is set, make the mount depend on it
       unitConfig = {
         After =
-          if mount.dependsOn.tailscale or false then [ "tailscale.service" ] else [ "network-online.target" ];
-        Requires = if mount.dependsOn.tailscale or false then [ "tailscale.service" ] else [ ];
-        BindsTo = if mount.dependsOn.tailscale or false then [ "tailscale.service" ] else [ ];
+          if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ "network-online.target" ];
+        Requires = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
+        BindsTo = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
       };
     };
 
@@ -37,7 +37,7 @@ let
     };
     wantedBy = [ "multi-user.target" ];
     unitConfig = {
-      After = if mount.dependsOn.tailscale or false then [ "tailscale.service" ] else [ ];
+      After = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
     };
   };
 
