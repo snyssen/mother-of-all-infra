@@ -160,7 +160,14 @@
           "100.64.0.0/10" # Tailnet
         ];
       }
-      { path = "/mnt/bulk/scrypted"; }
+      {
+        path = "/mnt/bulk/scrypted";
+        # TODO: make tailnet the default authorized clients
+        clients = [
+          "192.168.1.0/24" # Home LAN
+          "100.64.0.0/10" # Tailnet
+        ];
+      }
     ];
   };
 

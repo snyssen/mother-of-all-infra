@@ -68,15 +68,16 @@
   # Intentionally required at boot: boot will fail if the hypervisor NFS export is
   # unreachable. Do not add "nofail" — an unmounted share would silently break Scrypted.
   # Once local DNS is configured, replace the IP with the hypervisor hostname.
+  # TODO: Switch to systemd mount and depend on tailscale -> https://nixos.wiki/wiki/NFS#Using_systemd.mounts_and_systemd.automounts
   fileSystems."/mnt/bulk" = {
-    device = "192.168.1.128:/mnt/bulk/scrypted";
+    device = "hypervisor:/mnt/bulk/scrypted";
     fsType = "nfs";
     options = [
-      "nofail" # TODO: remove this once the NFS server is reliably available at boot time; for now it allows the system to boot even if the NFS server is temporarily unavailable, which is better than failing to boot at all
       "hard"
       "x-systemd.mount-timeout=30"
     ];
   };
+  boot.supportedFilesystems = [ "nfs" ];
 
   compose-stacks.stacks = {
     whoami = {
