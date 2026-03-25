@@ -21,12 +21,24 @@ let
         Options = lib.concatStringsSep "," mount.options;
         TimeoutSec = 30;
       };
-      # If Tailscale dependency is set, make the mount depend on it
+      # If Tailscale dependency is set, order after tailscale+network; otherwise just network
       unitConfig = {
         After =
-          if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ "network-online.target" ];
-        Requires = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
-        BindsTo = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
+          if mount.dependsOn.tailscale or false then
+            [
+              "tailscaled.service"
+              "network-online.target"
+            ]
+          else
+            [ "network-online.target" ];
+        Wants =
+          if mount.dependsOn.tailscale or false then
+            [
+              "tailscaled.service"
+              "network-online.target"
+            ]
+          else
+            [ ];
       };
     };
 
@@ -37,7 +49,22 @@ let
     };
     wantedBy = [ "multi-user.target" ];
     unitConfig = {
-      After = if mount.dependsOn.tailscale or false then [ "tailscaled.service" ] else [ ];
+      After =
+        if mount.dependsOn.tailscale or false then
+          [
+            "tailscaled.service"
+            "network-online.target"
+          ]
+        else
+          [ ];
+      Wants =
+        if mount.dependsOn.tailscale or false then
+          [
+            "tailscaled.service"
+            "network-online.target"
+          ]
+        else
+          [ ];
     };
   };
 
