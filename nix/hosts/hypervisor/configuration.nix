@@ -151,22 +151,11 @@
   nfsExports = {
     enable = true;
     # lanCidr defaults to "192.168.1.0/24" — override here if your LAN differs
+    lanCidr = "100.64.0.0/10"; # Tailnet IP range
     exports = [
-      { path = "/mnt/bulk/apps-vm"; }
-      {
-        path = "/mnt/bulk/homeassistant-vm";
-        clients = [
-          "192.168.1.0/24" # Home LAN
-          "100.64.0.0/10" # Tailnet
-        ];
-      }
       {
         path = "/mnt/bulk/scrypted";
-        # TODO: make tailnet the default authorized clients
-        clients = [
-          "192.168.1.0/24" # Home LAN
-          "100.64.0.0/10" # Tailnet
-        ];
+        uid = 400; # dedicated squash user for NFS; maps all client writes to this UID
       }
     ];
   };
