@@ -78,10 +78,27 @@ in
                     allowDiscards = true;
                     keyFile = "${cfg.mountPoint}/${cfg.keyFileName}";
                     fallbackToPassword = true;
+                    # Mount the virtiofs key share read-only and without touching /etc/mtab.
+                    # The share is intentionally initrd-only: postOpenCommands unmounts it
+                    # immediately after cryptroot is opened so that it never appears in
+                    # stage-2.  Leaving it mounted causes `nh os switch` (and any NixOS
+                    # activation) to fail with:
+                    #   virtiofs: Unknown parameter 'mode'
+                    # because systemd synthesises a transient run-keys.mount unit from
+                    # /proc/self/mountinfo and, during activation, tries to re-apply mount
+                    # options that include mode=750 from an underlying ramfs layer as if
+                    # they were virtiofs options.
                     preOpenCommands = ''
                       mkdir -m 0700 -p ${cfg.mountPoint}
                       echo "Mounting virtiofs key share (${cfg.virtiofsTag}) at ${cfg.mountPoint}..."
-                      mount -t virtiofs ${cfg.virtiofsTag} ${cfg.mountPoint}
+                      mount -n -o ro -t virtiofs ${cfg.virtiofsTag} ${cfg.mountPoint}
+                    '';
+                    # Unmount immediately after cryptroot is opened so the virtiofs share
+                    # does not persist into stage-2.  See the comment above preOpenCommands
+                    # for the full explanation.
+                    postOpenCommands = ''
+                      echo "Unmounting virtiofs key share at ${cfg.mountPoint}..."
+                      umount ${cfg.mountPoint}
                     '';
                   };
                   content = {
