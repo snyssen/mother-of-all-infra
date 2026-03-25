@@ -25,6 +25,9 @@ in
         cat = lib.mkIf config.programs.bat.enable "bat";
         vsc = lib.mkIf config.programs.vscode.enable "code";
         vscd = lib.mkIf config.programs.vscode.enable "code --diff";
+        ts = lib.mkIf config.programs.tailscale.enable "tailscale";
+        tsst = lib.mkIf config.programs.tailscale.enable "tailscale status";
+        tssh = lib.mkIf config.programs.tailscale.enable "tailscale ssh";
       };
     };
 
