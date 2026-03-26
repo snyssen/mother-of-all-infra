@@ -78,9 +78,16 @@
     };
   };
 
+  # Create necessary directories for Scrypted NVR storage and set permissions.
+  systemd.tmpfiles.rules = [
+    "d /mnt/bulk/scrypted/nvr 0755 snyssen snyssen -"
+  ];
   compose-stacks.stacks = {
     whoami = {
-      composeFile = "${./.}/compose/whoami.yml";
+      composeFile = ./compose/whoami.yml;
+    };
+    scrypted = {
+      composeFile = ./compose/scrypted/docker-compose.yaml;
     };
   };
 

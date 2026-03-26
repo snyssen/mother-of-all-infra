@@ -45,7 +45,10 @@ in
           "network-online.target"
         ]
         ++ stack.extraAfter;
-        requires = [ "docker.service" ];
+        requires = [
+          "docker.service"
+          "network-online.target"
+        ];
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           Type = "oneshot";
