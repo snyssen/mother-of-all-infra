@@ -34,23 +34,23 @@ hypervisor-vm-info vm:
 
 # Trigger a btrfs scrub on a pool (pool: vmstore or bulk); waits for completion
 hypervisor-btrfs-scrub pool:
-  ssh {{hypervisor_host}} sudo btrfs scrub start -B /mnt/{{pool}}
+  ssh root@{{hypervisor_host}} btrfs scrub start -B /mnt/{{pool}}
 
 # Show the status of the last btrfs scrub for a pool
 hypervisor-btrfs-scrub-status pool:
-  ssh {{hypervisor_host}} sudo btrfs scrub status /mnt/{{pool}}
+  ssh root@{{hypervisor_host}} btrfs scrub status /mnt/{{pool}}
 
 # Show btrfs filesystem usage for a pool
 hypervisor-btrfs-usage pool:
-  ssh {{hypervisor_host}} sudo btrfs filesystem usage /mnt/{{pool}}
+  ssh root@{{hypervisor_host}} btrfs filesystem usage /mnt/{{pool}}
 
 # Show per-device I/O error counters for a pool
 hypervisor-btrfs-stats pool:
-  ssh {{hypervisor_host}} sudo btrfs device stats /mnt/{{pool}}
+  ssh root@{{hypervisor_host}} btrfs device stats /mnt/{{pool}}
 
 # Show btrfs device listing and filesystem info for a pool
 hypervisor-btrfs-devices pool:
-  ssh {{hypervisor_host}} sudo btrfs filesystem show /mnt/{{pool}}
+  ssh root@{{hypervisor_host}} btrfs filesystem show /mnt/{{pool}}
 
 # Run the libvirt VM provisioning playbook against the hypervisor (production)
 [working-directory: 'ansible']
