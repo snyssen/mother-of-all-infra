@@ -1,6 +1,7 @@
 import "ansible/ansible.just"
 import "nix/nix.just"
 import "terraform/terraform.just"
+import "hypervisor/hypervisor.just"
 
 alias ssh := ssh-connect
 
