@@ -1,0 +1,73 @@
+# Derived from: https://github.com/koush/scrypted/blob/main/install/docker/docker-compose.yml
+services:
+  scrypted:
+    environment:
+      SCRYPTED_NVR_VOLUME: /nvr
+      # Avahi can be used for network discovery by passing in the host daemon
+      # or running the daemon inside the container. Choose one or the other.
+      # Uncomment next line to run avahi-daemon inside the container.
+      # See volumes and security_opt section below to use the host daemon.
+      # SCRYPTED_DOCKER_AVAHI: "true"
+
+    image: ghcr.io/koush/scrypted
+
+    volumes:
+      # Scrypted NVR Storage (Part 3 of 3)
+
+      # Modify to add the additional volume for Scrypted NVR.
+      # The following example would mount the /mnt/storage/scrypted/nvr path on the host
+      # to the /nvr path inside the docker container.
+      - /mnt/storage/scrypted/nvr:/nvr
+
+      # Uncomment the following lines to use Avahi daemon from the host.
+      # Ensure Avahi is running on the host machine:
+      # It can be installed with: sudo apt-get install avahi-daemon
+      # This is not compatible with running avahi inside the container (see above).
+      # Also, uncomment the lines under security_opt
+      # - /var/run/dbus:/var/run/dbus
+      # - /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket
+
+      # Default volume for the Scrypted database. Typically should not be changed.
+      # The volume will be placed relative to this docker-compose.yml.
+      - "{{ docker_mounts_directory }}/scrypted:/server/volume"
+      # Uncomment the following lines to use Avahi daemon from the host
+      # Without this, AppArmor will block the container's attempt to talk to Avahi via dbus
+      # security_opt:
+      #     - apparmor:unconfined
+    devices:
+      # uncomment the common systems devices to pass
+      # them through to docker.
+
+      # all usb devices, such as coral tpu
+      # "/dev/bus/usb:/dev/bus/usb",
+
+      # hardware accelerated video decoding, opencl, etc.
+      - "/dev/dri:/dev/dri"
+      # AMD GPU
+      # "/dev/kfd:/dev/kfd",
+
+      # uncomment below as necessary.
+      # zwave usb serial device
+
+      # "/dev/ttyACM0:/dev/ttyACM0",
+
+      # coral PCI devices
+      # "/dev/apex_0:/dev/apex_0",
+      # "/dev/apex_1:/dev/apex_1",
+
+    container_name: scrypted
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.scrypted.entrypoints=websecure
+      - traefik.http.routers.scrypted.rule=Host(`scrypted.{{ main_domain }}`)
+      - traefik.http.services.scrypted.loadbalancer.server.port=10443
+      - traefik.http.services.scrypted.loadbalancer.server.scheme=https
+      - traefik.http.routers.scrypted.middlewares=lan-whitelist
+
+networks:
+  web:
+    external: true
