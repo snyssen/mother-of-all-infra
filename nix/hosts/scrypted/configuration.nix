@@ -80,7 +80,7 @@
 
   # Create necessary directories for Scrypted NVR storage and set permissions.
   systemd.tmpfiles.rules = [
-    "d /mnt/bulk/scrypted/nvr 0755 snyssen snyssen -"
+    "d /mnt/bulk/scrypted/nvr 0755 scrypted scrypted -"
   ];
   compose-stacks.stacks = {
     whoami = {
@@ -102,7 +102,14 @@
 
   users = {
     mutableUsers = false;
+    groups = {
+      scrypted = { };
+    };
     users = {
+      scrypted = {
+        isSystemUser = true;
+        group = "scrypted";
+      };
       snyssen = {
         isNormalUser = true;
         extraGroups = [

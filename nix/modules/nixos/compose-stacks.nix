@@ -69,7 +69,7 @@ in
       pkgs.writeShellScriptBin "compose-${name}" ''
         exec ${pkgs.docker}/bin/docker compose \
           --project-name ${lib.escapeShellArg name} \
-          -f ${lib.escapeShellArg (toString stack.composeFile)} \
+          -f ${lib.escapeShellArg "${stack.composeFile}"} \
           "$@"
       ''
     ) cfg.stacks;

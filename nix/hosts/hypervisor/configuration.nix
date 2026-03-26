@@ -155,7 +155,6 @@
     exports = [
       {
         path = "/mnt/bulk/scrypted";
-        uid = 400; # dedicated squash user for NFS; maps all client writes to this UID
       }
     ];
   };
