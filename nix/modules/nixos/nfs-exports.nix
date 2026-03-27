@@ -10,9 +10,9 @@ let
   #
   # For NFSv4, each export must have a unique fsid. If not explicitly provided
   # in the options, one is automatically appended based on the export's index.
-  # root_squash is automatically appended unless already present in the
-  # export options. This maps root (uid 0) to nobody while preserving regular
-  # user UIDs.
+  # no_root_squash is automatically appended unless a squash option is already
+  # present, allowing NFS clients to manage their own permissions inside the
+  # export (including chown as root).
   exportsContent = lib.concatMapStringsSep "" (
     { index, export }:
     let
@@ -23,12 +23,12 @@ let
           export.options
         else
           "${export.options},fsid=${toString index}";
-      # Append root_squash if not already present
+      # Append no_root_squash if no squash option is already present
       options =
-        if lib.hasInfix "root_squash" optionsWithFsid then
+        if lib.hasInfix "squash" optionsWithFsid then
           optionsWithFsid
         else
-          "${optionsWithFsid},root_squash";
+          "${optionsWithFsid},no_root_squash";
       clientsStr = lib.concatMapStringsSep " " (c: "${c}(${options})") clients;
     in
     "${export.path}  ${clientsStr}\n"
@@ -81,8 +81,10 @@ in
                   NFS export options placed inside the parentheses for each
                   client entry. The fsid parameter is automatically appended
                   based on the export's index (1, 2, 3, ...) unless explicitly
-                  provided. root_squash is automatically appended unless
-                  already present. See exports(5) for the full list of options.
+                  provided. no_root_squash is automatically appended unless
+                  a squash option is already present, allowing clients to
+                  manage their own permissions inside the export.
+                  See exports(5) for the full list of options.
                 '';
                 example = "ro,sync,no_subtree_check";
               };
