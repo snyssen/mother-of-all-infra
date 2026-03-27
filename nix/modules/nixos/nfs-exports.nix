@@ -91,6 +91,32 @@ in
                 '';
                 example = "ro,sync,no_subtree_check";
               };
+
+              dirMode = lib.mkOption {
+                type = lib.types.str;
+                default = "0777";
+                description = ''
+                  Permission mode for the exported directory created by
+                  systemd-tmpfiles on the server. Defaults to 0777 so any NFS
+                  client UID can read, write, and set its own permissions inside
+                  the export.
+                '';
+                example = "0755";
+              };
+
+              dirOwner = lib.mkOption {
+                type = lib.types.str;
+                default = "root";
+                description = "Owner (user) of the exported directory on the server.";
+                example = "nobody";
+              };
+
+              dirGroup = lib.mkOption {
+                type = lib.types.str;
+                default = "root";
+                description = "Group of the exported directory on the server.";
+                example = "nogroup";
+              };
             };
           }
         )
@@ -108,9 +134,12 @@ in
     };
 
     # Ensure every exported directory exists with appropriate permissions.
-    # Mode 0777 allows any UID to read, write, and execute, ensuring clients
-    # can create and manage files with their own UIDs.
-    systemd.tmpfiles.rules = lib.map (export: "d ${export.path} 0777 root root -") cfg.exports;
+    # By default mode 0777 allows any UID to read, write, and execute, ensuring
+    # clients can create and manage files with their own UIDs. The mode, owner
+    # and group are configurable per export via dirMode, dirOwner and dirGroup.
+    systemd.tmpfiles.rules = lib.map (
+      export: "d ${export.path} ${export.dirMode} ${export.dirOwner} ${export.dirGroup} -"
+    ) cfg.exports;
 
     # Open the NFS port (2049) and the portmapper port (111) on both TCP and
     # UDP for NFSv4 clients.
