@@ -21,7 +21,7 @@ libvirt_vms:
     #     product_id: "0x7523"
   # NixOS VM installed from ISO image
   - name: scrypted
-    state: present
+    state: absent
     vcpu: 2
     ram_mb: 4096
     mac_address: "52:54:00:34:ab:cd"
