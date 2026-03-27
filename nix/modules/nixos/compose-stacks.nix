@@ -45,7 +45,10 @@ in
           "network-online.target"
         ]
         ++ stack.extraAfter;
-        requires = [ "docker.service" ];
+        requires = [
+          "docker.service"
+          "network-online.target"
+        ];
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           Type = "oneshot";
@@ -66,7 +69,7 @@ in
       pkgs.writeShellScriptBin "compose-${name}" ''
         exec ${pkgs.docker}/bin/docker compose \
           --project-name ${lib.escapeShellArg name} \
-          -f ${lib.escapeShellArg (toString stack.composeFile)} \
+          -f ${lib.escapeShellArg "${stack.composeFile}"} \
           "$@"
       ''
     ) cfg.stacks;
