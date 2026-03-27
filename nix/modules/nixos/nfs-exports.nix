@@ -82,8 +82,11 @@ in
                   client entry. The fsid parameter is automatically appended
                   based on the export's index (1, 2, 3, ...) unless explicitly
                   provided. no_root_squash is automatically appended unless
-                  a squash option is already present, allowing clients to
-                  manage their own permissions inside the export.
+                  a squash option (root_squash, no_root_squash, all_squash, or
+                  no_all_squash) is already present, allowing clients to manage
+                  their own permissions inside the export including chown.
+                  WARNING: no_root_squash allows NFS clients to perform
+                  operations as root on the server. Only use on trusted networks.
                   See exports(5) for the full list of options.
                 '';
                 example = "ro,sync,no_subtree_check";
