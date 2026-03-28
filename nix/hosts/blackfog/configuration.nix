@@ -132,6 +132,15 @@ in
         wallpaper = wallpaper;
         schemeName = scheme;
       };
+      environment.systemPackages = with pkgs; [
+        prismlauncher
+        (retroarch.withCores (
+          cores: with cores; [
+            beetle-psx-hw # PS1
+            pcsx2 # PS2
+          ]
+        ))
+      ];
     };
   };
 
