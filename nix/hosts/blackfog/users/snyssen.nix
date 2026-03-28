@@ -45,6 +45,20 @@
     remmina
   ];
 
+  specialisation = {
+    gaming.configuration = {
+      home.packages = with pkgs; [
+        prismlauncher
+        (retroarch.withCores (
+          cores: with cores; [
+            beetle-psx-hw # PS1
+            pcsx2 # PS2
+          ]
+        ))
+      ];
+    };
+  };
+
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   home.stateVersion = "23.05";
 }

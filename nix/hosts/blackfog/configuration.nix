@@ -101,6 +101,20 @@ in
           "purplehaze"
         ];
       };
+      PrismLauncher = {
+        path = "/home/snyssen/.local/share/PrismLauncher";
+        devices = [
+          "sync.snyssen.be"
+          "gaming"
+        ];
+      };
+      RetroArch = {
+        path = "/home/snyssen/.config/retroarch";
+        devices = [
+          "sync.snyssen.be"
+          "gaming"
+        ];
+      };
     };
   };
 

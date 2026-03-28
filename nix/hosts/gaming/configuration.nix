@@ -97,12 +97,16 @@ in
     folders = {
       PrismLauncher = {
         path = "/home/snyssen/.local/share/PrismLauncher";
-        devices = [ "sync.snyssen.be" ];
+        devices = [
+          "sync.snyssen.be"
+          "blackfog"
+        ];
       };
       RetroArch = {
         path = "/home/snyssen/.config/retroarch";
         devices = [
           "sync.snyssen.be"
+          "blackfog"
         ];
       };
       Notes = {
