@@ -10,6 +10,10 @@ keys: &all_keys
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
   - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
+  # TODO: generate this key after first boot of the apps VM:
+  #   just sops-gen-privkey  (run on the VM)
+  #   just sops-get-pubkey   (copy the printed key and replace the placeholder below)
+  # - &root_apps age1<replace_with_actual_key_after_first_boot>
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
@@ -55,3 +59,11 @@ creation_rules:
           - *root_scrypted
           - *snyssen_purplehaze
           - *snyssen_blackfog
+  # TODO: uncomment and set *root_apps once the age key is generated after first boot.
+  # - path_regex: nix/hosts/apps/data/[^/]+\.(yaml|json|env|ini)$
+  #   key_groups:
+  #     - pgp:
+  #       age:
+  #         - *root_apps
+  #         - *snyssen_purplehaze
+  #         - *snyssen_blackfog
