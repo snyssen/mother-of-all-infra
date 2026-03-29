@@ -3,9 +3,6 @@ run-name: "Create tracking issues: apps host migration (bare-metal → NixOS VM)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - copilot/create-issue-hierarchy-for-migration
 
 permissions:
   issues: write
