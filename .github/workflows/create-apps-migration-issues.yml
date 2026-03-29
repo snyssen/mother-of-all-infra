@@ -3,6 +3,9 @@ run-name: "Create tracking issues: apps host migration (bare-metal → NixOS VM)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - copilot/create-issue-hierarchy-for-migration
 
 permissions:
   issues: write
@@ -17,6 +20,15 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
+
+            // Idempotency guard: skip if epic already exists
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner, repo, state: 'all', per_page: 100
+            });
+            if (existing.some(i => i.title.startsWith('[EPIC] Migrate apps host'))) {
+              console.log('Epic issue already exists — skipping creation.');
+              return;
+            }
 
             async function mkIssue(title, body, labels = []) {
               const { data } = await github.rest.issues.create({ owner, repo, title, body, labels });
