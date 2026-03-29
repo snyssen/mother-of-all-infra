@@ -1,0 +1,694 @@
+name: Create apps migration issue hierarchy
+run-name: "Create tracking issues: apps host migration (bare-metal → NixOS VM)"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue hierarchy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+
+            async function mkIssue(title, body, labels = []) {
+              const { data } = await github.rest.issues.create({ owner, repo, title, body, labels });
+              console.log(`Created #${data.number}: ${title}`);
+              return data;
+            }
+
+            // ────────────────────────────────────────────────────────────────────
+            // PHASE 0 — Planning & inventory
+            // ────────────────────────────────────────────────────────────────────
+
+            const p0_plan = await mkIssue(
+              '[Apps Migration] [P0] Create and maintain migration planning document',
+              `## Objective
+            Create and keep up-to-date the file \`docs/hypervisor/apps-migration-plan.md\` as the single source of truth for all architectural decisions, design rationale, and progress tracking for the migration of the apps host from bare-metal Ubuntu to a NixOS VM.
+
+            ## Acceptance Criteria
+            - [ ] \`docs/hypervisor/apps-migration-plan.md\` exists and covers:
+              - Migration goals and scope
+              - Key design decisions (see below)
+              - Phase breakdown with status tracking
+              - Known risks and mitigations
+            - [ ] Document is kept up-to-date as decisions evolve throughout the migration
+
+            ## Key Decisions to Document
+            | Decision | Value |
+            |----------|-------|
+            | VM hostname | \`apps\` |
+            | Local app data path (OS disk) | \`/var/lib/app-data\` |
+            | Bulk data mount | \`/mnt/bulk\` → NFS export \`hypervisor:/mnt/bulk/apps\` |
+            | Compose file naming | \`docker-compose.yaml\` |
+            | Compose file location | \`nix/hosts/apps/compose/<stack_name>/docker-compose.yaml\` |
+            | Docker bridge networks | \`web\`, \`db\`, \`ldap\`, \`monitoring\` (bridge); \`lan\` ipvlan **not** recreated |
+            | Monitoring | Native NixOS: node-exporter + alloy; cAdvisor container for Docker metrics |
+            | Backups | \`services.restic.backups\`; optional backrest UI; restores via CLI |
+            | VM provisioning | Existing \`libvirt_provision\` Ansible role on hypervisor |
+            | DNS migration | **Out of scope** — DNS moves to a dedicated VM in a separate effort |
+            | Unifi migration | **Out of scope** — Unifi gets a dedicated VM (Unifi OS Server) |
+            | Syncthing | Migrated without \`lan\` network dependency |`
+            );
+
+            const p0_inventory = await mkIssue(
+              '[Apps Migration] [P0] Inventory: stacks, data paths, inter-dependencies, and secrets',
+              `## Objective
+            Before writing any Nix configuration, produce a complete inventory of what currently lives on the apps host (snyssen.be) so that nothing is missed during migration.
+
+            ## Acceptance Criteria
+            - [ ] **Stack inventory**: For every compose stack currently deployed via \`stacks_deploy\`:
+              - List all services and their roles
+              - Identify which Docker networks each stack uses
+              - Identify inter-stack dependencies (shared DB containers, shared networks, etc.)
+              - Decide: migrate as-is / adapt / defer to separate VM / retire
+            - [ ] **Data inventory**: For every stack, document:
+              - Volumes/bind-mounts currently under \`/home/snyssen/data\` (→ maps to \`/var/lib/app-data\`)
+              - Volumes/bind-mounts currently under \`/mnt/storage\` (→ maps to \`/mnt/bulk\`)
+            - [ ] **Secrets inventory**: For every stack, list all environment variables / secrets currently
+              provided via Ansible vault or \`.env\` files, and decide SOPS key names
+            - [ ] **Stacks NOT to migrate** are identified and documented with rationale:
+              - \`unifi\` → separate Unifi OS Server VM
+              - \`alloy\` / \`cadvisor\` → replaced by native NixOS modules
+              - Any stacks to retire
+
+            ## Notes
+            - This inventory feeds directly into the SOPS secrets file and the compose stack configurations
+            - Discovery of new stacks that should live on separate VMs is expected and fine`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // HYPERVISOR — Changes required on the hypervisor host
+            // ────────────────────────────────────────────────────────────────────
+
+            const hyp_nfs = await mkIssue(
+              '[Apps Migration] [Hypervisor] Add NFS export /mnt/bulk/apps',
+              `## Objective
+            Extend the hypervisor NixOS configuration to export \`/mnt/bulk/apps\` via NFS so the apps VM can mount it at \`/mnt/bulk\`.
+
+            ## Acceptance Criteria
+            - [ ] \`nix/hosts/hypervisor/configuration.nix\` updated: \`/mnt/bulk/apps\` added to \`nfsExports.exports\`
+            - [ ] Export restricted to Tailnet range (\`100.64.0.0/10\`) with \`rw\`, \`sync\`, \`no_subtree_check\`, \`no_root_squash\`
+            - [ ] Directory \`/mnt/bulk/apps\` created on the hypervisor (bulk HDD btrfs pool)
+            - [ ] Hypervisor rebuilt and NFS export confirmed reachable from the apps VM (or from the ingress VM as a proxy test)
+
+            ## Notes
+            - Pattern to follow: existing \`/mnt/bulk/scrypted\` export in \`nix/hosts/hypervisor/configuration.nix\`
+            - The apps VM will mount this via the \`nfs-mounts\` NixOS module`
+            );
+
+            const hyp_vm = await mkIssue(
+              '[Apps Migration] [Hypervisor] Provision apps VM via libvirt_provision',
+              `## Objective
+            Use the existing \`libvirt_provision\` Ansible role to define and create the \`apps\` KVM virtual machine on the hypervisor.
+
+            ## Acceptance Criteria
+            - [ ] VM definition added to the \`libvirt_provision\` Ansible inventory / vars (host: \`hypervisor\`)
+            - [ ] VM is backed by the \`vmstore\` SSD pool (same as other VMs, e.g., \`ingress\`, \`scrypted\`)
+            - [ ] NIC attached to \`br0\` for LAN/bridge access
+            - [ ] virtiofs share configured for LUKS key unlock (tag: \`keys\`, same pattern as other NixOS VMs)
+            - [ ] VM resource allocation documented (vCPUs, RAM, disk size — to be decided during Phase 0)
+            - [ ] Running \`libvirt_provision\` playbook against hypervisor creates (or is idempotent for) the VM
+            - [ ] VM boots successfully (even if NixOS is not installed yet)
+
+            ## Notes
+            - Resource allocation decision is a dependency from Phase 0 planning
+            - The VM disk will be formatted and NixOS installed in a later step (\`nixos-anywhere\` / \`just nix-remote-install apps\`)`
+            );
+
+            const hyp_net = await mkIssue(
+              '[Apps Migration] [Hypervisor] Validate VM bridge network (br0) connectivity',
+              `## Objective
+            Confirm that the \`apps\` VM can reach the LAN and Tailnet correctly once provisioned, as a prerequisite before deploying compose stacks.
+
+            ## Acceptance Criteria
+            - [ ] VM NIC is attached to \`br0\` and DHCP assigns a LAN IP
+            - [ ] VM is reachable on Tailnet (via Tailscale IP) from the ingress host and from the operator workstation
+            - [ ] NFS mount \`/mnt/bulk\` is reachable and mountable from within the VM (test with \`showmount -e hypervisor\`)
+            - [ ] Tailscale IP is stable / registered in the Tailnet admin panel
+
+            ## Notes
+            - No \`lan\` ipvlan network is needed; all container stacks use bridge networks only
+            - Traefik on the ingress host will route to the apps VM via its Tailnet or LAN IP`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // APPS VM — Base NixOS configuration
+            // ────────────────────────────────────────────────────────────────────
+
+            const base_skeleton = await mkIssue(
+              '[Apps Migration] [Apps VM] Create base NixOS configuration skeleton',
+              `## Objective
+            Create the \`nix/hosts/apps/\` directory and its base \`configuration.nix\` file, wiring together all the shared NixOS modules needed by the apps VM.
+
+            ## Acceptance Criteria
+            - [ ] \`nix/hosts/apps/configuration.nix\` created and importable (lints clean with \`nix flake check\`)
+            - [ ] Flake (\`flake.nix\`) updated to expose the \`apps\` NixOS configuration
+            - [ ] Base modules imported: \`cache\`, \`grub\`, \`kbd-layout\`, \`shell\`, \`locale\`, \`nh\`, \`user\`
+            - [ ] \`hardware-configuration.nix\` placeholder noted (generated after first boot / nixos-anywhere install)
+            - [ ] SSH server enabled with key-based auth only
+            - [ ] \`ansible\` user present with correct SSH key (same pattern as other NixOS hosts)
+
+            ## Notes
+            - This is the scaffolding issue; other sub-issues fill in the specialised modules
+            - Host will be installed with \`just nix-remote-install apps\` once all base config issues are resolved`
+            );
+
+            const base_disko = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure disko layout (single-btrfs-luks-virtiofs-key)',
+              `## Objective
+            Configure the disk layout for the apps VM using the existing \`single-btrfs-luks-virtiofs-key\` disko layout module.
+
+            ## Acceptance Criteria
+            - [ ] \`disko."single-btrfs-luks-virtiofs-key"\` configured in \`nix/hosts/apps/configuration.nix\` (or a dedicated \`disko.nix\` imported by it)
+            - [ ] \`mainDiskPath\` set to \`/dev/vda\` (virtio disk)
+            - [ ] LUKS key via virtiofs configured (matching the VM definition in \`libvirt_provision\`)
+            - [ ] Swap size chosen and documented (e.g. 8G default)
+            - [ ] Layout validated: \`nix run github:nix-community/disko -- --mode dryrun ...\`
+
+            ## Notes
+            - Module location: \`nix/modules/nixos/disko/layouts/single-btrfs-luks-virtiofs-key.nix\`
+            - The btrfs root is backed by the hypervisor vmstore SSD RAID-1 pool (fast, redundant)
+            - App data directory \`/var/lib/app-data\` lives on this btrfs root (no separate subvolume needed initially)`
+            );
+
+            const base_sops = await mkIssue(
+              '[Apps Migration] [Apps VM] Create SOPS secrets file (nix/hosts/apps/data/secrets.yaml)',
+              `## Objective
+            Create the SOPS-encrypted secrets file for the apps VM, containing all credentials needed by the base system and compose stacks.
+
+            ## Acceptance Criteria
+            - [ ] \`nix/hosts/apps/data/secrets.yaml\` created and encrypted with the correct age keys
+            - [ ] \`sops\` NixOS module configured in \`configuration.nix\` pointing to this file
+            - [ ] Secrets included (at minimum):
+              - \`snyssen\` user password hash
+              - \`ansible\` user password hash
+              - Tailscale auth key
+              - CrowdSec API key
+              - Per-stack secrets (populated from the inventory in P0)
+            - [ ] SOPS config (\`.sops.yaml\`) updated to include the apps host age key if needed
+
+            ## Notes
+            - Each compose stack that needs secrets gets its own SOPS secret key (e.g. \`apps/stacks/nextcloud.env\`)
+            - The \`compose-stacks\` module wires secrets to stacks via \`environmentFile = config.sops.secrets.<name>.path\`
+            - Depends on: inventory issue (P0) to know all required secrets`
+            );
+
+            const base_tailscale = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure Tailscale',
+              `## Objective
+            Enable and configure Tailscale on the apps VM so it joins the Tailnet and is reachable by the ingress host and operator workstation.
+
+            ## Acceptance Criteria
+            - [ ] \`tailscale\` NixOS module enabled in \`configuration.nix\`
+            - [ ] Tailscale auth key wired from SOPS secrets
+            - [ ] Tailscale SSH enabled (allows SSH via Tailscale identity)
+            - [ ] Correct server tags applied (e.g. \`tag:server\`, \`tag:apps\`)
+            - [ ] VM appears in Tailnet admin panel after first boot
+
+            ## Notes
+            - Module: \`nix/modules/nixos/tailscale.nix\`
+            - The ingress host's Traefik needs the apps VM's Tailnet IP to proxy traffic`
+            );
+
+            const base_monitoring = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure monitoring (prometheus-node-exporter + grafana-alloy + cAdvisor)',
+              `## Objective
+            Set up host-level and container-level monitoring on the apps VM using native NixOS modules for host metrics and log collection, and the new \`cadvisor\` module for container metrics.
+
+            ## Acceptance Criteria
+            - [ ] \`prometheus-node-exporter\` NixOS module enabled (port 9100, systemd collector enabled)
+            - [ ] \`grafana-alloy\` NixOS module enabled and configured to:
+              - Collect journald logs
+              - Collect Docker container logs
+              - Forward to the central monitoring stack (same config as other NixOS hosts)
+            - [ ] \`cadvisor\` module/container enabled for Docker container metrics (port 8080)
+            - [ ] Firewall rules open ports 9100 (node exporter) and 8080 (cAdvisor) to the monitoring stack
+            - [ ] Metrics visible in Grafana after deployment
+
+            ## Notes
+            - \`prometheus-node-exporter\` module: \`nix/modules/nixos/prometheus-node-exporter.nix\`
+            - \`grafana-alloy\` module: \`nix/modules/nixos/grafana-alloy.nix\`
+            - \`cadvisor\` will be a new module (see dedicated module issue)
+            - Replaces Ansible roles: \`container_alloy\`, \`container_cadvisor\`, \`undergreen.prometheus-node-exporter\``
+            );
+
+            const base_firewall = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure firewall and CrowdSec firewall bouncer',
+              `## Objective
+            Configure the NixOS firewall and CrowdSec firewall bouncer on the apps VM to match the security posture of the current bare-metal host.
+
+            ## Acceptance Criteria
+            - [ ] NixOS firewall enabled with only required ports open:
+              - 80, 443 (HTTP/HTTPS — or proxied via Tailscale to ingress)
+              - 9100 (prometheus node exporter, restricted to monitoring CIDR)
+              - 8080 (cAdvisor, restricted to monitoring CIDR)
+              - Any other ports required by migrated stacks
+            - [ ] \`crowdsec-firewall-bouncer\` NixOS module enabled and CrowdSec API key wired from SOPS
+            - [ ] firewall rules tested: can reach apps from ingress, cannot reach from public internet directly
+
+            ## Notes
+            - Module: \`nix/modules/nixos/crowdsec-firewall-bouncer.nix\`
+            - Most traffic should be routed via the ingress host's Traefik (not directly to apps VM)
+            - Consider whether apps VM needs a public IP at all or only Tailnet-accessible`
+            );
+
+            const base_docker = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure Docker and application data directory',
+              `## Objective
+            Enable Docker on the apps VM, configure the application data root directory, and wire the \`docker-networks\` module to pre-create shared bridge networks before any compose stack starts.
+
+            ## Acceptance Criteria
+            - [ ] \`docker\` NixOS module enabled (\`nix/modules/nixos/docker.nix\`)
+            - [ ] \`/var/lib/app-data\` directory exists and is owned/writable by the appropriate user/group
+            - [ ] \`docker-networks\` module configured to pre-create: \`web\`, \`db\`, \`ldap\`, \`monitoring\`
+            - [ ] All four networks are bridge-type (no ipvlan / macvlan; \`lan\` network not created)
+            - [ ] \`compose-stacks\` module enabled and able to start at least one test stack
+
+            ## Notes
+            - \`docker-networks\` module must ensure networks exist before any \`compose-<stack>\` systemd service starts
+            - Volume bind-mount paths: \`/home/snyssen/data/X\` → \`/var/lib/app-data/X\` per the inventory`
+            );
+
+            const base_nfs = await mkIssue(
+              '[Apps Migration] [Apps VM] Configure NFS bulk storage mount (/mnt/bulk)',
+              `## Objective
+            Mount the hypervisor's \`/mnt/bulk/apps\` NFS export at \`/mnt/bulk\` on the apps VM using the existing \`nfs-mounts\` NixOS module.
+
+            ## Acceptance Criteria
+            - [ ] \`nfsMounts\` configured in \`configuration.nix\` with:
+              - \`path = "/mnt/bulk"\`
+              - \`remotePath = "/mnt/bulk/apps"\`
+              - \`host = "hypervisor"\` (Tailscale hostname)
+              - \`dependsOn.tailscale = true\`
+            - [ ] \`/mnt/bulk\` automounts on first access and is writable by Docker containers
+            - [ ] Compose stacks that use bulk storage declare \`extraAfter = ["mnt-bulk.mount"]\`
+            - [ ] NFS port firewall rules opened (ports 111, 2049) — handled by \`nfs-mounts\` module
+
+            ## Notes
+            - Module: \`nix/modules/nixos/nfs-mounts.nix\`
+            - Path mapping: \`/mnt/storage/X\` on old host → \`/mnt/bulk/X\` on apps VM
+            - Depends on: hypervisor NFS export issue being complete`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // MODULES — New NixOS modules needed
+            // ────────────────────────────────────────────────────────────────────
+
+            const mod_networks = await mkIssue(
+              '[Apps Migration] [Module] Create docker-networks NixOS module',
+              `## Objective
+            Create a new reusable NixOS module \`nix/modules/nixos/docker-networks.nix\` that declaratively pre-creates named Docker networks as systemd oneshot services, ensuring they exist before any compose stack starts.
+
+            ## Acceptance Criteria
+            - [ ] Module at \`nix/modules/nixos/docker-networks.nix\` is created and exported from the module list
+            - [ ] Module option: \`docker-networks.networks\` — attribute set of network names to config
+            - [ ] Each network becomes a \`systemd.services.docker-network-<name>\` oneshot service
+              - \`ExecStart\`: \`docker network create --driver bridge <name>\` (idempotent: exits 0 if already exists)
+              - \`ExecStop\` or no stop (networks persist across restarts for safety)
+              - \`After = ["docker.service"]\`, \`Requires = ["docker.service"]\`
+            - [ ] \`compose-stacks\` services automatically \`After\` / \`Requires\` the relevant network units (or all network units)
+            - [ ] Module tested on apps VM: networks \`web\`, \`db\`, \`ldap\`, \`monitoring\` are created on boot
+
+            ## Example configuration
+            \`\`\`nix
+            docker-networks.networks = {
+              web = {};
+              db = {};
+              ldap = {};
+              monitoring = {};
+            };
+            \`\`\`
+
+            ## Notes
+            - Currently Ansible's \`stacks_deploy\` role creates these networks imperatively
+            - The \`lan\` ipvlan network is intentionally **not** included (Unifi migrates to separate VM; Syncthing drops lan dependency)`
+            );
+
+            const mod_cadvisor = await mkIssue(
+              '[Apps Migration] [Module] Create cadvisor NixOS module',
+              `## Objective
+            Create a new reusable NixOS module \`nix/modules/nixos/cadvisor.nix\` that runs Google cAdvisor as a native NixOS service (or via \`virtualisation.oci-containers\`) to provide Docker container metrics to Prometheus.
+
+            ## Acceptance Criteria
+            - [ ] Module at \`nix/modules/nixos/cadvisor.nix\` created and exported
+            - [ ] Module option: \`cadvisor.enable\` (bool)
+            - [ ] Module option: \`cadvisor.port\` (default: 8080)
+            - [ ] cAdvisor runs with the minimum required mounts:
+              - \`/\`, \`/var/run\`, \`/sys\`, \`/var/lib/docker\` (read-only where safe)
+              - \`/dev/disk\` (read-only)
+            - [ ] Prometheus scrape endpoint available at \`http://localhost:<port>/metrics\`
+            - [ ] Firewall option to open the port to a monitoring CIDR
+            - [ ] Module tested on apps VM: container metrics visible in Prometheus
+
+            ## Implementation choices
+            - Prefer \`virtualisation.oci-containers.containers.cadvisor\` (NixOS built-in) for simplicity
+            - Or use the \`pkgs.cadvisor\` package in a \`systemd.services.cadvisor\` unit if available in nixpkgs
+
+            ## Notes
+            - Replaces the Ansible \`container_cadvisor\` role and compose stack`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // STACK MIGRATION — Tracker and template
+            // ────────────────────────────────────────────────────────────────────
+
+            const stacks_tracker = await mkIssue(
+              '[Apps Migration] [Stacks] Stack migration tracker + per-stack issue template',
+              `## Objective
+            Track the migration of all Docker Compose stacks from the bare-metal apps host to the NixOS apps VM, and provide a standard template for individual stack migration issues.
+
+            ## Stack Migration Checklist
+
+            Work through stacks roughly in dependency order. Check the inventory issue first to confirm scope and data paths.
+
+            ### Infrastructure / core (migrate first)
+            - [ ] \`databases\` — PostgreSQL / MySQL shared databases
+            - [ ] \`monitoring\` — Prometheus / Grafana
+            - [ ] \`backbone\` — Core infrastructure (Traefik labels, shared services)
+            - [ ] \`crowdsec\` — Threat intelligence
+            - [ ] \`ddns\` — Dynamic DNS updater
+            - [ ] \`ntfy\` — Push notification service
+
+            ### Productivity
+            - [ ] \`nextcloud\` — File sync and collaboration
+            - [ ] \`paperless\` — Document management
+            - [ ] \`actual-budget\` — Personal finance
+            - [ ] \`recipes\` — Recipe management (Mealie / Tandoor)
+            - [ ] \`dashboard\` — Home dashboard (Homepage / Heimdall)
+            - [ ] \`team_wiki\` — Wiki (Outline / Wiki.js)
+            - [ ] \`rallly\` — Event / meeting planner
+            - [ ] \`semaphore\` — Ansible UI / scheduler
+            - [ ] \`s-pdf\` — PDF tools (Stirling PDF)
+
+            ### Media / Photos
+            - [ ] \`streaming\` — Media server (Jellyfin + VPN container; note NET_ADMIN + /dev/net/tun)
+            - [ ] \`immich\` — Photo management
+
+            ### Personal / Web
+            - [ ] \`personal_website\` — Static personal website
+            - [ ] \`quartz\` — Knowledge base / digital garden
+            - [ ] \`dawarich\` — Location / travel tracking
+            - [ ] \`speedtest\` — Periodic speedtest runner
+            - [ ] \`speedtest-tracker\` — Speedtest history dashboard
+
+            ### Social / Communication
+            - [ ] \`sharkey\` — Fediverse microblogging (Misskey fork)
+            - [ ] \`matrix\` — Matrix chat server
+            - [ ] \`mobilizon\` — Fediverse event platform
+
+            ### Gaming
+            - [ ] \`foundryvtt\` — Tabletop RPG (Foundry VTT)
+            - [ ] \`minecraft\` — Minecraft server
+            - [ ] \`skyrim_together\` — Skyrim multiplayer mod server
+
+            ### File sync / utilities
+            - [ ] \`syncthing\` — P2P file sync (**no** \`lan\` network dependency; bridge network only)
+            - [ ] \`attic\` — Nix binary cache
+            - [ ] \`backrest\` — Backup browser (optional; see backup issue)
+
+            ### Not migrating
+            - ⛔ \`unifi\` — Migrate to dedicated Unifi OS Server VM (separate effort)
+            - ⛔ \`alloy\` — Replaced by \`grafana-alloy\` NixOS module
+            - ⛔ \`cadvisor\` — Replaced by \`cadvisor\` NixOS module
+
+            ---
+
+            ## Per-Stack Migration Issue Template
+
+            When creating an issue for an individual stack, use this template:
+
+            \`\`\`markdown
+            ## Stack: <name>
+
+            ### What this stack does
+            <brief description>
+
+            ### Current state on apps host
+            - Compose file location: \`ansible/roles/container_<name>/files/docker-compose.yml\`
+            - Data under /home/snyssen/data: <list paths>
+            - Data under /mnt/storage: <list paths>
+            - Docker networks used: <list>
+            - Secrets / env vars: <list>
+            - Inter-stack dependencies: <e.g., "uses databases stack's postgres container">
+
+            ### Target state on apps VM
+            - Compose file: \`nix/hosts/apps/compose/<name>/docker-compose.yaml\`
+            - Volume path mapping:
+              - \`/home/snyssen/data/X\` → \`/var/lib/app-data/X\`
+              - \`/mnt/storage/X\`      → \`/mnt/bulk/X\`
+            - SOPS secret key: \`apps/stacks/<name>.env\`
+            - NFS dependency: yes/no (add \`extraAfter = ["mnt-bulk.mount"]\` if yes)
+
+            ### Acceptance Criteria
+            - [ ] \`docker-compose.yaml\` created at correct path (static values; no Jinja2)
+            - [ ] Volume paths updated to new locations
+            - [ ] SOPS secret created and wired via \`environmentFile\`
+            - [ ] \`compose-stacks.stacks.<name>\` entry added to \`nix/hosts/apps/configuration.nix\`
+            - [ ] Stack starts cleanly on testbed apps VM
+            - [ ] Functional smoke test passed (web UI accessible, data visible, no errors in logs)
+            \`\`\`
+
+            ## Notes
+            - Compose files must be named \`docker-compose.yaml\` (not \`docker-compose.yml\`)
+            - All secrets must be moved to SOPS — no plaintext env vars in git
+            - Stacks that use \`/mnt/bulk\` must declare \`extraAfter = ["mnt-bulk.mount"]\`
+            - The \`lan\` ipvlan Docker network does not exist on the apps VM; update any stack that referenced it`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // BACKUPS
+            // ────────────────────────────────────────────────────────────────────
+
+            const bkp_restic = await mkIssue(
+              '[Apps Migration] [Backup] Configure services.restic.backups for the apps VM',
+              `## Objective
+            Replace the current autorestic / cron-based backup setup on the bare-metal host with native NixOS \`services.restic.backups\` for the apps VM.
+
+            ## Acceptance Criteria
+            - [ ] \`services.restic.backups\` configured in \`nix/hosts/apps/configuration.nix\` (or a dedicated \`backups.nix\`)
+            - [ ] Backup jobs defined for:
+              - \`/var/lib/app-data\` (all app data on OS disk)
+              - Any critical data under \`/mnt/bulk\` (e.g., Nextcloud user files, Immich library — exact list from inventory)
+            - [ ] Systemd timers replace cron jobs (schedules defined in NixOS config)
+            - [ ] Restic repository URL and credentials provided via SOPS secrets
+            - [ ] Backup job status is visible in \`journalctl\` and ideally in the monitoring stack
+            - [ ] Tested: \`restic snapshots\` shows backups on the target repository after first run
+
+            ## Notes
+            - Replaces: autorestic wrapper + cron jobs from Ansible \`setup_backups\` role
+            - Pre/post hooks are handled in a separate issue
+            - Repository credentials are managed in a separate issue`
+            );
+
+            const bkp_sops = await mkIssue(
+              '[Apps Migration] [Backup] Define restic repository credentials via SOPS',
+              `## Objective
+            Store and provide all restic backup credentials (repository URL, password, cloud provider keys) securely via SOPS.
+
+            ## Acceptance Criteria
+            - [ ] SOPS secrets defined for:
+              - \`restic_repository\` — repository URL (e.g. \`b2:bucket-name:/apps\` or \`sftp:...\`)
+              - \`restic_password\` — repository encryption password
+              - Cloud provider credentials (B2 key ID + app key, or equivalent)
+            - [ ] Secrets wired to \`services.restic.backups.<name>.environmentFile\` from SOPS
+            - [ ] Secrets are NOT hardcoded anywhere in Nix config or compose files
+
+            ## Notes
+            - SOPS file: \`nix/hosts/apps/data/secrets.yaml\`
+            - Depends on: SOPS secrets file issue`
+            );
+
+            const bkp_hooks = await mkIssue(
+              '[Apps Migration] [Backup] Configure pre/post backup hooks (database dumps)',
+              `## Objective
+            Ensure databases are dumped to disk before restic backs up the data directory, and that dump files are cleaned up after backup.
+
+            ## Acceptance Criteria
+            - [ ] Pre-backup hook: dump all PostgreSQL databases to \`/var/lib/app-data/backups/postgres/\`
+            - [ ] Pre-backup hook: dump all MySQL/MariaDB databases (if any) similarly
+            - [ ] Post-backup hook: remove dump files after successful backup (or retain last N)
+            - [ ] Hooks configured via \`services.restic.backups.<name>.backupPrepareCommand\` and \`backupCleanupCommand\`
+            - [ ] Hook execution confirmed in journalctl logs during test backup run
+
+            ## Notes
+            - Currently handled by autorestic \`hooks\` in the Ansible setup
+            - Dump files live inside the backed-up directory so restic picks them up automatically`
+            );
+
+            const bkp_ui = await mkIssue(
+              '[Apps Migration] [Backup] (Optional) Deploy backrest as read-only backup browser',
+              `## Objective
+            Optionally provide a web UI for browsing restic snapshots. The primary backup mechanism is \`services.restic.backups\`; this is purely a convenience for inspecting what has been backed up.
+
+            ## Context
+            The current bare-metal host runs the \`backrest\` container stack, but it requires manual sync to see up-to-date snapshots (not ideal but acceptable — one-click). Actual restores are done via the \`restic\` CLI directly on the host to avoid Docker volume mapping complexities.
+
+            ## Acceptance Criteria (if implemented)
+            - [ ] \`backrest\` compose stack deployed at \`nix/hosts/apps/compose/backrest/docker-compose.yaml\`
+            - [ ] Backrest configured in read-only / browse mode pointing to the restic repository
+            - [ ] Access restricted (not publicly exposed, or behind auth)
+            - [ ] Actual restores continue to be done via \`restic\` CLI on the host (documented)
+
+            ## Notes
+            - This issue is **optional** — skip if the \`restic\` CLI is sufficient for browsing
+            - Consider whether \`restic mount\` (FUSE) is a simpler alternative for ad-hoc browsing`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // CUTOVER STRATEGY
+            // ────────────────────────────────────────────────────────────────────
+
+            const cut_testbed = await mkIssue(
+              '[Apps Migration] [Cutover] Deploy testbed apps VM on current hypervisor (minimum viable system)',
+              `## Objective
+            Once the base NixOS configuration is code-complete, deploy the apps VM on the current (testbed) hypervisor hardware and bring up a minimal set of stacks to validate the full end-to-end configuration.
+
+            ## Acceptance Criteria
+            - [ ] NixOS installed on the VM using \`just nix-remote-install apps\` (nixos-anywhere)
+            - [ ] \`hardware-configuration.nix\` generated and committed
+            - [ ] VM boots, Tailscale connects, NFS mount \`/mnt/bulk\` works
+            - [ ] At least the \`databases\` and \`backbone\` stacks start successfully
+            - [ ] Monitoring stack scrapes node exporter and cAdvisor from the apps VM
+            - [ ] Traefik on ingress can proxy to at least one service on the apps VM
+
+            ## Notes
+            - Use minimal/synthetic test data — no production data migration at this stage
+            - This is Phase A of the two-phase migration strategy
+            - Phase B (full production cutover with hardware migration) is tracked separately
+            - Any configuration issues discovered here should be fixed before proceeding`
+            );
+
+            const cut_restore = await mkIssue(
+              '[Apps Migration] [Cutover] Run partial restore tests on testbed',
+              `## Objective
+            Validate that data can be successfully restored from the current apps host backups to the testbed apps VM, as a rehearsal for the eventual full production cutover.
+
+            ## Acceptance Criteria
+            - [ ] Restic repository accessible from testbed apps VM
+            - [ ] Partial restore test: restore \`/var/lib/app-data\` for at least 2-3 stacks (e.g., \`nextcloud\`, \`immich\`)
+            - [ ] Stacks start successfully with restored data and data integrity confirmed
+            - [ ] Restore procedure documented in \`docs/hypervisor/apps-migration-plan.md\`
+            - [ ] Estimated restore time noted (important for planning the production cutover window)
+
+            ## Notes
+            - Partial restores help identify any path mapping issues before the full cutover
+            - The VPN/streaming stack (\`streaming\`) needs special attention due to \`NET_ADMIN\` + \`/dev/net/tun\`
+            - Results of this test will inform the go/no-go decision for Phase B`
+            );
+
+            const cut_production = await mkIssue(
+              '[Apps Migration] [Cutover] [Future] Full production cutover: hardware migration and data restore',
+              `## Objective
+            Complete the final production migration once Phase A (testbed) is validated. This involves moving the hypervisor config to the production hardware (current apps server) and recreating all VMs with full data restore.
+
+            > ⚠️ **This is a future issue** — do not begin until testbed validation and partial restore tests are complete and signed off.
+
+            ## Background
+            The current apps server (bare-metal Ubuntu, snyssen.be) runs on the best available hardware. The final state is:
+            1. Hypervisor NixOS config deployed to the current apps server hardware
+            2. All VMs (including apps) recreated on the new hypervisor
+            3. Full data restore from the last backup of the bare-metal host
+
+            ## High-Level Steps (to be detailed when this issue is activated)
+            1. Take a final full backup of the bare-metal apps host (\`autorestic backup\`)
+            2. Wipe the bare-metal apps server and install the hypervisor NixOS config
+            3. Recreate all VMs on the new hypervisor (\`libvirt_provision\`)
+            4. Restore all data from backup to the apps VM
+            5. Update DNS / Traefik to point to the new VM IPs
+            6. Verify all stacks are healthy
+            7. Decommission or repurpose the old testbed hypervisor hardware
+
+            ## Notes
+            - Expected downtime: several hours to a few days
+            - DNS migration to dedicated VM is a **separate** future effort (not in scope here)
+            - Once this issue is complete, the bare-metal Ubuntu host is fully decommissioned`
+            );
+
+            // ────────────────────────────────────────────────────────────────────
+            // EPIC — Main tracking issue (created last so it can link to all sub-issues)
+            // ────────────────────────────────────────────────────────────────────
+
+            const epicBody = `## Goal
+            Migrate the current bare-metal Ubuntu apps host (\`snyssen.be\`, Ansible-managed) to a NixOS virtual machine named \`apps\`, running under the \`hypervisor\` KVM host. The migration should preserve all running services and data while modernising the deployment model to use NixOS declarative configuration.
+
+            ## Key Design Decisions
+            | Decision | Value |
+            |----------|-------|
+            | VM hostname | \`apps\` |
+            | Local app data (OS disk) | \`/var/lib/app-data\` |
+            | Bulk storage mount | \`/mnt/bulk\` → NFS \`hypervisor:/mnt/bulk/apps\` |
+            | Compose file name | \`docker-compose.yaml\` |
+            | Compose file path | \`nix/hosts/apps/compose/<stack>/docker-compose.yaml\` |
+            | Docker networks | \`web\`, \`db\`, \`ldap\`, \`monitoring\` (bridge); \`lan\` ipvlan **not** recreated |
+            | Monitoring | Native NixOS modules: node-exporter + alloy + cAdvisor |
+            | Backups | \`services.restic.backups\` + optional backrest UI; restores via CLI |
+            | VM provisioning | \`libvirt_provision\` Ansible role on hypervisor |
+            | DNS migration | **Out of scope** — separate future effort |
+            | Unifi | **Out of scope** — dedicated Unifi OS Server VM |
+
+            ## Migration Strategy (two-phase)
+            - **Phase A (this epic):** Code-complete the apps VM NixOS config and validate on the current testbed hypervisor with minimal/partial data
+            - **Phase B (future):** Full production cutover when moving hypervisor to production hardware
+
+            ## Sub-Issues
+
+            ### Phase 0 — Planning & Inventory
+            - #${p0_plan.number} — Create and maintain migration planning document
+            - #${p0_inventory.number} — Inventory stacks, data paths, inter-dependencies, and secrets
+
+            ### Hypervisor Changes
+            - #${hyp_nfs.number} — Add NFS export \`/mnt/bulk/apps\`
+            - #${hyp_vm.number} — Provision \`apps\` VM via \`libvirt_provision\`
+            - #${hyp_net.number} — Validate VM bridge network (\`br0\`) connectivity
+
+            ### Apps VM Base NixOS Configuration
+            - #${base_skeleton.number} — Create base NixOS configuration skeleton
+            - #${base_disko.number} — Configure disko layout (\`single-btrfs-luks-virtiofs-key\`)
+            - #${base_sops.number} — Create SOPS secrets file
+            - #${base_tailscale.number} — Configure Tailscale
+            - #${base_monitoring.number} — Configure monitoring (node-exporter + alloy + cAdvisor)
+            - #${base_firewall.number} — Configure firewall and CrowdSec
+            - #${base_docker.number} — Configure Docker and app data paths
+            - #${base_nfs.number} — Configure NFS bulk storage mount (\`/mnt/bulk\`)
+
+            ### Supporting NixOS Modules
+            - #${mod_networks.number} — Create \`docker-networks\` NixOS module
+            - #${mod_cadvisor.number} — Create \`cadvisor\` NixOS module
+
+            ### Stack Migration
+            - #${stacks_tracker.number} — Stack migration tracker + per-stack issue template
+
+            ### Backup Configuration
+            - #${bkp_restic.number} — Configure \`services.restic.backups\`
+            - #${bkp_sops.number} — Define restic credentials via SOPS
+            - #${bkp_hooks.number} — Configure pre/post backup hooks (database dumps)
+            - #${bkp_ui.number} — (Optional) Deploy backrest as read-only backup browser
+
+            ### Cutover Strategy
+            - #${cut_testbed.number} — Deploy testbed apps VM (minimum viable system)
+            - #${cut_restore.number} — Run partial restore tests on testbed
+            - #${cut_production.number} — [Future] Full production cutover
+
+            ## Assumptions
+            - The hypervisor hardware is already running and VMs are being managed via \`libvirt_provision\`
+            - The btrfs \`vmstore\` SSD pool on the hypervisor has sufficient space for a new VM disk
+            - The btrfs \`bulk\` HDD pool has sufficient space for \`/mnt/bulk/apps\`
+            - Tailscale is available for secure inter-VM communication
+            - The ingress host's Traefik will continue to handle public traffic routing`;
+
+            const epic = await mkIssue(
+              '[EPIC] Migrate apps host: bare-metal Ubuntu (snyssen.be) → NixOS VM',
+              epicBody
+            );
+
+            console.log(`\n✅ Issue hierarchy created successfully!`);
+            console.log(`Epic: #${epic.number}`);
+            console.log(`Total issues created: 24`);
