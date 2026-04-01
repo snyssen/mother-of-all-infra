@@ -20,7 +20,7 @@
     shell.fish = lib.mkIf (osConfig.shell.default == "fish") {
       enable = true;
       fzf.enable = lib.mkDefault true;
-      intelli-shell.enable = lib.mkDefault true;
+      intelli-shell.enable = lib.mkDefault false;
       direnv.enable = lib.mkDefault true;
       starship.enable = lib.mkDefault true;
       dua.enable = lib.mkDefault true;
