@@ -39,6 +39,8 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
+    flake.modules.nixos.prometheus-node-exporter
+    flake.modules.nixos.grafana-alloy
     flake.modules.nixos.libvirtd
     flake.modules.nixos.nfs-exports
 
@@ -63,6 +65,11 @@
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
+  };
+
+  grafana-alloy = {
+    varlogs.enable = true;
+    journald.enable = true;
   };
 
   disko =
