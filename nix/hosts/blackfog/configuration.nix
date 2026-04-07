@@ -63,6 +63,7 @@ in
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
     flake.modules.nixos.prometheus-node-exporter
+    flake.modules.nixos.onedrive
   ];
 
   disko =
@@ -117,6 +118,8 @@ in
       };
     };
   };
+
+  onedrive.gui.enable = true;
 
   stylix = with theming.dark; {
     wallpaper = lib.mkDefault wallpaper;
