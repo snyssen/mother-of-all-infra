@@ -87,8 +87,10 @@ in
               "dotnet build" = true;
             };
             "github.copilot.nextEditSuggestions.enabled" = true;
+            "editor.inlineSuggest.minShowDelay" = 200;
             "remote.autoForwardPorts" = false;
             "remote.autoForwardPortsSource" = "hybrid";
+            "resharper.region.region" = "Europe";
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
