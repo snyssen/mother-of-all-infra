@@ -85,6 +85,7 @@ in
             };
             "chat.tools.terminal.autoApprove" = {
               "dotnet build" = true;
+              "dotnet test" = true;
             };
             "github.copilot.nextEditSuggestions.enabled" = true;
             "editor.inlineSuggest.minShowDelay" = 200;
