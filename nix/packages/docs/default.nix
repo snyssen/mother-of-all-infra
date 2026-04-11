@@ -23,6 +23,17 @@ pkgs.stdenvNoCC.mkDerivation {
   '';
 
   installPhase = ''
-    mv site $out
+    mkdir -p $out/bin $out/share/docs
+    cp -r site/* $out/share/docs/
+
+    cat > $out/bin/docs << EOF
+    #!/usr/bin/env bash
+    exec ${pkgs.python3}/bin/python3 -m http.server -d "$out/share/docs" 8000
+    EOF
+    chmod +x $out/bin/docs
   '';
+
+  meta = {
+    mainProgram = "docs";
+  };
 }
