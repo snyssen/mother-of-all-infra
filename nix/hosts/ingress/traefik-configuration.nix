@@ -40,6 +40,12 @@ let
   };
 in
 {
+  traefik.tcpEntrypoints = {
+    minecraft = {
+      port = 25565;
+    };
+  };
+
   services.traefik.dynamicConfigOptions = {
     http.middlewares = {
       ip-allowlist = {
