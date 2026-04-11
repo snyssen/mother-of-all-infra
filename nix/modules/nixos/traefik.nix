@@ -36,6 +36,18 @@ in
       );
       default = { };
     };
+    udpEntrypoints = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            port = lib.mkOption {
+              type = lib.types.port;
+            };
+          };
+        }
+      );
+      default = { };
+    };
   };
 
   config = {
@@ -70,8 +82,11 @@ in
             };
           }
           (builtins.mapAttrs (entrypointName: entrypoint: {
-            address = ":${builtins.toString entrypoint.port}";
+            address = ":${builtins.toString entrypoint.port}/tcp";
           }) cfg.tcpEntrypoints)
+          (builtins.mapAttrs (entrypointName: entrypoint: {
+            address = ":${builtins.toString entrypoint.port}/udp";
+          }) cfg.udpEntrypoints)
         ];
         certificatesResolvers.letsencrypt.acme = lib.mkMerge [
           {
