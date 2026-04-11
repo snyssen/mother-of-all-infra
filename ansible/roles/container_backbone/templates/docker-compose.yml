@@ -18,8 +18,7 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
 
       - "--entryPoints.websecure.address=:443"
-      # FIXME: test of trusting the ingress tailnet IP, should be a variable
-      - "--entryPoints.websecure.forwardedHeaders.trustedIPs=100.108.29.108,fd7a:115c:a1e0::3b36:1d6c"
+      - "--entryPoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust Ingress tailnet IP
       - "--entrypoints.websecure.http.tls=true"
       - "--entrypoints.websecure.http.tls.certResolver=le"
       {% if backbone__acme_dns_challenge__enabled %}
