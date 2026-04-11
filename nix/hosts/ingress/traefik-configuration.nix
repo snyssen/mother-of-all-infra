@@ -1,7 +1,7 @@
 { lib, ... }:
 let
   appsServerIp = "100.114.242.89";
-  # These allows for proxying services directly to the apps server, without middleware or complex rules.
+  # These allow proxying services directly to the apps server, without middleware or complex rules.
   # If you need more complex rules, you can add them directly to services.traefik.dynamicConfigOptions.http.routers and services.traefik.dynamicConfigOptions.http.services options below.
   proxiedWebServices = {
     attic = "attic.snyssen.be";
