@@ -16,6 +16,7 @@ pkgs.stdenvNoCC.mkDerivation {
     mkdocs
     mkdocs-material
     mkdocs-awesome-nav
+    pymdown-extensions
   ];
 
   buildPhase = ''
