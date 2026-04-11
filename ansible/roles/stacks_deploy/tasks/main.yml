@@ -31,9 +31,6 @@
     name: container_unifi
   when: "stacks_deploy_list is not defined or 'unifi' in stacks_deploy_list"
 - ansible.builtin.include_role:
-    name: container_ddns
-  when: "stacks_deploy_list is not defined or 'ddns' in stacks_deploy_list"
-- ansible.builtin.include_role:
     name: container_crowdsec
   when: "stacks_deploy_list is not defined or 'crowdsec' in stacks_deploy_list"
 - ansible.builtin.include_role:
@@ -65,7 +62,8 @@
   when: "stacks_deploy_list is not defined or 'dashboard' in stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_personal_website
-  when: "stacks_deploy_list is not defined or 'personal_website' in stacks_deploy_list"
+  when: "stacks_deploy_list is not defined or 'personal_website' in
+    stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_quartz
   when: "stacks_deploy_list is not defined or 'quartz' in stacks_deploy_list"
@@ -89,7 +87,8 @@
   when: "stacks_deploy_list is not defined or 'rallly' in stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_speedtest-tracker
-  when: "stacks_deploy_list is not defined or 'speedtest-tracker' in stacks_deploy_list"
+  when: "stacks_deploy_list is not defined or 'speedtest-tracker' in
+    stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_sharkey
   when: "stacks_deploy_list is not defined or 'sharkey' in stacks_deploy_list"
@@ -104,7 +103,8 @@
   when: "stacks_deploy_list is not defined or 'backrest' in stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_skyrim_together
-  when: "stacks_deploy_list is not defined or 'skyrim_together' in stacks_deploy_list"
+  when: "stacks_deploy_list is not defined or 'skyrim_together' in
+    stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_matrix
   when: "stacks_deploy_list is not defined or 'matrix' in stacks_deploy_list"
@@ -114,6 +114,7 @@
 - ansible.builtin.include_role:
     name: container_mobilizon
   when: "stacks_deploy_list is not defined or 'mobilizon' in stacks_deploy_list"
+
 # - ansible.builtin.include_role:
 #     name: container_scrypted
 #   when: "stacks_deploy_list is not defined or 'scrypted' in stacks_deploy_list"
