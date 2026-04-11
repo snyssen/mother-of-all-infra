@@ -8,8 +8,8 @@ let
     auth-main = "auth.snyssen.be";
     auth-team = "auth.bigdouf.team";
     dashboard = "dash.snyssen.be";
-    minecraft = "mc.snyssen.be"; # dynmap
-    mc-usw = "mc-usw.snyssen.be"; # dynmap for USW server
+    mc-dynmap = "mc.snyssen.be";
+    mc-usw-dynmap = "mc-usw.snyssen.be"; # dynmap for USW server
     element = "element.snyssen.be";
     foundryvtt = "dnd.snyssen.be";
     immich = "photos.snyssen.be";
@@ -105,7 +105,7 @@ in
       (lib.mapAttrs (svcName: svc: {
         loadBalancer = {
           servers = [
-            { address = "${svc.address}:${svc.port}"; }
+            { address = "${svc.address}:${toString svc.port}"; }
           ];
         };
       }) proxiedTCPServices)
@@ -113,7 +113,7 @@ in
       (lib.mapAttrs (svcName: svc: {
         loadBalancer = {
           servers = [
-            { address = "${svc.address}:${svc.port}"; }
+            { address = "${svc.address}:${toString svc.port}"; }
           ];
         };
       }) proxiedUDPServices)
