@@ -66,23 +66,11 @@ in
           middlewares = [ "ip-allowlist" ];
         };
       }
-
       (lib.mapAttrs (svcName: hostname: {
         entryPoints = [ "websecure" ];
         rule = "Host(`${hostname}`)";
         service = svcName;
       }) proxiedWebServices)
-
-      (lib.mapAttrs (svcName: svc: {
-        entryPoints = [ svcName ];
-        rule = "HostSNI(`*`)";
-        service = svcName;
-      }) proxiedTCPServices)
-
-      (lib.mapAttrs (svcName: hostname: {
-        entryPoints = [ svcName ];
-        service = svcName;
-      }) proxiedUDPServices)
     ];
     http.services = lib.mkMerge [
       {
@@ -101,7 +89,16 @@ in
           passHostHeader = false;
         };
       }) proxiedWebServices)
+    ];
 
+    tcp.routers = lib.mkMerge [
+      (lib.mapAttrs (svcName: svc: {
+        entryPoints = [ svcName ];
+        rule = "HostSNI(`*`)";
+        service = svcName;
+      }) proxiedTCPServices)
+    ];
+    tcp.services = lib.mkMerge [
       (lib.mapAttrs (svcName: svc: {
         loadBalancer = {
           servers = [
@@ -109,7 +106,15 @@ in
           ];
         };
       }) proxiedTCPServices)
+    ];
 
+    udp.routers = lib.mkMerge [
+      (lib.mapAttrs (svcName: svc: {
+        entryPoints = [ svcName ];
+        service = svcName;
+      }) proxiedUDPServices)
+    ];
+    udp.services = lib.mkMerge [
       (lib.mapAttrs (svcName: svc: {
         loadBalancer = {
           servers = [
