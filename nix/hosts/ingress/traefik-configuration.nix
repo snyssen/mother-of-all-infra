@@ -1,8 +1,13 @@
 { lib, ... }:
 let
   appsServerIp = "100.114.242.89";
-  # These allow proxying services directly to the apps server, without middleware or complex rules.
-  # If you need more complex rules, you can add them directly to services.traefik.dynamicConfigOptions.http.routers and services.traefik.dynamicConfigOptions.http.services options below.
+  # These allow proxying web services to the apps server without middleware or complex rules.
+  # Unlike the TCP/UDP definitions below, HTTP backends are configured from these hostnames
+  # (for example as `https://${hostname}`), so ingress must resolve them via split-horizon or
+  # tailnet DNS to the apps server. Do not use public DNS for backend resolution here.
+  # If you need more complex rules, you can add them directly to
+  # services.traefik.dynamicConfigOptions.http.routers and
+  # services.traefik.dynamicConfigOptions.http.services options below.
   proxiedWebServices = {
     attic = "attic.snyssen.be";
     auth-main = "auth.snyssen.be";
@@ -40,12 +45,13 @@ let
   };
 in
 {
-  traefik.tcpEntrypoints = {
-    minecraft = {
-      port = 25565;
-    };
-  };
+  traefik.tcpEntrypoints = lib.mapAttrs (_: svc: {
+    port = svc.port;
+  }) proxiedTCPServices;
 
+  traefik.udpEntrypoints = lib.mapAttrs (_: svc: {
+    port = svc.port;
+  }) proxiedUDPServices;
   services.traefik.dynamicConfigOptions = {
     http.middlewares = {
       ip-allowlist = {
