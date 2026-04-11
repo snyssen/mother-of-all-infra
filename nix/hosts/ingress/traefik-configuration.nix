@@ -102,7 +102,8 @@ in
         };
       }) proxiedWebServices)
     ];
-
+  }
+  // lib.optionalAttrs (proxiedTCPServices != { }) {
     tcp.routers = lib.mkMerge [
       (lib.mapAttrs (svcName: svc: {
         entryPoints = [ svcName ];
@@ -119,7 +120,8 @@ in
         };
       }) proxiedTCPServices)
     ];
-
+  }
+  // lib.optionalAttrs (proxiedUDPServices != { }) {
     udp.routers = lib.mkMerge [
       (lib.mapAttrs (svcName: svc: {
         entryPoints = [ svcName ];
