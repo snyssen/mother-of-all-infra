@@ -1,6 +1,6 @@
 services:
   prometheus:
-    image: quay.io/prometheus/prometheus:v3.11.1@sha256:b90bb266161f865086537611c6c3199cedf41dea470d8ba71ce20ba0fad79ea9
+    image: quay.io/prometheus/prometheus:v3.11.2@sha256:cd37346c974517be59bd528c43cfff51727fb75393df0ad8d10ce10013a047b6
     container_name: prometheus
     restart: unless-stopped
     networks:
