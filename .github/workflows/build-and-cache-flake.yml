@@ -16,7 +16,7 @@ jobs:
   build-hosts:
     strategy:
       matrix:
-        host: [gaming, ingress, purplehaze, sninful]
+        host: [gaming, ingress, purplehaze, sninful, blackfog]
       fail-fast: false
     runs-on: ubuntu-latest
     name: Build ${{ matrix.host }}
