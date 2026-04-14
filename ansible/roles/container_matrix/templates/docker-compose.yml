@@ -63,7 +63,7 @@ services:
   ###########
   matrix-discord:
     container_name: matrix-discord
-    image: dock.mau.dev/mautrix/discord:v0.7.6@sha256:965b25cb81e7c8133d2adda9057f9fd4c25bd645f1649d8d91129edfeb79d53d
+    image: dock.mau.dev/mautrix/discord:v0.7.6@sha256:e4946b0df6a2786c88ed490e0d2692e352f1b79b9ff0e821a33764bd8bd1fffd
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_discord:/data
