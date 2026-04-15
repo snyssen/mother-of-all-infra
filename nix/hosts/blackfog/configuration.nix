@@ -48,13 +48,13 @@ in
     flake.modules.nixos.disko
     ./hardware-configuration.nix
 
+    flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
     flake.modules.nixos.logitech
     flake.modules.nixos.stylix
     flake.modules.nixos.gnome
-    flake.modules.nixos.user
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
@@ -81,6 +81,25 @@ in
         swap.enable = true;
       };
     };
+
+  sops.secrets = {
+    "users/snyssen/passwordHash" = {
+      sopsFile = ./data/secrets.yaml;
+      neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
+    };
+  };
+
+  users = {
+    mutableUsers = false;
+    users.snyssen = {
+      isNormalUser = true;
+      extraGroups = [
+        "wheel"
+        "networkmanager"
+      ];
+      initialPassword = config.sops.secrets."users/snyssen/passwordHash".path;
+    };
+  };
 
   grub.timeout = 10;
   gnome = {

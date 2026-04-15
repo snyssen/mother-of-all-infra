@@ -29,7 +29,6 @@
     flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.kbd-layout
-    flake.modules.nixos.user
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
@@ -45,11 +44,28 @@
   ];
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  sops.secrets."tailscale/authKey" = {
-    sopsFile = ./data/secrets.yaml;
+  sops.secrets = {
+    "users/snyssen/passwordHash" = {
+      sopsFile = ./data/secrets.yaml;
+      neededForUsers = true;
+    };
+    "tailscale/authKey" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    "crowdsec-firewall-bouncer/api_key" = {
+      sopsFile = ./data/secrets.yaml;
+    };
   };
-  sops.secrets."crowdsec-firewall-bouncer/api_key" = {
-    sopsFile = ./data/secrets.yaml;
+
+  users = {
+    mutableUsers = false;
+    users.snyssen = {
+      isNormalUser = true;
+      extraGroups = [
+        "wheel"
+      ];
+      initialPassword = config.sops.secrets."users/snyssen/passwordHash".path;
+    };
   };
 
   tailscale = {

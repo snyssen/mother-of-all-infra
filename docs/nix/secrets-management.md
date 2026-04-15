@@ -146,6 +146,54 @@ creation_rules:
 
 Each `creation_rules` entry maps a path pattern to a list of age keys. Any key in the list can decrypt the file.
 
+## User Management
+
+NixOS user accounts can have passwords managed through SOPS. Passwords must be stored as bcrypt hashes, then decrypted and used during system activation.
+
+### Generating a Password Hash
+
+Use `mkpasswd` to generate a bcrypt hash:
+
+```sh
+mkpasswd -m bcrypt
+```
+
+Enter your desired password when prompted. The output is a hashed password safe to store in version control.
+
+### Storing Hashed Passwords in SOPS
+
+Add the hash to your secrets file:
+
+```sh
+just sops-update nix/hosts/<host>/data/secrets.yaml
+```
+
+In the editor, add an entry like:
+
+```yaml
+users:
+  snyssen:
+    passwordHash: $2b$05$abcd...hashed...password
+```
+
+### Using Hashed Passwords in NixOS
+
+Declare the secret and reference it in your user configuration:
+
+```nix
+sops.secrets."users/snyssen/passwordHash" = {
+  sopsFile = ./data/secrets.yaml;
+  neededForUsers = true;  # ensure secret is available before user creation
+};
+
+users.users.snyssen = {
+  isNormalUser = true;
+  hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
+};
+```
+
+The `neededForUsers = true` option ensures the secret is decrypted before the user account is created.
+
 ## Related Documentation
 
 - [Scanner to Paperless](./scanner-to-paperless.md) — example of consuming a SOPS secret in a NixOS module
