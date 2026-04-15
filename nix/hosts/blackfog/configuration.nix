@@ -3,6 +3,7 @@
   lib,
   inputs,
   flake,
+  config,
   ...
 }:
 let
