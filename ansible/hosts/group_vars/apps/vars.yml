@@ -284,12 +284,16 @@ dashboard__shortcuts:
         url: https://pdf.snyssen.be
       - name: Recipes
         url: https://recipes.snyssen.be
-      - name: Rallly
-        url: https://events.bigdouf.team
       - name: Actual
         url: https://actual.snyssen.be
-      - name: Matrix
-        url: https://element.snyssen.be
+      - name: Social
+        children:
+          - name: Matrix (Element)
+            url: https://element.snyssen.be
+          - name: Matrix (Cinny)
+            url: https://app.cinny.in
+          - name: Rallly
+            url: https://events.bigdouf.team
   - name: Documents
     icon_classes: las la-folder-open
     children:
@@ -363,8 +367,6 @@ dashboard__shortcuts:
     children:
       - name: Home Assistant
         url: https://hass.snyssen.be/auth/oidc/welcome
-      - name: OVH Dashboard
-        url: https://www.ovh.com/manager/#/hub/
       - name: DNS management
         children:
           - name: Local DNS
@@ -489,7 +491,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - ["group:dnd-saltmarsh"]
+          - [ "group:dnd-saltmarsh" ]
   - name: dnd-yp
     path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Yawning Portal
     permissions:
@@ -497,7 +499,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - ["group:dnd-yp"]
+          - [ "group:dnd-yp" ]
   - name: dnd-bahut
     path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Bahut
     permissions:
@@ -505,7 +507,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - ["group:dnd-bahut"]
+          - [ "group:dnd-bahut" ]
   - name: me-eet
     path: /mnt/storage/syncthing/data/Notes/TTRPG/Mass Effect - En eaux troubles
     permissions:
@@ -516,12 +518,12 @@ quartz__vaults:
           - "^/static/.*$"
           - "^/Resources/.*$"
         subject:
-          - ["group:me-eet_player"]
+          - [ "group:me-eet_player" ]
       - policy: one_factor
         resources:
           - "^*"
         subject:
-          - ["group:me-eet_gm"]
+          - [ "group:me-eet_gm" ]
 
 team_wiki__db_pass: "{{ vault_team_wiki__db_pass }}"
 
