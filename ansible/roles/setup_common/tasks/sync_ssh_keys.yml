@@ -15,4 +15,6 @@
     hour: "*/6"
     user: "{{ ansible_user_id }}"
     # TODO: add logs
-    job: sync-ssh-keys --github-username {{ ansible_user_id }} --output {{ ansible_user_dir }}/.ssh/authorized_keys
+    job: |-
+      sync-ssh-keys --github-username {{ ansible_user_id }} --output {{ ansible_user_dir }}/.ssh/authorized_keys
+    state: absent

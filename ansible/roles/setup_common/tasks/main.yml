@@ -7,7 +7,8 @@
       vars:
         docker_users:
           - "{{ ansible_user_id }}"
-        docker_daemon_options: "{{ docker_daemon_common_options | combine(docker_daemon_extra_options | default({})) }}"
+        docker_daemon_options: "{{ docker_daemon_common_options |
+          combine(docker_daemon_extra_options | default({})) }}"
     - name: Harden SSH
       ansible.builtin.include_role:
         name: geerlingguy.security
@@ -32,7 +33,8 @@
 - name: Add crowdsec apt repository
   become: true
   ansible.builtin.apt_repository:
-    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_distribution |
+      lower }}/ {{ ansible_distribution_release }} main
     state: present
     filename: crowdsec
     update_cache: true
@@ -101,8 +103,8 @@
     tailscale_oauth_preauthorized: false
     tailscale_args: "--ssh"
 
-- name: Install and setup sync-ssh-keys
-  ansible.builtin.include_tasks: sync_ssh_keys.yml
+# - name: Install and setup sync-ssh-keys
+#   ansible.builtin.include_tasks: sync_ssh_keys.yml
 
 - name: Installing OhMyZsh with PowerLevel10K theme
   ansible.builtin.include_role:
