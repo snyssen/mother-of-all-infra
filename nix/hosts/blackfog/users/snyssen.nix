@@ -43,6 +43,7 @@
     gradia
     dbeaver-bin
     remmina
+    postgresql
   ];
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
