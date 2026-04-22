@@ -48,6 +48,7 @@ services:
       - "--certificatesResolvers.le.acme.tlsChallenge=false"
       - "--certificatesresolvers.le.acme.dnschallenge={{ backbone__acme_dns_challenge__enabled | to_json }}"
       - "--certificatesresolvers.le.acme.dnschallenge.provider={{ backbone__acme_dns_challenge__provider }}"
+      - "--certificatesresolvers.le.acme.dnschallenge.resolvers=9.9.9.9"
       - "--certificatesresolvers.le.acme.dnschallenge.delaybeforecheck=30"
       - "--certificatesResolvers.le.acme.httpChallenge={{ backbone__acme_http_challenge__enabled | to_json }}"
       - "--certificatesResolvers.le.acme.httpChallenge.entryPoint=web"
