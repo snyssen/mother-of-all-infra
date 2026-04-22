@@ -98,7 +98,7 @@ in
         "wheel"
         "networkmanager"
       ];
-      initialPassword = config.sops.secrets."users/snyssen/passwordHash".path;
+      hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
     };
   };
 
