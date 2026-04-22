@@ -149,21 +149,15 @@ in
   specialisation = {
     gaming.configuration = {
       imports = [
-        flake.modules.nixos.steam
+        flake.modules.nixos.gaming
       ];
+
+      gaming.extraPkgs = with pkgs; [ ckan ];
+
       stylix = with theming.gaming; {
         wallpaper = wallpaper;
         schemeName = scheme;
       };
-      environment.systemPackages = with pkgs; [
-        prismlauncher
-        (retroarch.withCores (
-          cores: with cores; [
-            beetle-psx-hw # PS1
-            pcsx2 # PS2
-          ]
-        ))
-      ];
     };
   };
 

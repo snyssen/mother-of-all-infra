@@ -50,7 +50,7 @@ in
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.steam
+    flake.modules.nixos.gaming
     flake.modules.nixos.nvidia
     flake.modules.nixos.syncthing
     flake.modules.nixos.logitech
@@ -82,6 +82,8 @@ in
   };
 
   prometheus-node-exporter.openFirewall = true;
+
+  gaming.extraPkgs = with pkgs; [ ckan ];
 
   environment.systemPackages = with pkgs; [
     lutris

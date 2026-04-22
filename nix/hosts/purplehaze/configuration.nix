@@ -57,7 +57,7 @@ in
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.steam
+    flake.modules.nixos.gaming
     flake.modules.nixos.syncthing
     flake.modules.nixos.printing
     flake.modules.nixos.docker
@@ -110,6 +110,12 @@ in
         ];
       };
     };
+  };
+
+  gaming = {
+    heroic.enable = false;
+    minecraft.enable = false;
+    retroarch.enable = false;
   };
 
   stylix = with theming.dark; {

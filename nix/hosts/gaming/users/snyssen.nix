@@ -24,12 +24,6 @@
   vscode.useUnstable = true;
 
   home.packages = with pkgs; [
-    prismlauncher
-    dconf-editor
-    (retroarch.withCores (cores: with cores; [
-      beetle-psx-hw # PS1
-      pcsx2 # PS2
-    ]))
     sweethome3d.application
     obsidian
     librewolf
@@ -38,7 +32,6 @@
     protonmail-desktop
     caligula
     zenity
-    protontricks
     p7zip
     fluffychat
   ];

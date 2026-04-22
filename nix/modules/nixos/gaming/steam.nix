@@ -5,16 +5,11 @@
   ...
 }:
 let
-  cfg = config.steam;
+  cfg = config.gaming.steam;
+  user = config.gaming.user;
 in
 {
-  options.steam = {
-    user = lib.mkOption {
-      default = "snyssen";
-    };
-  };
-
-  config = {
+  config = lib.mkIf cfg.enable {
     programs.steam = {
       enable = true;
       gamescopeSession.enable = true;
@@ -31,9 +26,8 @@ in
       # Simply run "protonup" in a terminal and it will install the latest ProtonGE and integrate it with Steam
       # Steam will keep the version up to date afterward
       sessionVariables = {
-        STEAM_EXTRA_COMPAT_TOOLS_PATHS = "/home/${cfg.user}/.steam/root/compatibilitytools.d";
+        STEAM_EXTRA_COMPAT_TOOLS_PATHS = "/home/${user}/.steam/root/compatibilitytools.d";
       };
     };
-    programs.gamemode.enable = true;
   };
 }
