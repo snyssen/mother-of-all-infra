@@ -16,8 +16,6 @@ in
   ## WORKAROUNDS
   #
 
-  # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
-  nixpkgs.config.allowUnfree = true;
   nixpkgs.overlays = [
     inputs.nix-vscode-extensions.overlays.default
     (final: _: {
