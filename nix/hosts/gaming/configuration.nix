@@ -16,17 +16,6 @@ in
   ## WORKAROUNDS
   #
 
-  nixpkgs.overlays = [
-    inputs.nix-vscode-extensions.overlays.default
-    (final: _: {
-      # this allows you to access `pkgs.unstable` anywhere in your config
-      unstable = import inputs.nixpkgs-unstable {
-        inherit (final.stdenv.hostPlatform) system;
-        inherit (final) config;
-      };
-    })
-  ];
-
   # nixpkgs.config.permittedInsecurePackages = [
   #   "libsoup-2.74.3"
   # ];

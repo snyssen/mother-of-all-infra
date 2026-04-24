@@ -15,8 +15,6 @@ in
   ## WORKAROUNDS
   #
 
-  nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default ];
-
   # nixpkgs.config.permittedInsecurePackages = [
   #   "libsoup-2.74.3"
   # ];
