@@ -123,6 +123,13 @@ in
           "gaming"
         ];
       };
+      KSP = {
+        path = "/home/snyssen/Games/Heroic/Kerbal\ Space\ Program/";
+        devices = [
+          "sync.snyssen.be"
+          "gaming"
+        ];
+      };
     };
   };
 
