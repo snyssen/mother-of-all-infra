@@ -162,7 +162,7 @@ services:
 
   #! This is also used by the mobilizon stack (yes, it's a bit dirty...)
   photon:
-    image: rtuszik/photon-docker:2.1.1@sha256:9087481cd7ba5e5de78013f70913e454a45dbd77fb2dfb980de69114dd7caeb5
+    image: rtuszik/photon-docker:2.2.0@sha256:9e0f006e6eb5854fa43c71fb491203ee87905315e265c184e9afcc57c7555367
     container_name: photon
     environment:
       - UPDATE_STRATEGY=PARALLEL
