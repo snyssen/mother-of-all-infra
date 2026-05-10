@@ -138,6 +138,12 @@ services:
       - traefik.http.routers.usenet.service=usenet
       - traefik.http.services.usenet.loadBalancer.server.port=8080
       - traefik.http.routers.usenet.middlewares=authelia@docker
+      # Pinchflat
+      - traefik.http.routers.pinchflat.entryPoints=websecure
+      - traefik.http.routers.pinchflat.rule=Host(`yt.{{ main_domain }}`)
+      - traefik.http.routers.pinchflat.service=pinchflat
+      - traefik.http.services.pinchflat.loadBalancer.server.port=8945
+      - traefik.http.routers.pinchflat.middlewares=authelia@docker
     # FIXME: This is a workaround for the healthcheck not recovering from a failstate even when the underlying VPN connection does, thus preventing routing to underlying apps
     healthcheck:
       disable: true
