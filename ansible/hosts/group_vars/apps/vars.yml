@@ -366,7 +366,7 @@ dashboard__shortcuts:
     icon_classes: las la-server
     children:
       - name: Home Assistant
-        url: https://hass.snyssen.be/auth/oidc/welcome
+        url: https://hass.snyssen.be
       - name: DNS management
         children:
           - name: Local DNS
