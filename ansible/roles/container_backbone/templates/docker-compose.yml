@@ -119,6 +119,7 @@ services:
       - WIREGUARD_PRIVATE_KEY={{ vpn__wireguard_pk }}
       - SPORT_FORWARD_ONLY=on
       - VPN_PORT_FORWARDING=on
+      - DNS_UNBLOCK_HOSTNAMES=news.eweka.nl
       # Timezone for accurate log times
       - TZ={{ iana_timezone }}
       # Server list updater. See https://github.com/qdm12/gluetun/wiki/Updating-Servers#periodic-update
