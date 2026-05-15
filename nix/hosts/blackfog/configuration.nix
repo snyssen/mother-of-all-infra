@@ -135,6 +135,19 @@ in
 
   onedrive.gui.enable = true;
 
+  services.ollama = {
+    enable = true;
+    loadModels = [
+      "gemma3:4b"
+      "deepseek-r1:8b"
+      "deepseek-coder:33b"
+    ];
+  };
+  services.open-webui = {
+    enable = true;
+    port = 8888;
+  };
+
   stylix = with theming.dark; {
     wallpaper = lib.mkDefault wallpaper;
     schemeName = lib.mkDefault scheme;
@@ -145,9 +158,9 @@ in
       imports = [
         flake.modules.nixos.gaming
       ];
-
       gaming.extraPkgs = with pkgs; [ ckan ];
-
+      services.ollama.enable = lib.mkForce false;
+      services.open-webui.enable = lib.mkForce false;
       stylix = with theming.gaming; {
         wallpaper = wallpaper;
         schemeName = scheme;
