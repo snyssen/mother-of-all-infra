@@ -30,6 +30,12 @@ in
         tsst = lib.mkIf osConfig.services.tailscale.enable "tailscale status";
         tssh = lib.mkIf osConfig.services.tailscale.enable "tailscale ssh";
       };
+      plugins = [
+        {
+          name = "bang-bang";
+          src = pkgs.fishPlugins.bang-bang;
+        }
+      ];
     };
 
     programs.fzf = lib.mkIf cfg.fzf.enable {
