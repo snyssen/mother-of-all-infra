@@ -190,6 +190,8 @@ db__pg_databases:
     password: "{{ attic__postgres_password }}"
   - name: "{{ peertube__db_username }}"
     password: "{{ peertube__db_password }}"
+  - name: "{{ audiomuse__db_username }}"
+    password: "{{ audiomuse__db_password }}"
 db__pg_dump_healthcheck_id: "{{ vault_db__pg_dump_healthcheck_id }}"
 db__pgadmin_email: "{{ vault_db__pgadmin_email }}"
 db__pgadmin_password: "{{ vault_db__pgadmin_password }}"
@@ -491,7 +493,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - [ "group:dnd-saltmarsh" ]
+          - ["group:dnd-saltmarsh"]
   - name: dnd-yp
     path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Yawning Portal
     permissions:
@@ -499,7 +501,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - [ "group:dnd-yp" ]
+          - ["group:dnd-yp"]
   - name: dnd-bahut
     path: /mnt/storage/syncthing/data/Notes/TTRPG/DnD - Bahut
     permissions:
@@ -507,7 +509,7 @@ quartz__vaults:
         resources:
           - "^*"
         subject:
-          - [ "group:dnd-bahut" ]
+          - ["group:dnd-bahut"]
   - name: me-eet
     path: /mnt/storage/syncthing/data/Notes/TTRPG/Mass Effect - En eaux troubles
     permissions:
@@ -518,12 +520,12 @@ quartz__vaults:
           - "^/static/.*$"
           - "^/Resources/.*$"
         subject:
-          - [ "group:me-eet_player" ]
+          - ["group:me-eet_player"]
       - policy: one_factor
         resources:
           - "^*"
         subject:
-          - [ "group:me-eet_gm" ]
+          - ["group:me-eet_gm"]
 
 team_wiki__db_pass: "{{ vault_team_wiki__db_pass }}"
 
@@ -606,3 +608,6 @@ peertube__db_password: "{{ vault_peertube__db_password }}"
 peertube__secret: "{{ vault_peertube__secret }}"
 peertube__oidc_client_id: "{{ backbone__authelia__oidc_peertube_clientid }}"
 peertube__oidc_client_secret: "{{ backbone__authelia__oidc_peertube_clientsecret }}"
+
+audiomuse__db_username: "audiomuse"
+audiomuse__db_password: "{{ vault_audiomuse__db_password }}"
