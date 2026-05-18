@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
 
   dawarich_app:
-    image: freikin/dawarich:1.7.7@sha256:f7eea22def731ef98f0644b191c477917790bb0e5449b0014bac2f349ce178a7
+    image: freikin/dawarich:1.7.8@sha256:dea326d03e728cd3b8d051b72d293cf375d0db6c00e22c55f338daedfdfdb3a4
     container_name: dawarich_app
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
@@ -110,6 +110,7 @@ services:
       OIDC_AUTO_REGISTER: true # optional, default is false
       OIDC_PROVIDER_NAME: Authelia # optional, default is OpenID Connect
       ALLOW_EMAIL_PASSWORD_REGISTRATION: false # optional, default is true
+      ALLOW_EMAIL_PASSWORD_LOGIN: false
     healthcheck:
       test:
         [
@@ -128,7 +129,7 @@ services:
         condition: service_healthy
         restart: true
   dawarich_sidekiq:
-    image: freikin/dawarich:1.7.7@sha256:f7eea22def731ef98f0644b191c477917790bb0e5449b0014bac2f349ce178a7
+    image: freikin/dawarich:1.7.8@sha256:dea326d03e728cd3b8d051b72d293cf375d0db6c00e22c55f338daedfdfdb3a4
     container_name: dawarich_sidekiq
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
