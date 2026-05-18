@@ -360,7 +360,7 @@ services:
       - audiomuse_redis
     restart: unless-stopped
 
-  audiomuse-ai-worker:
+  audiomuse_worker:
     image: ghcr.io/neptunehub/audiomuse-ai:latest # Reflects deployment.yaml
     container_name: audiomuse_worker
     networks:
