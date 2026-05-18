@@ -110,6 +110,7 @@ services:
       OIDC_AUTO_REGISTER: true # optional, default is false
       OIDC_PROVIDER_NAME: Authelia # optional, default is OpenID Connect
       ALLOW_EMAIL_PASSWORD_REGISTRATION: false # optional, default is true
+      ALLOW_EMAIL_PASSWORD_LOGIN: false
     healthcheck:
       test:
         [
