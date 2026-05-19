@@ -5,21 +5,19 @@ on:
     paths:
       - "flake.lock"
       - "flake.nix"
+      - "nix/devshell.nix"
   push:
     branches:
       - main
     paths:
       - "flake.lock"
       - "flake.nix"
+      - "nix/devshell.nix"
 
 jobs:
-  build-hosts:
-    strategy:
-      matrix:
-        host: [gaming, ingress, purplehaze, sninful, blackfog]
-      fail-fast: false
+  build-and-cache:
     runs-on: ubuntu-latest
-    name: Build ${{ matrix.host }}
+    name: Build hosts and devshell
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -42,30 +40,38 @@ jobs:
           attic login "${{ secrets.ATTIC_CACHE }}" "${{ secrets.ATTIC_ENDPOINT }}" "${{ secrets.ATTIC_CI_TOKEN }}"
           attic use "${{ secrets.ATTIC_CACHE }}"
 
-      - name: Build NixOS configuration for ${{ matrix.host }}
+      - name: Build NixOS configurations and devshell
         run: |
           nix build \
             --json \
             --print-build-logs \
-            ".#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel" \
-            > build-result-${{ matrix.host }}.json
+            ".#nixosConfigurations.gaming.config.system.build.toplevel" \
+            ".#nixosConfigurations.ingress.config.system.build.toplevel" \
+            ".#nixosConfigurations.purplehaze.config.system.build.toplevel" \
+            ".#nixosConfigurations.sninful.config.system.build.toplevel" \
+            ".#nixosConfigurations.blackfog.config.system.build.toplevel" \
+            ".#devShells.x86_64-linux.default" \
+            > build-results.json
 
-      - name: Push to Attic cache
+      - name: Push outputs to Attic cache
         run: |
-          RESULT=$(jq -r '.[0].outputs | to_entries[] | select(.key == "out").value' build-result-${{ matrix.host }}.json)
-          if [ -n "$RESULT" ]; then
-            echo "Pushing $RESULT to Attic..."
-            attic push "${{ secrets.ATTIC_CACHE }}" "$RESULT" \
-              || echo "[WARNING] Failed to push (parts of) '$RESULT' to Attic, but build succeeded."
-          else
-            echo "No output found in build result"
+          RESULTS=$(jq -r '.[].outputs.out // empty' build-results.json)
+          if [ -z "$RESULTS" ]; then
+            echo "No outputs found in build result"
             exit 1
           fi
 
-      - name: Upload build log on failure
+          echo "$RESULTS" | while IFS= read -r result; do
+            [ -n "$result" ] || continue
+            echo "Pushing $result to Attic..."
+            attic push "${{ secrets.ATTIC_CACHE }}" "$result" \
+              || echo "[WARNING] Failed to push (parts of) '$result' to Attic, but build succeeded."
+          done
+
+      - name: Upload build results on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: build-log-${{ matrix.host }}
-          path: build-result-${{ matrix.host }}.json
+          name: build-results
+          path: build-results.json
           retention-days: 7
