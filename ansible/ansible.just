@@ -27,4 +27,5 @@ ansible-playbook-list:
 # Run an Ansible playbook
 [working-directory: 'ansible']
 ansible-playbook playbook *flags:
+  @bash ../scripts/git-main-safety-check.sh enforce
   ansible-playbook playbooks/{{playbook}}.ansible.yml {{flags}}

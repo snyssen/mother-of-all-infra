@@ -23,7 +23,7 @@ pkgs.mkShell {
 
   # Load custom bash code
   shellHook = ''
-    git pull
+    bash scripts/git-main-safety-check.sh warn
     echo ""
     echo -e "This devshell uses '\e[32;1mjust\e[0m' as a task runner."
     just --list
