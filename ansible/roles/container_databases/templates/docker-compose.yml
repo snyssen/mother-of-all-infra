@@ -63,7 +63,7 @@ services:
     volumes:
       - /mnt/storage/backups/postgres:/backups
       - ./hooks:/hooks
-    mem_limit: 64m
+    mem_limit: 1g
 
 networks:
   db:
