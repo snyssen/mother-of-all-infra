@@ -1,6 +1,6 @@
 services:
   sharkey:
-    image: registry.activitypub.software/transfem-org/sharkey:2025.4.6@sha256:b40e2cb32d56b76286d88c65c129cc8635095322ec50ab17997173cbcb603f58
+    image: registry.activitypub.software/transfem-org/sharkey:2025.4.7@sha256:8857c9ded749bf6d1aa4f0e54095a0472f9d23a3dc39052c135f2b37881615d9
     restart: unless-stopped
     container_name: sharkey
     volumes:
@@ -32,7 +32,7 @@ services:
       retries: 20
 
   sharkey_deeplx:
-    image: ghcr.io/owo-network/deeplx:v1.1.0@sha256:270b331c7d3b850d78da82f54c67c0ef8912357c89fda9881267c5e433f7162d
+    image: ghcr.io/owo-network/deeplx:v1.2.2@sha256:32e49258767826e36bdd97cd2c51447f1e5f2c913a5b3b181dc4eee74000f4e4
     restart: unless-stopped
     container_name: sharkey_deeplx
     # port is 1188 by default -> https://deeplx.owo.network/install/variables.html
