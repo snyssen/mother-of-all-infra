@@ -1,0 +1,112 @@
+{
+  inputs,
+  flake,
+  config,
+  ...
+}:
+{
+
+  #
+  ## WORKAROUNDS
+  #
+
+  # should be set by blueprint, except it's not: https://github.com/numtide/blueprint/issues/115
+  nixpkgs.config.allowUnfree = true;
+  nixpkgs.overlays = [
+    inputs.nix-vscode-extensions.overlays.default
+    (final: _: {
+      unstable = import inputs.nixpkgs-unstable {
+        inherit (final.stdenv.hostPlatform) system;
+        inherit (final) config;
+      };
+    })
+  ];
+
+  #########################
+
+  imports = [
+    flake.modules.nixos.disko
+    ./hardware-configuration.nix
+
+    flake.modules.nixos.sops
+    flake.modules.nixos.cache
+    flake.modules.nixos.grub
+    flake.modules.nixos.kbd-layout
+    flake.modules.nixos.shell
+    flake.modules.nixos.locale
+    flake.modules.nixos.nh
+
+    flake.modules.nixos.tailscale
+  ];
+
+  disko.layout = "single-btrfs-luks-virtiofs-key";
+
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops.secrets = {
+    "tailscale/authKey" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    "users/snyssen/passwordHash" = {
+      sopsFile = ./data/secrets.yaml;
+      neededForUsers = true;
+    };
+  };
+
+  networking = {
+    useNetworkd = true;
+    firewall.enable = true;
+  };
+
+  tailscale.autoconnect = {
+    enable = true;
+    authKeyPath = config.sops.secrets."tailscale/authKey".path;
+    enableSSH = true;
+  };
+
+  # Primary Technitium DNS Server instance.
+  # Handles all DNS writes; the secondary instance replicates from this one.
+  # Web UI available on port 5380 (HTTP) and 53443 (HTTPS).
+  # NOTE: DHCP is intentionally disabled here — it will only run on the NUC in production.
+  services.technitium-dns-server = {
+    enable = true;
+    openFirewall = true;
+  };
+
+  services.openssh = {
+    enable = true;
+    openFirewall = true;
+    settings.PasswordAuthentication = false;
+    settings.PermitRootLogin = "no";
+  };
+
+  shell.default = "fish";
+
+  users = {
+    mutableUsers = false;
+    users = {
+      snyssen = {
+        isNormalUser = true;
+        extraGroups = [
+          "networkmanager"
+          "wheel"
+        ];
+        hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
+        openssh.authorizedKeys.keys = [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG68A6FS8yzwzaOUsoKHL9bc+2gB1P5OQriFjEWzG/LH snyssen@blackfog"
+        ];
+      };
+    };
+  };
+
+  # TODO: make this part automatically defined
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    auto-optimise-store = true;
+  };
+  system.name = "technitium-primary";
+  networking.hostName = "technitium-primary";
+  system.stateVersion = "25.11";
+}

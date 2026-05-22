@@ -1,0 +1,8 @@
+ansible_user: "{{ vault_ansible_user }}"
+ansible_become_pass: "{{ vault_ansible_become_pass }}"
+
+# Technitium DNS Server API configuration for the primary instance.
+# The API key is set during initial Technitium setup via the web UI (port 5380),
+# then stored in the Ansible vault as vault_technitium_primary_api_key.
+technitium_api_host: "http://technitium-primary:5380"
+technitium_api_key: "{{ vault_technitium_primary_api_key }}"
