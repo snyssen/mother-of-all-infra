@@ -1,6 +1,6 @@
 services:
   jellyfin:
-    image: ghcr.io/jellyfin/jellyfin:10.11.8@sha256:93227545077893cc9516f28b3adb733b67bc4691f41b6167428a2a0e3220b81c
+    image: ghcr.io/jellyfin/jellyfin:10.11.9@sha256:ef4d95143a5475d1ba4d9a6983342cac300044d676a30648b7d0e0688961712a
     restart: unless-stopped
     container_name: jellyfin
     networks:
@@ -241,7 +241,7 @@ services:
     restart: unless-stopped
 
   lidify:
-    image: thewicklowwolf/lidify:0.2.9@sha256:d9968f2eebe30e28448f94f8f7198b3bc9ee06e950434b659e10b4d46dfeaac3
+    image: thewicklowwolf/lidify:0.2.10@sha256:15a28139a6b16ff4bc5e6cc2fae413f837f8bd1971e15918c6cc7fd7fa0dcf54
     container_name: lidify
     environment:
       - PUID=33
