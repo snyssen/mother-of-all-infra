@@ -52,6 +52,11 @@ hypervisor-btrfs-stats pool:
 hypervisor-btrfs-devices pool:
   ssh root@{{hypervisor_host}} btrfs filesystem show /mnt/{{pool}}
 
+# Build selected NixOS VM disk images locally and copy them to the hypervisor
+[working-directory: 'ansible']
+hypervisor-build-vm-images *flags:
+  ansible-playbook playbooks/libvirt-image-build.ansible.yml -i hosts/prod.yml {{flags}}
+
 # Run the libvirt VM provisioning playbook against the hypervisor (production)
 [working-directory: 'ansible']
 hypervisor-provision-vms *flags:

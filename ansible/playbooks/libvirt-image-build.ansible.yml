@@ -1,0 +1,282 @@
+---
+- name: Build selected Disko images locally
+  hosts: localhost
+  gather_facts: false
+  vars:
+    libvirt_image_build_pre_format_dst_default: /run/keys/luks.key
+    libvirt_image_build_target_hypervisor: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
+    libvirt_image_build_workdir: "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}"
+  tasks:
+    - name: Resolve VM definitions from hypervisor inventory
+      ansible.builtin.set_fact:
+        _all_vms_list: "{{ hostvars[libvirt_image_build_target_hypervisor].libvirt_vms | default([]) }}"
+
+    - name: Filter VMs with disk_image.build enabled
+      ansible.builtin.set_fact:
+        libvirt_image_build_selected_vms: "{{ _all_vms_list | selectattr('disk_image.build', 'defined') | selectattr('disk_image.build') | list }}"
+
+    - name: Validate at least one VM is configured for building
+      ansible.builtin.assert:
+        that:
+          - libvirt_image_build_selected_vms | length > 0
+        fail_msg: "No VMs found with disk_image.build: true in inventory."
+
+    - name: Validate selected VM configuration for image build
+      ansible.builtin.assert:
+        that:
+          - (item.state | default('present')) != 'absent'
+          - item.disk_image is defined
+          - item.disk_image.dest is defined
+        fail_msg: "VM '{{ item.name }}' must be present and define disk_image.dest."
+      loop: "{{ libvirt_image_build_selected_vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Build local image artifacts
+      block:
+        - name: Create base temporary build directory
+          ansible.builtin.tempfile:
+            state: directory
+            path: "{{ libvirt_image_build_workdir }}"
+            prefix: libvirt-image-build-
+          register: _build_root
+
+        - name: Create per-VM build directories
+          ansible.builtin.file:
+            path: "{{ _build_root.path }}/{{ item.name }}"
+            state: directory
+            mode: "0755"
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Generate per-VM LUKS key locally
+          ansible.builtin.command:
+            cmd: "dd if=/dev/urandom of={{ _build_root.path }}/{{ item.name }}/luks.key bs=2048 count=1 status=none"
+          args:
+            creates: "{{ _build_root.path }}/{{ item.name }}/luks.key"
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Enforce local key file permissions
+          ansible.builtin.file:
+            path: "{{ _build_root.path }}/{{ item.name }}/luks.key"
+            mode: "0600"
+            state: file
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Build disko image script path for each VM
+          ansible.builtin.command:
+            cmd: >-
+              nix build
+              .#nixosConfigurations.{{ _nixos_config_name }}.config.system.build.diskoImagesScript
+              --print-out-paths
+          args:
+            chdir: "{{ playbook_dir }}/../.."
+          vars:
+            _nixos_config_name: >-
+              {{
+                item.disk_image.nixos_config
+                | default(item.image_build.nixos_config | default(item.name))
+              }}
+          changed_when: true
+          register: _script_build
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Map VM names to disko image script executables
+          ansible.builtin.set_fact:
+            _script_exec_by_vm: "{{ (_script_exec_by_vm | default({})) | combine({item.item.name: (item.stdout_lines | last)}) }}"
+          loop: "{{ _script_build.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+        - name: Run disko image script with pre-format key injection
+          ansible.builtin.command:
+            cmd: >-
+              {{ _script_exec_by_vm[item.name] }}
+              {% if _build_memory_mb is defined %} --build-memory {{ _build_memory_mb }} {% endif %}
+              --pre-format-files
+              {{ _build_root.path }}/{{ item.name }}/luks.key
+              {{ _pre_format_luks_key_dst }}
+          args:
+            chdir: "{{ _build_root.path }}/{{ item.name }}"
+          vars:
+            _build_memory_mb: >-
+              {{
+                item.disk_image.build_memory_mb
+                | default(item.image_build.build_memory_mb)
+              }}
+            _pre_format_luks_key_dst: >-
+              {{
+                item.disk_image.pre_format_luks_key_dst
+                | default(item.image_build.pre_format_luks_key_dst | default(libvirt_image_build_pre_format_dst_default))
+              }}
+          changed_when: true
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Discover generated disk artifacts per VM
+          ansible.builtin.find:
+            paths: "{{ _build_root.path }}/{{ item.name }}"
+            recurse: false
+            file_type: file
+            patterns:
+              - "*.qcow2"
+              - "*.raw"
+          register: _found_artifacts
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Ensure one artifact was produced per VM
+          ansible.builtin.assert:
+            that:
+              - item.matched == 1
+            fail_msg: "Expected exactly one disk artifact for {{ item.item.name }}, found {{ item.matched }} in {{ _build_root.path }}/{{ item.item.name }}"
+          loop: "{{ _found_artifacts.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+        - name: Record local artifact paths for copy phase
+          ansible.builtin.set_fact:
+            libvirt_image_build_artifacts: >-
+              {{
+                (libvirt_image_build_artifacts | default({}))
+                | combine({
+                  item.item.name: {
+                    'image_src': item.files[0].path,
+                    'key_src': (_build_root.path ~ '/' ~ item.item.name ~ '/luks.key'),
+                    'image_dest': item.item.disk_image.dest
+                  }
+                })
+              }}
+          loop: "{{ _found_artifacts.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+      rescue:
+        - name: Clean up temporary build directory after local build failure
+          ansible.builtin.file:
+            path: "{{ _build_root.path }}"
+            state: absent
+          failed_when: false
+          when:
+            - _build_root is defined
+            - _build_root.path is defined
+
+        - name: Abort after local build failure cleanup
+          ansible.builtin.fail:
+            msg: >-
+              Local image build failed; temporary workdir was cleaned up.
+              Original error: {{ ansible_failed_result.msg | default('unknown error') }}
+
+- name: Copy built images and keys to hypervisor
+  hosts: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
+  gather_facts: false
+  tasks:
+    - name: Copy local artifacts to hypervisor
+      become: true
+      block:
+        - name: Validate artifacts computed on localhost
+          ansible.builtin.assert:
+            that:
+              - hostvars['localhost'].libvirt_image_build_artifacts is defined
+              - hostvars['localhost'].libvirt_image_build_artifacts | length > 0
+            fail_msg: "No local image artifacts found. Run localhost build phase first."
+
+        - name: Resolve selected VM definitions on hypervisor
+          ansible.builtin.set_fact:
+            _selected_vms: "{{ hostvars['localhost'].libvirt_image_build_selected_vms }}"
+
+        - name: Ensure VM image destination directories exist
+          ansible.builtin.file:
+            path: "{{ (hostvars['localhost'].libvirt_image_build_artifacts[item.name].image_dest | dirname) }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+          loop: "{{ _selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Ensure per-VM key directories exist
+          ansible.builtin.file:
+            path: "{{ (libvirt_vm_keys_root | default('/var/lib/vm-keys')) ~ '/' ~ item.name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0700"
+          loop: "{{ _selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Check destination image existence
+          ansible.builtin.stat:
+            path: "{{ hostvars['localhost'].libvirt_image_build_artifacts[item.name].image_dest }}"
+          register: _image_dest_stat
+          loop: "{{ _selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Check if VM is defined in libvirt when image already exists
+          ansible.builtin.command:
+            cmd: "virsh dominfo {{ item.item.name }}"
+          changed_when: false
+          failed_when: false
+          register: _dominfos
+          when: item.stat.exists
+          loop: "{{ _image_dest_stat.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+        - name: Refuse overwrite when destination exists and VM is still defined
+          ansible.builtin.assert:
+            that:
+              - (libvirt_image_build_force | default(false) | bool) or item.rc != 0
+            fail_msg: >-
+              Refusing to overwrite image for VM '{{ item.item.item.name }}' that is still defined in libvirt.
+              Delete the VM first (virsh undefine {{ item.item.item.name }}) or set -e libvirt_image_build_force=true.
+          loop: "{{ _dominfos.results | default([]) }}"
+          loop_control:
+            label: "{{ item.item.item.name }}"
+          when: not (item.skipped | default(false))
+
+        - name: Copy image artifact to hypervisor storage
+          ansible.builtin.copy:
+            src: "{{ hostvars['localhost'].libvirt_image_build_artifacts[item.name].image_src }}"
+            dest: "{{ hostvars['localhost'].libvirt_image_build_artifacts[item.name].image_dest }}"
+            owner: root
+            group: root
+            mode: "0644"
+            force: "{{ libvirt_image_build_force | default(false) | bool }}"
+          loop: "{{ _selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Copy LUKS key file to hypervisor key directory
+          ansible.builtin.copy:
+            src: "{{ hostvars['localhost'].libvirt_image_build_artifacts[item.name].key_src }}"
+            dest: "{{ (libvirt_vm_keys_root | default('/var/lib/vm-keys')) ~ '/' ~ item.name ~ '/luks.key' }}"
+            owner: root
+            group: root
+            mode: "0400"
+            force: "{{ libvirt_image_build_force | default(false) | bool }}"
+          loop: "{{ _selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+      always:
+        - name: Remove temporary build directory on localhost
+          ansible.builtin.file:
+            path: "{{ hostvars['localhost']._build_root.path }}"
+            state: absent
+          delegate_to: localhost
+          become: false
+          failed_when: false
+          when:
+            - hostvars['localhost']._build_root is defined
+            - hostvars['localhost']._build_root.path is defined
