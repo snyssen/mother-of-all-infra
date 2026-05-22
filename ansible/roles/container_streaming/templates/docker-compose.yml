@@ -331,7 +331,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:latest # Reflects deployment.yaml
+    image: ghcr.io/neptunehub/audiomuse-ai:1.1.6@sha256:2c1c55dfc4b7e8027bca1092bab663c9e4d0720c8160d4eebef566345bf7607d
     container_name: audiomuse_web
     networks:
       - web
@@ -361,7 +361,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:latest # Reflects deployment.yaml
+    image: ghcr.io/neptunehub/audiomuse-ai:1.1.6@sha256:2c1c55dfc4b7e8027bca1092bab663c9e4d0720c8160d4eebef566345bf7607d
     container_name: audiomuse_worker
     networks:
       - db
