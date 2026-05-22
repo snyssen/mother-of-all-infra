@@ -1,0 +1,22 @@
+---
+- name: Perform initial setup (password change)
+  ansible.builtin.include_tasks: initial_setup.yml
+
+- name: Initialize cluster as primary node
+  ansible.builtin.include_tasks: cluster_primary.yml
+  when:
+    - technitium_cluster_role == 'primary'
+    - technitium_cluster_domain | length > 0
+    - technitium_cluster_primary_ip_addresses | length > 0
+
+- name: Join cluster as secondary node
+  ansible.builtin.include_tasks: cluster_secondary.yml
+  when:
+    - technitium_cluster_role == 'secondary'
+    - technitium_cluster_primary_url | length > 0
+
+- name: Configure DNS zones and records
+  ansible.builtin.include_tasks: zones_and_records.yml
+  when:
+    - technitium_cluster_role in ['primary', 'standalone']
+    - (technitium_dns_zones | length > 0) or (technitium_dns_split_records | length > 0)

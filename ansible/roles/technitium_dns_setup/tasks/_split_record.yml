@@ -1,0 +1,37 @@
+---
+# Helper task file: create one split-horizon APP record.
+# Called by zones_and_records.yml via include_tasks, with loop_var technitium_split_record.
+#
+# Builds the SplitHorizon JSON data dict from the `entries` list:
+#   entries: [{network: "192.168.1.0/24", ip: "192.168.1.10"}, ...]
+# becomes:
+#   {"192.168.1.0/24": ["192.168.1.10"], ...}
+#
+# The SplitHorizon plugin matches the DNS client's source address against the
+# CIDR keys in order; the first matching network's IP list is returned.
+
+- name: Reset split-horizon data dict
+  ansible.builtin.set_fact:
+    _split_data: {}
+
+- name: Build split-horizon data dict from entries
+  ansible.builtin.set_fact:
+    _split_data: "{{ _split_data | combine({entry.network: [entry.ip]}) }}"
+  loop: "{{ technitium_split_record.entries }}"
+  loop_control:
+    loop_var: entry
+    label: "{{ entry.network }} → {{ entry.ip }}"
+
+- name: Create split-horizon APP record
+  effectivelywild.technitium_dns.record:
+    hostname: "{{ technitium_api_host }}"
+    api_key: "{{ technitium_session_token }}"
+    zone: "{{ technitium_split_record.zone }}"
+    name: "{{ technitium_split_record.name }}"
+    type: APP
+    # `app_class` is the parameter name used by the effectivelywild.technitium_dns collection
+    # for specifying the DNS app and class path together (format: "AppName.ClassName").
+    # See: https://galaxy.ansible.com/ui/repo/published/effectivelywild/technitium_dns/
+    app_class: SplitHorizon.SimpleAddress
+    data: "{{ _split_data | to_json }}"
+    state: present

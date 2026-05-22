@@ -1,94 +1,39 @@
 # Technitium DNS/DHCP cluster setup playbook.
 #
-# This playbook configures the Technitium DNS primary instance with the initial
-# DNS zones and records using the effectivelywild.technitium_dns Ansible collection.
-# It does NOT manage DHCP config — that is handled imperatively via the Technitium web UI.
+# Configures both Technitium DNS instances (primary and secondary) using the
+# `technitium_dns_setup` role. The role handles, in order:
+#   1. Initial setup  — changes the default admin password to the vault value
+#   2. Clustering     — initializes the primary node, then joins the secondary
+#   3. Zones/records  — creates DNS zones and split-horizon APP records (primary only;
+#                       these are automatically replicated to the secondary via clustering)
 #
-# Prerequisites:
-#   1. Both VMs (technitium-primary and technitium-secondary) must be provisioned and
-#      reachable via Tailscale (use `just nix-remote-install technitium-primary` etc.).
-#   2. Set vault variables:
-#        vault_technitium_primary_api_key   — API token from the primary web UI
-#        vault_technitium_secondary_api_key — API token from the secondary web UI
-#   3. Zone replication (primary → secondary) is configured once via the Technitium
-#      web UI on the primary: Settings → Sync Instances.
+# Before running this playbook:
+#   a. Both VMs must be provisioned and reachable (use `just nix-remote-install <host>`).
+#   b. Add to the Ansible vault:
+#        vault_technitium_admin_password — desired admin password for both instances
+#   c. Fill in the TODO values in:
+#        ansible/hosts/host_vars/technitium-primary/vars.yml   (cluster domain + IP)
+#        ansible/hosts/host_vars/technitium-secondary/vars.yml (primary URL + IPs)
+#        ansible/hosts/group_vars/technitium/vars.yml          (zones + split records)
 #
 # Usage:
 #   just ansible-playbook playbook=technitium-setup flags='-i hosts/prod.yml'
-#
 ---
 
 # ---------------------------------------------------------------------------
-# Primary: configure zones and records
+# Primary: initial setup + cluster init + zones and records
 # ---------------------------------------------------------------------------
 - name: Configure Technitium DNS primary
   hosts: technitium-primary
   gather_facts: false
-
-  tasks:
-    # -----------------------------------------------------------------------
-    # Internal zone — used for LAN/Tailnet split-horizon and local hostnames
-    # -----------------------------------------------------------------------
-    - name: Create internal zone
-      effectivelywild.technitium_dns.zone:
-        hostname: "{{ technitium_api_host }}"
-        api_key: "{{ technitium_api_key }}"
-        # TODO: replace with your actual internal domain
-        zone: internal.example.com
-        state: present
-
-    # -----------------------------------------------------------------------
-    # Example split-horizon APP record using the SplitHorizon plugin.
-    # The plugin must be installed on the Technitium instance first (via the
-    # web UI: Apps → Get Apps from Store → SplitHorizon).
-    #
-    # The data field maps CIDR source ranges to response IP lists:
-    #   LAN clients      → LAN IP
-    #   Tailscale clients → Tailnet IP
-    #   All others       → public IP (fallback)
-    #
-    # See: https://github.com/TechnitiumSoftware/DnsServer/discussions/815
-    # -----------------------------------------------------------------------
-    - name: Create split-horizon APP record for a service
-      effectivelywild.technitium_dns.record:
-        hostname: "{{ technitium_api_host }}"
-        api_key: "{{ technitium_api_key }}"
-        # TODO: replace with your actual internal domain and record name
-        zone: internal.example.com
-        name: myservice
-        type: APP
-        app_name: SplitHorizon
-        class_path: SplitHorizon.SimpleAddress
-        # TODO: fill in actual LAN, Tailscale and public IP addresses
-        data: |
-          {
-            "192.168.1.0/24": ["192.168.1.10"],
-            "100.64.0.0/10": ["100.89.243.99"],
-            "0.0.0.0/0": ["203.0.113.5"]
-          }
-        state: present
-
-    # -----------------------------------------------------------------------
-    # TODO: add further zones and records below following the patterns above.
-    # Tip: export existing zones from the old Adguard Home / Technitium UI,
-    # then translate them into tasks here.
-    # -----------------------------------------------------------------------
+  roles:
+    - technitium_dns_setup
 
 # ---------------------------------------------------------------------------
-# Secondary: verify the instance is reachable (zone replication is done via
-# the primary web UI, not via Ansible).
+# Secondary: initial setup + cluster join (zones/records sync automatically)
 # ---------------------------------------------------------------------------
-- name: Verify Technitium DNS secondary is reachable
+- name: Configure Technitium DNS secondary
   hosts: technitium-secondary
   gather_facts: false
-
-  tasks:
-    - name: Check secondary web UI is responding
-      ansible.builtin.uri:
-        url: "{{ technitium_api_host }}/api/user/login"
-        method: GET
-        status_code: [200, 401, 403]
-      register: _secondary_check
-      retries: 5
-      delay: 10
-      until: _secondary_check.status in [200, 401, 403]
+  roles:
+    - technitium_dns_setup
