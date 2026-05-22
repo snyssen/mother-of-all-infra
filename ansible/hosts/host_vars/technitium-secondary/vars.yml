@@ -3,27 +3,26 @@ ansible_become_pass: "{{ vault_ansible_become_pass }}"
 
 # Technitium DNS Server API configuration for the secondary instance.
 # The API host uses HTTP on port 5380 for initial setup (before HTTPS is enabled by clustering).
-technitium_api_host: "http://technitium-secondary:5380"
+technitium_dns_setup_api_host: "http://technitium-secondary:5380"
 
 # Admin password for the Technitium web UI.
 # On first run this password replaces the default "admin" password.
-# Stored in vault as vault_technitium_admin_password.
-technitium_admin_password: "{{ vault_technitium_admin_password }}"
+# Stored in vault as vault_technitium_dns_setup_admin_password.
+technitium_dns_setup_admin_password: "{{ vault_technitium_dns_setup_admin_password }}"
 
 # Role of this node in the Technitium cluster.
-technitium_cluster_role: secondary
+technitium_dns_setup_cluster_role: secondary
 
 # HTTPS URL of the primary cluster node used when this secondary joins the cluster.
 # The primary auto-enables HTTPS (self-signed) during cluster initialization.
 # TODO: set to https://<primary-tailscale-hostname>:53443/
-technitium_cluster_primary_url: "https://technitium-primary:53443/"
+technitium_dns_setup_cluster_primary_url: "https://technitium-primary:53443/"
 
 # IP address of the primary node, used when DNS resolution of the primary URL is not yet available.
 # TODO: set to the primary VM's Tailscale IP
-technitium_cluster_primary_ip_address: ""
+technitium_dns_setup_cluster_primary_ip_address: ""
 
 # List of IP addresses of this secondary node that are reachable by the primary.
 # Use the Tailscale IP (100.x.x.x) range.
 # TODO: set to the secondary VM's Tailscale IP
-technitium_cluster_secondary_ip_addresses: []
-
+technitium_dns_setup_cluster_secondary_ip_addresses: []

@@ -6,20 +6,20 @@
 # automatically afterwards.
 #
 # Required variables (set in host_vars/technitium-secondary/vars.yml):
-#   technitium_cluster_primary_url            — HTTPS URL of the primary (port 53443)
-#   technitium_cluster_secondary_ip_addresses — list of this node's IPs reachable by the primary
-#   technitium_admin_password                 — admin password of the *primary* node
-#                                              (same vault value used for initial setup)
+#   technitium_dns_setup_cluster_primary_url            — HTTPS URL of the primary (port 53443)
+#   technitium_dns_setup_cluster_secondary_ip_addresses — list of this node's IPs reachable by the primary
+#   technitium_dns_setup_admin_password                 — admin password of the *primary* node
+#                                                        (same vault value used for initial setup)
 # Optional:
-#   technitium_cluster_primary_ip_address     — primary IP for when DNS is not yet available
+#   technitium_dns_setup_cluster_primary_ip_address     — primary IP for when DNS is not yet available
 
 - name: Check current cluster status on secondary
   ansible.builtin.uri:
-    url: "{{ technitium_api_host }}/api/user/session/get"
+    url: "{{ technitium_dns_setup_api_host }}/api/admin/cluster/state"
     method: POST
     body_format: form-urlencoded
     body:
-      token: "{{ technitium_session_token }}"
+      token: "{{ technitium_dns_setup_session_token }}"
     status_code: [200]
     return_content: true
   register: _secondary_cluster_status
@@ -28,24 +28,34 @@
 
 - name: Join cluster as secondary node
   ansible.builtin.uri:
-    url: "{{ technitium_api_host }}/api/admin/cluster/initJoin"
+    url: "{{ technitium_dns_setup_api_host }}/api/admin/cluster/initJoin"
     method: POST
     body_format: form-urlencoded
     body:
-      token: "{{ technitium_session_token }}"
-      secondaryNodeIpAddresses: "{{ technitium_cluster_secondary_ip_addresses | join(',') }}"
-      primaryNodeUrl: "{{ technitium_cluster_primary_url }}"
-      primaryNodeIpAddress: "{{ technitium_cluster_primary_ip_address | default('') }}"
+      token: "{{ technitium_dns_setup_session_token }}"
+      secondaryNodeIpAddresses: "{{ technitium_dns_setup_cluster_secondary_ip_addresses | join(',') }}"
+      primaryNodeUrl: "{{ technitium_dns_setup_cluster_primary_url }}"
+      primaryNodeIpAddress: "{{ technitium_dns_setup_cluster_primary_ip_address | default('') }}"
       # Self-signed TLS certificate is used by default after cluster init on primary
       ignoreCertificateErrors: "true"
       primaryNodeUsername: admin
-      primaryNodePassword: "{{ technitium_admin_password }}"
+      primaryNodePassword: "{{ technitium_dns_setup_admin_password }}"
     status_code: [200]
     return_content: true
+    # The initJoin call synchronizes the full config from the primary; extend the timeout accordingly.
+    timeout: 300
   register: _cluster_join
   no_log: true
   failed_when: _cluster_join.json.status != 'ok'
   when: not _secondary_cluster_status.json.response.clusterInitialized
+
+- name: Wait for initial config sync to settle
+  ansible.builtin.pause:
+    seconds: 30
+    prompt: "Waiting 30 s for the Technitium cluster secondary to finish syncing config from primary…"
+  when:
+    - not _secondary_cluster_status.json.response.clusterInitialized
+    - _cluster_join.json.status == 'ok'
 
 - name: Report cluster join result
   ansible.builtin.debug:

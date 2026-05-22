@@ -2,22 +2,21 @@
 # Desired DNS zones to create on the primary instance.
 # These are replicated to the secondary via Technitium's built-in clustering.
 # Add your zone names here; they will be created if they do not exist.
-technitium_dns_zones:
+technitium_dns_setup_zones:
   # TODO: replace with your actual zones
   # - snyssen.be
   # - bigdouf.team
 
 # Split-horizon APP records using Technitium's SplitHorizon plugin.
-# The SplitHorizon app must be installed on the primary instance first
-# (Apps → Get Apps from Store → SplitHorizon).
+# The SplitHorizon app is installed automatically when this list is non-empty.
 #
 # Each entry maps a zone+name to a list of network→IP rules:
 #   - network: CIDR range to match the client source address
 #     ip:      IP address to return for clients in that range
 #
 # Rules are evaluated in order; the first matching network wins.
-# A catch-all "0.0.0.0/0" entry is used as the fallback (public IP).
-technitium_dns_split_records:
+# A catch-all "0.0.0.0/0" entry can be used as the fallback (public IP).
+technitium_dns_setup_split_records:
   # TODO: uncomment and fill in with your actual records
   # - zone: snyssen.be
   #   name: "@"

@@ -10,7 +10,7 @@
 # Before running this playbook:
 #   a. Both VMs must be provisioned and reachable (use `just nix-remote-install <host>`).
 #   b. Add to the Ansible vault:
-#        vault_technitium_admin_password — desired admin password for both instances
+#        vault_technitium_dns_setup_admin_password — desired admin password for both instances
 #   c. Fill in the TODO values in:
 #        ansible/hosts/host_vars/technitium-primary/vars.yml   (cluster domain + IP)
 #        ansible/hosts/host_vars/technitium-secondary/vars.yml (primary URL + IPs)

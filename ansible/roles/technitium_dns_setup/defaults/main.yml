@@ -1,32 +1,32 @@
 ---
 # Role of this Technitium node: 'primary', 'secondary', or 'standalone'
-technitium_cluster_role: standalone
+technitium_dns_setup_cluster_role: standalone
 
 # Fully-qualified cluster domain name.
-# Required when technitium_cluster_role is 'primary'.
-technitium_cluster_domain: ""
+# Required when technitium_dns_setup_cluster_role is 'primary'.
+technitium_dns_setup_cluster_domain: ""
 
 # IP addresses of the primary node reachable by secondaries.
-# Required when technitium_cluster_role is 'primary'.
-technitium_cluster_primary_ip_addresses: []
+# Required when technitium_dns_setup_cluster_role is 'primary'.
+technitium_dns_setup_cluster_primary_ip_addresses: []
 
 # HTTPS URL of the primary node.
-# Required when technitium_cluster_role is 'secondary'.
-technitium_cluster_primary_url: ""
+# Required when technitium_dns_setup_cluster_role is 'secondary'.
+technitium_dns_setup_cluster_primary_url: ""
 
 # IP address of the primary (optional fallback when DNS is not yet available).
-# Used when technitium_cluster_role is 'secondary'.
-technitium_cluster_primary_ip_address: ""
+# Used when technitium_dns_setup_cluster_role is 'secondary'.
+technitium_dns_setup_cluster_primary_ip_address: ""
 
 # IP addresses of this secondary node reachable by the primary.
-# Required when technitium_cluster_role is 'secondary'.
-technitium_cluster_secondary_ip_addresses: []
+# Required when technitium_dns_setup_cluster_role is 'secondary'.
+technitium_dns_setup_cluster_secondary_ip_addresses: []
 
 # DNS zones to ensure exist on the primary instance.
 # Replicated to secondaries via Technitium clustering.
-technitium_dns_zones: []
+technitium_dns_setup_zones: []
 
 # Split-horizon APP records to manage on the primary instance.
 # Replicated to secondaries via Technitium clustering.
 # See group_vars/technitium/vars.yml for the expected data structure.
-technitium_dns_split_records: []
+technitium_dns_setup_split_records: []

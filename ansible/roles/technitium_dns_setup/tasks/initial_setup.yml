@@ -5,7 +5,7 @@
 #   1. Probes the instance: tries to log in with the vault-managed admin password.
 #   2. If the probe fails, the instance is still on the default credentials:
 #      it logs in with admin/admin, changes the password, then logs in again.
-#   3. Stores the resulting session token as the `technitium_session_token` fact,
+#   3. Stores the resulting session token as the `technitium_dns_setup_session_token` fact,
 #      which is used by all subsequent tasks in this role.
 #
 # All calls that carry credentials use POST with no_log: true to avoid leaking
@@ -16,12 +16,12 @@
 
 - name: Probe — try login with vault admin password
   ansible.builtin.uri:
-    url: "{{ technitium_api_host }}/api/user/login"
+    url: "{{ technitium_dns_setup_api_host }}/api/user/login"
     method: POST
     body_format: form-urlencoded
     body:
       user: admin
-      pass: "{{ technitium_admin_password }}"
+      pass: "{{ technitium_dns_setup_admin_password }}"
       includeInfo: "false"
     status_code: [200]
     return_content: true
@@ -34,7 +34,7 @@
   block:
     - name: Login with default admin/admin credentials
       ansible.builtin.uri:
-        url: "{{ technitium_api_host }}/api/user/login"
+        url: "{{ technitium_dns_setup_api_host }}/api/user/login"
         method: POST
         body_format: form-urlencoded
         body:
@@ -49,13 +49,13 @@
 
     - name: Change admin password to vault-managed value
       ansible.builtin.uri:
-        url: "{{ technitium_api_host }}/api/user/changePassword"
+        url: "{{ technitium_dns_setup_api_host }}/api/user/changePassword"
         method: POST
         body_format: form-urlencoded
         body:
           token: "{{ _default_login.json.response.token }}"
           pass: admin
-          newPass: "{{ technitium_admin_password }}"
+          newPass: "{{ technitium_dns_setup_admin_password }}"
         status_code: [200]
         return_content: true
       register: _change_pass
@@ -64,12 +64,12 @@
 
 - name: Login to obtain session token for this play
   ansible.builtin.uri:
-    url: "{{ technitium_api_host }}/api/user/login"
+    url: "{{ technitium_dns_setup_api_host }}/api/user/login"
     method: POST
     body_format: form-urlencoded
     body:
       user: admin
-      pass: "{{ technitium_admin_password }}"
+      pass: "{{ technitium_dns_setup_admin_password }}"
       includeInfo: "false"
     status_code: [200]
     return_content: true
@@ -79,4 +79,4 @@
 
 - name: Store session token as fact
   ansible.builtin.set_fact:
-    technitium_session_token: "{{ _session_login.json.response.token }}"
+    technitium_dns_setup_session_token: "{{ _session_login.json.response.token }}"

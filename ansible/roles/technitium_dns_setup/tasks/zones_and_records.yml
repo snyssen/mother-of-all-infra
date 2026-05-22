@@ -1,25 +1,75 @@
 ---
 # Create DNS zones and split-horizon APP records on the primary instance.
-# These are driven by the `technitium_dns_zones` and `technitium_dns_split_records`
+# These are driven by the `technitium_dns_setup_zones` and `technitium_dns_setup_split_records`
 # variables defined in group_vars/technitium/vars.yml (or host_vars overrides).
 #
 # Zones and records are automatically replicated to secondary nodes via
 # Technitium's built-in clustering — no action is needed on the secondary.
-#
-# The SplitHorizon app must be installed on the instance before split-horizon
-# records can be created (Apps → Get Apps from Store → SplitHorizon).
 
 - name: Ensure DNS zones are present
   effectivelywild.technitium_dns.zone:
-    hostname: "{{ technitium_api_host }}"
-    api_key: "{{ technitium_session_token }}"
+    hostname: "{{ technitium_dns_setup_api_host }}"
+    api_key: "{{ technitium_dns_setup_session_token }}"
     zone: "{{ item }}"
     state: present
-  loop: "{{ technitium_dns_zones }}"
+  loop: "{{ technitium_dns_setup_zones }}"
+
+- name: Ensure SplitHorizon app is installed
+  when: technitium_dns_setup_split_records | length > 0
+  block:
+    - name: Query installed apps from the DNS App Store
+      ansible.builtin.uri:
+        url: "{{ technitium_dns_setup_api_host }}/api/apps/listStoreApps"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_dns_setup_session_token }}"
+        status_code: [200]
+        return_content: true
+      register: _store_apps
+      no_log: true
+      failed_when: _store_apps.json.status != 'ok'
+
+    - name: Set SplitHorizon app info fact
+      ansible.builtin.set_fact:
+        _split_horizon_app: >-
+          {{ _store_apps.json.response.storeApps
+             | selectattr('name', 'equalto', 'Split Horizon')
+             | list
+             | first
+             | default(none) }}
+
+    - name: Fail if SplitHorizon app is not found in the DNS App Store
+      ansible.builtin.fail:
+        msg: >-
+          The 'Split Horizon' app was not found in the Technitium DNS App Store.
+          Check that the DNS server has internet access and that the store list is reachable.
+      when: _split_horizon_app is none
+
+    - name: Install SplitHorizon app from the DNS App Store
+      ansible.builtin.uri:
+        url: "{{ technitium_dns_setup_api_host }}/api/apps/downloadAndInstall"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_dns_setup_session_token }}"
+          name: "{{ _split_horizon_app.name }}"
+          url: "{{ _split_horizon_app.url }}"
+        status_code: [200]
+        return_content: true
+      register: _split_horizon_install
+      no_log: true
+      failed_when: _split_horizon_install.json.status != 'ok'
+      when: not _split_horizon_app.installed
+
+    - name: Report SplitHorizon already installed
+      ansible.builtin.debug:
+        msg: "SplitHorizon DNS app is already installed — skipping."
+      when: _split_horizon_app.installed
 
 - name: Configure split-horizon APP records
   ansible.builtin.include_tasks: _split_record.yml
-  loop: "{{ technitium_dns_split_records }}"
+  loop: "{{ technitium_dns_setup_split_records }}"
   loop_control:
-    loop_var: technitium_split_record
-    label: "{{ technitium_split_record.zone }}/{{ technitium_split_record.name }}"
+    loop_var: technitium_dns_setup_split_record
+    label: "{{ technitium_dns_setup_split_record.zone }}/{{ technitium_dns_setup_split_record.name }}"
