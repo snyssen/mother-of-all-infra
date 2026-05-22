@@ -72,13 +72,13 @@ creation_rules:
     key_groups:
       - pgp:
         age:
-          - *root_technitium_primary
+          # - *root_technitium_primary
           - *snyssen_purplehaze
           - *snyssen_blackfog
   - path_regex: nix/hosts/technitium-secondary/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
         age:
-          - *root_technitium_secondary
+          # - *root_technitium_secondary
           - *snyssen_purplehaze
           - *snyssen_blackfog
