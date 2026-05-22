@@ -71,6 +71,7 @@
         mainDiskPath = "/dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517";
         usbKeysIds = [
           "8B34-7D3C" # Philips 8GB
+          "9FBA-884A" # Generic Flash Disk (no casing)
         ];
         swap.enable = true;
         pools = {
