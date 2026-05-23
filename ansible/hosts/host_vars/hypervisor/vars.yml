@@ -46,7 +46,7 @@ libvirt_vms:
       enable: true
     disk_image:
       dest: "/mnt/vmstore/technitium-primary/disk.qcow2"
-      build: true
+      build: false
   # Technitium DNS secondary — NixOS VM; read-only replica replicating zones from primary
   - name: technitium-secondary
     state: present
@@ -58,4 +58,4 @@ libvirt_vms:
       enable: true
     disk_image:
       dest: "/mnt/vmstore/technitium-secondary/disk.qcow2"
-      build: true
+      build: false
