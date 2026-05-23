@@ -1,15 +1,18 @@
 ---
-- name: Build selected Disko images locally
+# Playbook for building and provisioning NixOS VMs via Disko with SOPS key authorization
+# This playbook performs the following steps:
+# 1. (Play 0) Derive and display VM age keys for manual .sops.yaml update
+# 2. (Play 1) Build Disko images locally with LUKS key injection
+# 3. (Play 2) Copy images and keys to hypervisor storage
+# 4. (Play 3) Clean up SSH keys from admin host (on success)
+
+- name: "Authorize new VM host keys in SOPS configuration"
   hosts: localhost
   gather_facts: false
-  vars:
-    libvirt_image_build_pre_format_dst_default: /run/keys/luks.key
-    libvirt_image_build_target_hypervisor: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
-    libvirt_image_build_workdir: "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}"
   tasks:
     - name: Resolve VM definitions from hypervisor inventory
       ansible.builtin.set_fact:
-        _all_vms_list: "{{ hostvars[libvirt_image_build_target_hypervisor].libvirt_vms | default([]) }}"
+        _all_vms_list: "{{ hostvars[libvirt_image_build_target_hypervisor | default('hypervisor')].libvirt_vms | default([]) }}"
 
     - name: Filter VMs with disk_image.build enabled
       ansible.builtin.set_fact:
@@ -21,6 +24,171 @@
           - libvirt_image_build_selected_vms | length > 0
         fail_msg: "No VMs found with disk_image.build: true in inventory."
 
+    - name: SOPS key preparation block
+      block:
+        - name: Create SSH key staging directories for each VM
+          ansible.builtin.file:
+            path: "/tmp/{{ item.name }}-deploy/etc/ssh"
+            state: directory
+            mode: "0755"
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Generate ed25519 host SSH keys for each VM
+          ansible.builtin.command:
+            cmd: >-
+              ssh-keygen -t ed25519
+              -f /tmp/{{ item.name }}-deploy/etc/ssh/ssh_host_ed25519_key
+              -N "" -C "root@{{ item.name }}"
+          args:
+            creates: "/tmp/{{ item.name }}-deploy/etc/ssh/ssh_host_ed25519_key"
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Derive age public keys from SSH keys using just helpers
+          ansible.builtin.command:
+            cmd: >-
+              just sops-gen-privkey
+              /tmp/{{ item.name }}-deploy/etc/ssh/ssh_host_ed25519_key
+              /tmp/{{ item.name }}-age-privkey-temp
+          args:
+            chdir: "{{ playbook_dir }}/../.."
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: true
+
+        - name: Extract age public keys for SOPS authorization
+          ansible.builtin.command:
+            cmd: "just sops-get-pubkey /tmp/{{ item.name }}-age-privkey-temp"
+            chdir: "{{ playbook_dir }}/../.."
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: false
+          register: _age_pubkeys_result
+
+        - name: Map VM names to derived age public keys
+          ansible.builtin.set_fact:
+            _age_pubkeys_by_vm: "{{ (_age_pubkeys_by_vm | default({})) | combine({item.item.name: (item.stdout | trim)}) }}"
+          loop: "{{ _age_pubkeys_result.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+        - name: Clean up temporary age private keys
+          ansible.builtin.file:
+            path: "/tmp/{{ item.name }}-age-privkey-temp"
+            state: absent
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Show derived age key for each VM
+          ansible.builtin.debug:
+            msg: |-
+              VM: {{ item.name }}
+              Derived age key: {{ _age_pubkeys_by_vm[item.name] }}
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Print manual SOPS update instructions
+          ansible.builtin.debug:
+            msg: |-
+              Manual step required before continuing:
+              1. Update .sops.yaml with the derived age keys shown above.
+              2. Review .sops.yaml changes with git diff.
+              3. Return here and type CONTINUE.
+              4. This playbook will then rotate keys for secrets files automatically.
+
+        - name: Wait for explicit confirmation to proceed
+          ansible.builtin.pause:
+            prompt: "Type CONTINUE after updating .sops.yaml"
+          register: _sops_confirmation
+
+        - name: Validate explicit confirmation value
+          ansible.builtin.assert:
+            that:
+              - _sops_confirmation.user_input is defined
+              - (_sops_confirmation.user_input | trim) == 'CONTINUE'
+            fail_msg: "Confirmation not provided. Expected exact input: CONTINUE"
+
+        - name: Resolve SOPS age key file path for non-interactive rotation
+          ansible.builtin.set_fact:
+            _sops_age_key_file: >-
+              {{
+                lookup('env', 'SOPS_AGE_KEY_FILE')
+                | default((lookup('env', 'HOME') ~ '/.config/sops/age/keys.txt'), true)
+              }}
+
+        - name: Check SOPS age key file exists
+          ansible.builtin.stat:
+            path: "{{ _sops_age_key_file }}"
+          register: _sops_age_key_file_stat
+
+        - name: Ensure SOPS age key file is available
+          ansible.builtin.assert:
+            that:
+              - _sops_age_key_file_stat.stat.exists
+            fail_msg: >-
+              Could not find an age identity key for SOPS at {{ _sops_age_key_file }}.
+              Set SOPS_AGE_KEY_FILE to a valid key file (or create {{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt)
+              and re-run the playbook.
+
+        - name: Check per-VM secrets file presence
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../../nix/hosts/{{ item.name }}/data/secrets.yaml"
+          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+          register: _vm_host_secret_stats
+
+        - name: Re-encrypt per-VM SOPS secrets when present
+          ansible.builtin.command:
+            cmd: "sops updatekeys -y nix/hosts/{{ item.item.name }}/data/secrets.yaml"
+            chdir: "{{ playbook_dir }}/../.."
+          environment:
+            SOPS_AGE_KEY_FILE: "{{ _sops_age_key_file }}"
+          loop: "{{ _vm_host_secret_stats.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+          when: item.stat.exists
+          changed_when: true
+
+      rescue:
+        - name: Report SOPS key preparation failure
+          ansible.builtin.fail:
+            msg: >-
+              SOPS key preparation failed.
+              Verify .sops.yaml updates and local SOPS age identity availability, then re-run this playbook.
+              Error: {{ ansible_failed_result.msg | default('unknown error') }}
+
+- name: Build selected Disko images locally
+  hosts: localhost
+  gather_facts: false
+  vars:
+    libvirt_image_build_pre_format_dst_default: /run/keys/luks.key
+    libvirt_image_build_ssh_host_key_dst_default: /etc/ssh/ssh_host_ed25519_key
+    libvirt_image_build_ssh_host_key_pub_dst_default: /etc/ssh/ssh_host_ed25519_key.pub
+    libvirt_image_build_target_hypervisor: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
+    libvirt_image_build_workdir: "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}"
+  tasks:
+    - name: Resolve VM definitions from hypervisor inventory
+      ansible.builtin.set_fact:
+        _all_vms_list: "{{ hostvars[libvirt_image_build_target_hypervisor].libvirt_vms | default([]) }}"
+
+    - name: Filter VMs with disk_image.build enabled
+      ansible.builtin.set_fact:
+        _image_build_selected_vms: "{{ _all_vms_list | selectattr('disk_image.build', 'defined') | selectattr('disk_image.build') | list }}"
+
+    - name: Validate at least one VM is configured for building
+      ansible.builtin.assert:
+        that:
+          - _image_build_selected_vms | length > 0
+        fail_msg: "No VMs found with disk_image.build: true in inventory."
+
     - name: Validate selected VM configuration for image build
       ansible.builtin.assert:
         that:
@@ -28,7 +196,7 @@
           - item.disk_image is defined
           - item.disk_image.dest is defined
         fail_msg: "VM '{{ item.name }}' must be present and define disk_image.dest."
-      loop: "{{ libvirt_image_build_selected_vms }}"
+      loop: "{{ _image_build_selected_vms }}"
       loop_control:
         label: "{{ item.name }}"
 
@@ -46,7 +214,7 @@
             path: "{{ _build_root.path }}/{{ item.name }}"
             state: directory
             mode: "0755"
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -55,7 +223,7 @@
             cmd: "dd if=/dev/urandom of={{ _build_root.path }}/{{ item.name }}/luks.key bs=2048 count=1 status=none"
           args:
             creates: "{{ _build_root.path }}/{{ item.name }}/luks.key"
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -64,7 +232,7 @@
             path: "{{ _build_root.path }}/{{ item.name }}/luks.key"
             mode: "0600"
             state: file
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -84,7 +252,7 @@
               }}
           changed_when: true
           register: _script_build
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -95,7 +263,7 @@
           loop_control:
             label: "{{ item.item.name }}"
 
-        - name: Run disko image script with pre-format key injection
+        - name: Run disko image script with pre- and post-format keys injection
           ansible.builtin.command:
             cmd: >-
               {{ _script_exec_by_vm[item.name] }}
@@ -103,6 +271,12 @@
               --pre-format-files
               {{ _build_root.path }}/{{ item.name }}/luks.key
               {{ _pre_format_luks_key_dst }}
+              --post-format-files
+              /tmp/{{ item.name }}-deploy/etc/ssh/ssh_host_ed25519_key
+              {{ _post_format_ssh_host_key_dst }}
+              --post-format-files
+              /tmp/{{ item.name }}-deploy/etc/ssh/ssh_host_ed25519_key.pub
+              {{ _post_format_ssh_host_key_pub_dst }}
           args:
             chdir: "{{ _build_root.path }}/{{ item.name }}"
           vars:
@@ -116,8 +290,18 @@
                 item.disk_image.pre_format_luks_key_dst
                 | default(item.image_build.pre_format_luks_key_dst | default(libvirt_image_build_pre_format_dst_default))
               }}
+            _post_format_ssh_host_key_dst: >-
+              {{
+                item.disk_image.post_format_ssh_host_key_dst
+                | default(item.image_build.post_format_ssh_host_key_dst | default(libvirt_image_build_ssh_host_key_dst_default))
+              }}
+            _post_format_ssh_host_key_pub_dst: >-
+              {{
+                item.disk_image.post_format_ssh_host_key_pub_dst
+                | default(item.image_build.post_format_ssh_host_key_pub_dst | default(libvirt_image_build_ssh_host_key_pub_dst_default))
+              }}
           changed_when: true
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -130,7 +314,7 @@
               - "*.qcow2"
               - "*.raw"
           register: _found_artifacts
-          loop: "{{ libvirt_image_build_selected_vms }}"
+          loop: "{{ _image_build_selected_vms }}"
           loop_control:
             label: "{{ item.name }}"
 
@@ -159,6 +343,11 @@
           loop: "{{ _found_artifacts.results }}"
           loop_control:
             label: "{{ item.item.name }}"
+
+        - name: Record built VM names for cleanup phase
+          ansible.builtin.set_fact:
+            libvirt_image_build_completed_vms: "{{ _image_build_selected_vms | map(attribute='name') | list }}"
+
       rescue:
         - name: Clean up temporary build directory after local build failure
           ansible.builtin.file:
@@ -191,7 +380,7 @@
 
         - name: Resolve selected VM definitions on hypervisor
           ansible.builtin.set_fact:
-            _selected_vms: "{{ hostvars['localhost'].libvirt_image_build_selected_vms }}"
+            _selected_vms: "{{ hostvars['localhost']._image_build_selected_vms }}"
 
         - name: Ensure VM image destination directories exist
           ansible.builtin.file:
@@ -280,3 +469,15 @@
           when:
             - hostvars['localhost']._build_root is defined
             - hostvars['localhost']._build_root.path is defined
+
+- name: Clean up SSH staging directories on admin host (success path)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove SSH staging directories for each VM
+      ansible.builtin.file:
+        path: "/tmp/{{ item }}-deploy"
+        state: absent
+      loop: "{{ hostvars['localhost'].libvirt_image_build_completed_vms | default([]) }}"
+      loop_control:
+        label: "{{ item }}"

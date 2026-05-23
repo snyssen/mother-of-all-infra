@@ -37,6 +37,7 @@ libvirt_vms:
       enable_mount: false # Set to false once initial setup is done, so iso is removed from boot options
   # Technitium DNS primary — NixOS VM; serves as the writable primary DNS instance
   - name: technitium-primary
+    state: present
     vcpu: 2
     ram_mb: 2048
     mac_address: "52:54:00:c0:01:01"
@@ -48,6 +49,7 @@ libvirt_vms:
       build: true
   # Technitium DNS secondary — NixOS VM; read-only replica replicating zones from primary
   - name: technitium-secondary
+    state: present
     vcpu: 2
     ram_mb: 2048
     mac_address: "52:54:00:c0:01:02"
