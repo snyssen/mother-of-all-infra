@@ -15,14 +15,12 @@ technitium_dns_setup_cluster_role: secondary
 
 # HTTPS URL of the primary cluster node used when this secondary joins the cluster.
 # The primary auto-enables HTTPS (self-signed) during cluster initialization.
-# TODO: set to https://<primary-tailscale-hostname>:53443/
 technitium_dns_setup_cluster_primary_url: "https://technitium-primary:53443/"
 
 # IP address of the primary node, used when DNS resolution of the primary URL is not yet available.
-# TODO: set to the primary VM's Tailscale IP
-technitium_dns_setup_cluster_primary_ip_address: ""
+technitium_dns_setup_cluster_primary_ip_address: "100.109.38.127"
 
 # List of IP addresses of this secondary node that are reachable by the primary.
 # Use the Tailscale IP (100.x.x.x) range.
-# TODO: set to the secondary VM's Tailscale IP
-technitium_dns_setup_cluster_secondary_ip_addresses: []
+technitium_dns_setup_cluster_secondary_ip_addresses:
+  - 100.73.242.120

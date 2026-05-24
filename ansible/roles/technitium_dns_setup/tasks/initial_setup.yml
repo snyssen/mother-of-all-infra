@@ -53,7 +53,7 @@
         method: POST
         body_format: form-urlencoded
         body:
-          token: "{{ _default_login.json.response.token }}"
+          token: "{{ _default_login.json.token }}"
           pass: admin
           newPass: "{{ technitium_dns_setup_admin_password }}"
         status_code: [200]
@@ -79,4 +79,4 @@
 
 - name: Store session token as fact
   ansible.builtin.set_fact:
-    technitium_dns_setup_session_token: "{{ _session_login.json.response.token }}"
+    technitium_dns_setup_session_token: "{{ _session_login.json.token }}"

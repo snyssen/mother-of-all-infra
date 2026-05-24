@@ -6,17 +6,13 @@ technitium_dns_setup_cluster_role: standalone
 # Required when technitium_dns_setup_cluster_role is 'primary'.
 technitium_dns_setup_cluster_domain: ""
 
-# IP addresses of the primary node reachable by secondaries.
-# Required when technitium_dns_setup_cluster_role is 'primary'.
-technitium_dns_setup_cluster_primary_ip_addresses: []
+# IP address of the primary node reachable by secondaries.
+# Required for both technitium_dns_setup_cluster_role 'primary' and 'secondary'.
+technitium_dns_setup_cluster_primary_ip_address: ""
 
 # HTTPS URL of the primary node.
 # Required when technitium_dns_setup_cluster_role is 'secondary'.
 technitium_dns_setup_cluster_primary_url: ""
-
-# IP address of the primary (optional fallback when DNS is not yet available).
-# Used when technitium_dns_setup_cluster_role is 'secondary'.
-technitium_dns_setup_cluster_primary_ip_address: ""
 
 # IP addresses of this secondary node reachable by the primary.
 # Required when technitium_dns_setup_cluster_role is 'secondary'.

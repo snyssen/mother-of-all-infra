@@ -17,10 +17,8 @@ technitium_dns_setup_cluster_role: primary
 # Fully-qualified domain name used to identify the Technitium cluster.
 # This is a Technitium-internal name and cannot be changed after initialization.
 # Example: "dns-cluster.internal.example.com"
-# TODO: set to your desired cluster domain name
-technitium_dns_setup_cluster_domain: ""
+technitium_dns_setup_cluster_domain: dns.internal.snyssen.be
 
-# List of IP addresses of this primary node that are reachable by
+# IP address of this primary node that is reachable by
 # all secondary nodes. Use the Tailscale IP (100.x.x.x) range.
-# TODO: set to the primary VM's Tailscale IP
-technitium_dns_setup_cluster_primary_ip_addresses: []
+technitium_dns_setup_cluster_primary_ip_address: "100.109.38.127"

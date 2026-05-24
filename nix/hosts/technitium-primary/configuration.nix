@@ -2,6 +2,7 @@
   inputs,
   flake,
   config,
+  pkgs,
   ...
 }:
 {
@@ -85,6 +86,13 @@
       };
     };
   };
+
+  # Add Ansible deps (as target)
+  environment.systemPackages = [
+    # pkgs.ansible
+    # (pkgs.python3.withPackages(ps: [ ps.ansible ps.pip ps.requests ]))
+    pkgs.python3
+  ];
 
   # TODO: make this part automatically defined
   nix.settings = {

@@ -7,7 +7,7 @@
   when:
     - technitium_dns_setup_cluster_role == 'primary'
     - technitium_dns_setup_cluster_domain | length > 0
-    - technitium_dns_setup_cluster_primary_ip_addresses | length > 0
+    - technitium_dns_setup_cluster_primary_ip_address | length > 0
 
 - name: Join cluster as secondary node
   ansible.builtin.include_tasks: cluster_secondary.yml
