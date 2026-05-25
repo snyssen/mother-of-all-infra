@@ -7,10 +7,11 @@
 # Technitium's built-in clustering — no action is needed on the secondary.
 
 - name: Ensure DNS zones are present
-  effectivelywild.technitium_dns.zone:
-    hostname: "{{ technitium_dns_setup_api_host }}"
-    api_key: "{{ technitium_dns_setup_session_token }}"
+  effectivelywild.technitium_dns.technitium_dns_zone:
+    api_url: "{{ technitium_dns_setup_api_host }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
     zone: "{{ item }}"
+    type: Primary
     state: present
   loop: "{{ technitium_dns_setup_zones }}"
 

@@ -23,9 +23,9 @@
     label: "{{ entry.network }} → {{ entry.ip }}"
 
 - name: Create split-horizon APP record
-  effectivelywild.technitium_dns.record:
-    hostname: "{{ technitium_dns_setup_api_host }}"
-    api_key: "{{ technitium_dns_setup_session_token }}"
+  effectivelywild.technitium_dns.technitium_dns_record:
+    api_url: "{{ technitium_dns_setup_api_host }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
     zone: "{{ technitium_dns_setup_split_record.zone }}"
     name: "{{ technitium_dns_setup_split_record.name }}"
     type: APP
