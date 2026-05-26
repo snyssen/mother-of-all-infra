@@ -18,6 +18,10 @@ technitium_dns_setup_cluster_primary_url: ""
 # Required when technitium_dns_setup_cluster_role is 'secondary'.
 technitium_dns_setup_cluster_secondary_ip_addresses: []
 
+# Force an immediate configuration resync on secondaries.
+# Useful when a node has already joined but appears stale.
+technitium_dns_setup_trigger_secondary_resync: false
+
 # DNS zones to ensure exist on the primary instance.
 # Replicated to secondaries via Technitium clustering.
 technitium_dns_setup_zones: []

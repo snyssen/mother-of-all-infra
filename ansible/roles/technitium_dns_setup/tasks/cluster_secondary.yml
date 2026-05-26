@@ -23,7 +23,7 @@
     status_code: [200]
     return_content: true
   register: _secondary_cluster_status
-  # no_log: true
+  no_log: true
   failed_when: _secondary_cluster_status.json.status != 'ok'
 
 - name: Join cluster as secondary node
@@ -45,7 +45,7 @@
     # The initJoin call synchronizes the full config from the primary; extend the timeout accordingly.
     timeout: 300
   register: _cluster_join
-  # no_log: true
+  no_log: true
   failed_when: _cluster_join.json.status != 'ok'
   when: not _secondary_cluster_status.json.response.clusterInitialized
 
@@ -68,3 +68,12 @@
   ansible.builtin.debug:
     msg: "{{ inventory_hostname }} is already a member of a Technitium cluster — skipping join."
   when: _secondary_cluster_status.json.response.clusterInitialized
+
+- name: Trigger immediate cluster resync on secondary (optional)
+  effectivelywild.technitium_dns.technitium_dns_resync_cluster:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+  when:
+    - technitium_dns_setup_trigger_secondary_resync | bool
+    - _secondary_cluster_status.json.response.clusterInitialized or (_cluster_join is defined and _cluster_join.json.status == 'ok')
