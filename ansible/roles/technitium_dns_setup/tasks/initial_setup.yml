@@ -16,7 +16,7 @@
 
 - name: Probe — try login with vault admin password
   ansible.builtin.uri:
-    url: "{{ technitium_dns_setup_api_host }}/api/user/login"
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
     method: POST
     body_format: form-urlencoded
     body:
@@ -34,7 +34,7 @@
   block:
     - name: Login with default admin/admin credentials
       ansible.builtin.uri:
-        url: "{{ technitium_dns_setup_api_host }}/api/user/login"
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
         method: POST
         body_format: form-urlencoded
         body:
@@ -49,7 +49,7 @@
 
     - name: Change admin password to vault-managed value
       ansible.builtin.uri:
-        url: "{{ technitium_dns_setup_api_host }}/api/user/changePassword"
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/changePassword"
         method: POST
         body_format: form-urlencoded
         body:
@@ -64,7 +64,7 @@
 
 - name: Login to obtain session token for this play
   ansible.builtin.uri:
-    url: "{{ technitium_dns_setup_api_host }}/api/user/login"
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
     method: POST
     body_format: form-urlencoded
     body:

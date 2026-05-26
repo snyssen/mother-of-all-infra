@@ -14,7 +14,7 @@
 
 - name: Check current cluster status
   ansible.builtin.uri:
-    url: "{{ technitium_dns_setup_api_host }}/api/admin/cluster/state"
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/admin/cluster/state"
     method: POST
     body_format: form-urlencoded
     body:
@@ -27,7 +27,7 @@
 
 - name: Initialize primary cluster node
   ansible.builtin.uri:
-    url: "{{ technitium_dns_setup_api_host }}/api/admin/cluster/init"
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/admin/cluster/init"
     method: POST
     body_format: form-urlencoded
     body:

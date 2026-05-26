@@ -4,7 +4,8 @@ ansible_become_pass: "{{ vault_ansible_become_pass }}"
 # Technitium DNS Server API configuration for the primary instance.
 # The API host uses HTTP on port 5380 for initial setup (before HTTPS is enabled by clustering).
 # After cluster initialization, HTTPS on port 53443 is automatically enabled.
-technitium_dns_setup_api_host: "http://technitium-primary:5380"
+technitium_dns_setup_api_host: technitium-primary
+technitium_dns_setup_api_port: 5380
 
 # Admin password for the Technitium web UI.
 # On first run this password replaces the default "admin" password.

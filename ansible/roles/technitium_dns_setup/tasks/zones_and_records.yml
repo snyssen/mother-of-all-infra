@@ -8,7 +8,8 @@
 
 - name: Ensure DNS zones are present
   effectivelywild.technitium_dns.technitium_dns_zone:
-    api_url: "{{ technitium_dns_setup_api_host }}"
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
     api_token: "{{ technitium_dns_setup_session_token }}"
     zone: "{{ item }}"
     type: Primary
@@ -20,7 +21,7 @@
   block:
     - name: Query installed apps from the DNS App Store
       ansible.builtin.uri:
-        url: "{{ technitium_dns_setup_api_host }}/api/apps/listStoreApps"
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/apps/listStoreApps"
         method: POST
         body_format: form-urlencoded
         body:
@@ -49,7 +50,7 @@
 
     - name: Install SplitHorizon app from the DNS App Store
       ansible.builtin.uri:
-        url: "{{ technitium_dns_setup_api_host }}/api/apps/downloadAndInstall"
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/apps/downloadAndInstall"
         method: POST
         body_format: form-urlencoded
         body:
