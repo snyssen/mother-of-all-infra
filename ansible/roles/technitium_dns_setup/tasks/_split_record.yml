@@ -49,7 +49,7 @@
     zone: "{{ technitium_dns_setup_split_record.zone }}"
     name: "{{ _record_name }}"
     type: APP
-    appName: SplitHorizon
-    classPath: SimpleAddress
+    appName: Split Horizon
+    classPath: SplitHorizon.SimpleAddress
     recordData: "{{ _split_data | to_json }}"
     state: present

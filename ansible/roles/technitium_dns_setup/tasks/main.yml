@@ -44,4 +44,12 @@
   ansible.builtin.include_tasks: zones_and_records.yml
   when:
     - technitium_dns_setup_cluster_role in ['primary', 'standalone']
-    - (technitium_dns_setup_zones | length > 0) or (technitium_dns_setup_split_records | length > 0)
+    - (technitium_dns_setup_zones | length > 0)
+      or (technitium_dns_setup_split_records | length > 0)
+      or (technitium_dns_setup_store_apps | length > 0)
+
+- name: Configure global block list URLs
+  ansible.builtin.include_tasks: blocklists.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_block_list_urls | length > 0

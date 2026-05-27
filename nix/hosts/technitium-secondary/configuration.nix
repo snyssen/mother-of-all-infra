@@ -16,6 +16,7 @@
   imports = [
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    ./network.nix
 
     flake.modules.nixos.sops
     flake.modules.nixos.cache
@@ -26,6 +27,8 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
+    flake.modules.nixos.prometheus-node-exporter
+    flake.modules.nixos.grafana-alloy
   ];
 
   disko.layout = "single-btrfs-luks-virtiofs-key";
@@ -66,6 +69,11 @@
     renewOnCalendar = "daily";
     randomizedDelaySec = "15m";
     restartUnits = [ "technitium-dns-server.service" ];
+  };
+
+  grafana-alloy = {
+    varlogs.enable = true;
+    journald.enable = true;
   };
 
   # Secondary Technitium DNS Server instance.

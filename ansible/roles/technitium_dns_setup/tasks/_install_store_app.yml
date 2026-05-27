@@ -1,0 +1,27 @@
+---
+- name: Resolve DNS App Store metadata for requested app
+  ansible.builtin.set_fact:
+    technitium_dns_setup_store_app_match: >-
+      {{
+        technitium_dns_setup_store_apps_data
+        | selectattr('name', 'equalto', technitium_dns_setup_store_app_name)
+        | list
+        | first
+        | default(none)
+      }}
+
+- name: Fail when requested DNS app is not found in store
+  ansible.builtin.fail:
+    msg: >-
+      DNS App Store app '{{ technitium_dns_setup_store_app_name }}' was not found.
+      Check the app name in technitium_dns_setup_store_apps and verify internet access from the DNS node.
+  when: technitium_dns_setup_store_app_match is none
+
+- name: Ensure DNS App Store app is installed
+  effectivelywild.technitium_dns.technitium_dns_download_and_install_app:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    name: "{{ technitium_dns_setup_store_app_match.name }}"
+    url: "{{ technitium_dns_setup_store_app_match.url }}"
+  when: technitium_dns_setup_store_app_match is not none

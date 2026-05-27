@@ -30,6 +30,15 @@ technitium_dns_setup_tls_certificate_path: ""
 technitium_dns_setup_tls_certificate_password: ""
 technitium_dns_setup_tls_port: 53443
 
+# DNS App Store apps to ensure are installed on the primary instance.
+# App names must match the DNS App Store names.
+technitium_dns_setup_store_apps: []
+
+# Global block list URLs for Technitium ad blocking.
+# These are applied on the primary instance and replicated via clustering.
+technitium_dns_setup_block_list_urls: []
+technitium_dns_setup_block_list_update_interval_hours: 24
+
 # DNS zones to ensure exist on the primary instance.
 # Replicated to secondaries via Technitium clustering.
 technitium_dns_setup_zones: []
