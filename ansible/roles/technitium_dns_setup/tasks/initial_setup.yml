@@ -8,9 +8,6 @@
 #   3. Stores the resulting session token as the `technitium_dns_setup_session_token` fact,
 #      which is used by all subsequent tasks in this role.
 #
-# All calls that carry credentials use POST with no_log: true to avoid leaking
-# secrets into Ansible output or server access logs.
-#
 # NOTE: Technitium always returns HTTP 200; errors are indicated by
 #       `response.json.status == "error"` in the body.
 
@@ -26,7 +23,6 @@
     status_code: [200]
     return_content: true
   register: _probe_login
-  no_log: true
   failed_when: false
 
 - name: First-time setup — change default admin password
@@ -44,7 +40,6 @@
         status_code: [200]
         return_content: true
       register: _default_login
-      no_log: true
       failed_when: _default_login.json.status != 'ok'
 
     - name: Change admin password to vault-managed value
@@ -59,7 +54,6 @@
         status_code: [200]
         return_content: true
       register: _change_pass
-      no_log: true
       failed_when: _change_pass.json.status != 'ok'
 
 - name: Login to obtain session token for this play
@@ -74,7 +68,6 @@
     status_code: [200]
     return_content: true
   register: _session_login
-  no_log: true
   failed_when: _session_login.json.status != 'ok'
 
 - name: Store session token as fact

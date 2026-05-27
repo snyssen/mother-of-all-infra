@@ -52,6 +52,16 @@
     enableSSH = true;
   };
 
+  tailscale.certificate = {
+    enable = true;
+    domain = "technitium-secondary.taild023c5.ts.net";
+    outputDir = "/var/lib/technitium-dns-server/certs";
+    outputName = "technitium-cluster";
+    renewOnCalendar = "daily";
+    randomizedDelaySec = "15m";
+    restartUnits = [ "technitium-dns-server.service" ];
+  };
+
   # Secondary Technitium DNS Server instance.
   # Read-only replica; zone replication is configured via the Technitium web UI
   # on the primary (Settings → Sync Instances) pointing at this host.

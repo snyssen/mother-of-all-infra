@@ -22,7 +22,6 @@
     status_code: [200]
     return_content: true
   register: _cluster_status
-  no_log: true
   failed_when: _cluster_status.json.status != 'ok'
 
 - name: Initialize primary cluster node
@@ -37,16 +36,17 @@
     status_code: [200]
     return_content: true
   register: _cluster_init
-  no_log: true
   failed_when: _cluster_init.json.status != 'ok'
   when: not _cluster_status.json.response.clusterInitialized
 
 - name: Report cluster initialization result
-  ansible.builtin.debug:
-    msg: >-
+  ansible.builtin.pause:
+    seconds: 10
+    prompt: >-
       Technitium cluster initialized as primary node.
       Domain: {{ technitium_dns_setup_cluster_domain }}.
       Secondaries can now join via HTTPS at port 53443.
+      Waiting for cluster to stabilize before proceeding with further configuration…
   when: not _cluster_status.json.response.clusterInitialized
 
 - name: Report cluster already initialized

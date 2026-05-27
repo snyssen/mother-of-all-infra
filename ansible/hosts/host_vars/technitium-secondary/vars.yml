@@ -19,10 +19,15 @@ technitium_dns_setup_cluster_role: secondary
 technitium_dns_setup_cluster_primary_url: "https://technitium-primary.taild023c5.ts.net:53443/"
 
 # IP address of the primary node, used when DNS resolution of the primary URL is not yet available.
-technitium_dns_setup_cluster_primary_ip_address: "100.109.38.127"
+technitium_dns_setup_cluster_primary_ip_address: "100.116.172.5"
 
 # IP address of this secondary node that is reachable by the primary.
 # Use the Tailscale IP (100.x.x.x) range.
-technitium_dns_setup_cluster_secondary_ip_address: "100.73.242.120"
+technitium_dns_setup_cluster_secondary_ip_address: "100.114.234.121"
 
 technitium_dns_setup_trigger_secondary_resync: true
+
+# Use a Tailscale-issued certificate (converted to PKCS#12) for Technitium HTTPS.
+technitium_dns_setup_tls_enable_managed_certificate: true
+technitium_dns_setup_tls_certificate_path: "/var/lib/technitium-dns-server/certs/technitium-cluster.pfx"
+technitium_dns_setup_tls_port: 53443

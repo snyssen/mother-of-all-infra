@@ -23,7 +23,6 @@
     status_code: [200]
     return_content: true
   register: _secondary_cluster_status
-  no_log: true
   failed_when: _secondary_cluster_status.json.status != 'ok'
 
 - name: Join cluster as secondary node
@@ -35,7 +34,10 @@
       token: "{{ technitium_dns_setup_session_token }}"
       secondaryNodeIpAddress: "{{ technitium_dns_setup_cluster_secondary_ip_address }}"
       primaryNodeUrl: "{{ technitium_dns_setup_cluster_primary_url }}"
-      primaryNodeIpAddress: "{{ technitium_dns_setup_cluster_primary_ip_address | default('') }}"
+      primaryNodeIpAddress: >-
+        {{ technitium_dns_setup_cluster_primary_ip_address
+           if (technitium_dns_setup_cluster_primary_ip_address | default('') | length > 0)
+           else omit }}
       # Self-signed TLS certificate is used by default after cluster init on primary
       ignoreCertificateErrors: "true"
       primaryNodeUsername: admin
@@ -45,7 +47,6 @@
     # The initJoin call synchronizes the full config from the primary; extend the timeout accordingly.
     timeout: 300
   register: _cluster_join
-  no_log: true
   failed_when: _cluster_join.json.status != 'ok'
   when: not _secondary_cluster_status.json.response.clusterInitialized
 

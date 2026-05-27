@@ -22,6 +22,14 @@ technitium_dns_setup_cluster_secondary_ip_address: ""
 # Useful when a node has already joined but appears stale.
 technitium_dns_setup_trigger_secondary_resync: false
 
+# Configure a managed HTTPS certificate on the primary node.
+# When enabled, the role configures Technitium to use the PKCS#12 certificate
+# at technitium_dns_setup_tls_certificate_path.
+technitium_dns_setup_tls_enable_managed_certificate: false
+technitium_dns_setup_tls_certificate_path: ""
+technitium_dns_setup_tls_certificate_password: ""
+technitium_dns_setup_tls_port: 53443
+
 # DNS zones to ensure exist on the primary instance.
 # Replicated to secondaries via Technitium clustering.
 technitium_dns_setup_zones: []

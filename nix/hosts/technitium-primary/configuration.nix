@@ -52,6 +52,16 @@
     enableSSH = true;
   };
 
+  tailscale.certificate = {
+    enable = true;
+    domain = "technitium-primary.taild023c5.ts.net";
+    outputDir = "/var/lib/technitium-dns-server/certs";
+    outputName = "technitium-cluster";
+    renewOnCalendar = "daily";
+    randomizedDelaySec = "15m";
+    restartUnits = [ "technitium-dns-server.service" ];
+  };
+
   # Primary Technitium DNS Server instance.
   # Handles all DNS writes; the secondary instance replicates from this one.
   # Web UI available on port 5380 (HTTP) and 53443 (HTTPS).

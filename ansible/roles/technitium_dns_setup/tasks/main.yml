@@ -2,6 +2,31 @@
 - name: Perform initial setup (password change)
   ansible.builtin.include_tasks: initial_setup.yml
 
+- name: Configure TLS certificate if enabled and path provided
+  when:
+    - technitium_dns_setup_tls_enable_managed_certificate | bool
+    - technitium_dns_setup_tls_certificate_path | length > 0
+  block:
+    - name: Configure HTTPS certificate for this Technitium node
+      effectivelywild.technitium_dns.technitium_dns_set_server_settings:
+        api_url: "http://{{ technitium_dns_setup_api_host }}"
+        api_port: "{{ technitium_dns_setup_api_port }}"
+        api_token: "{{ technitium_dns_setup_session_token }}"
+        webServiceEnableTls: true
+        webServiceTlsPort: "{{ technitium_dns_setup_tls_port }}"
+        webServiceUseSelfSignedTlsCertificate: false
+        webServiceTlsCertificatePath: "{{ technitium_dns_setup_tls_certificate_path }}"
+        webServiceTlsCertificatePassword: "{{ technitium_dns_setup_tls_certificate_password }}"
+      when:
+        - technitium_dns_setup_tls_enable_managed_certificate | bool
+        - technitium_dns_setup_tls_certificate_path | length > 0
+    - name: Wait for Technitium DNS server to apply TLS settings and restart
+      ansible.builtin.wait_for:
+        host: "{{ technitium_dns_setup_api_host }}"
+        port: "{{ technitium_dns_setup_tls_port }}"
+        delay: 5
+        timeout: 30
+
 - name: Initialize cluster as primary node
   ansible.builtin.include_tasks: cluster_primary.yml
   when:

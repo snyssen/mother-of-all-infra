@@ -10,8 +10,8 @@ keys: &all_keys
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
   - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
-  - &root_technitium_primary age1gf02tzphulwycpxyndtpxafq804psl6wyvzv4du7zsdk0c0w7cyqcal5rn
-  - &root_technitium_secondary age14pfmzugay0q7pdefgkxwdya379zqtdmqfcfgwllpdvweq99ngp4srvrfl3
+  - &root_technitium_primary age19qutetnxjzlhyfvfxdef2z9ygtqrnq22tf476veq06uq67evy4qsuqx72h
+  - &root_technitium_secondary age1n44zlyh9hlqdcyf6mqq4nmyxa2ap9vu2cmtt08lmf3gnn8h0sglsg2xeza
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$

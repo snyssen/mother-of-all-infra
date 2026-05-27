@@ -29,7 +29,6 @@
         status_code: [200]
         return_content: true
       register: _store_apps
-      no_log: true
       failed_when: _store_apps.json.status != 'ok'
 
     - name: Set SplitHorizon app info fact
@@ -60,7 +59,6 @@
         status_code: [200]
         return_content: true
       register: _split_horizon_install
-      no_log: true
       failed_when: _split_horizon_install.json.status != 'ok'
       when: not _split_horizon_app.installed
 
