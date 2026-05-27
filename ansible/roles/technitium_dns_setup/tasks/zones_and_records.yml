@@ -16,6 +16,18 @@
     state: present
   loop: "{{ technitium_dns_setup_zones }}"
 
+- name: Ensure primary zones are members of cluster catalog
+  effectivelywild.technitium_dns.technitium_dns_set_zone_options:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    zone: "{{ item }}"
+    catalog: "cluster-catalog.{{ technitium_dns_setup_cluster_domain }}"
+  loop: "{{ technitium_dns_setup_zones }}"
+  when:
+    - technitium_dns_setup_cluster_role == 'primary'
+    - technitium_dns_setup_cluster_domain | length > 0
+
 - name: Ensure SplitHorizon app is installed
   when: technitium_dns_setup_split_records | length > 0
   block:
