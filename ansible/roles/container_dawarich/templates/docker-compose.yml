@@ -111,6 +111,14 @@ services:
       OIDC_PROVIDER_NAME: Authelia # optional, default is OpenID Connect
       ALLOW_EMAIL_PASSWORD_REGISTRATION: false # optional, default is true
       ALLOW_EMAIL_PASSWORD_LOGIN: false
+      DOMAIN: "location.{{ main_domain }}"
+      SMTP_SERVER: "{{ smtp__host }}"
+      SMTP_PORT: "{{ smtp__port }}"
+      SMTP_DOMAIN: "{{ main_domain }}"
+      SMTP_USERNAME: "{{ smtp__user }}"
+      SMTP_PASSWORD: "{{ smtp__pass }}"
+      SMTP_FROM: "dawarich@{{ main_domain }}"
+      SMTP_AUTHENTICATION: "plain"
     healthcheck:
       test:
         [
