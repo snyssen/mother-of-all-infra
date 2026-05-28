@@ -1,6 +1,6 @@
 services:
   paperless_redis:
-    image: redis:8.6.3@sha256:4d25e2fe601f7ffaeb4437cb6ced3518bc36edf34ebe98863c80836943d94529
+    image: redis:8.8.0@sha256:25e102bdf0bd1ea1f5840ce8873275ba12dc544740a1c9bda9fc71001f5c7190
     container_name: paperless_redis
     networks:
       - internal
@@ -85,7 +85,7 @@ services:
     mem_limit: 1g
 
   paperless_tika:
-    image: apache/tika:3.3.0.0@sha256:2a565f1ea1290bdcb74a7d35957d16a989ed44ef98790dcdcc28121d728fa583
+    image: apache/tika:3.3.1.0@sha256:90b7fa1dc018434075fce9e1d9b88b1e3d0ea6979d0cf86e116c79a8073ae973
     container_name: paperless_tika
     restart: unless-stopped
     networks:

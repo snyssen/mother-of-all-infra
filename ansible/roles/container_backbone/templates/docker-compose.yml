@@ -181,7 +181,7 @@ services:
 
   authelia:
     container_name: authelia
-    image: ghcr.io/authelia/authelia:4.39.19@sha256:0c824dcab1ae97c56bf673c5e77fe8cc6bcd400564555140cc8002a12c6b6463
+    image: ghcr.io/authelia/authelia:4.39.20@sha256:1b363e9279e742397966333f364e0876ae02bf5c876de73e83af6d48c57ff51b
     restart: 'unless-stopped'
     networks:
       - web
@@ -202,7 +202,7 @@ services:
       - '{{ docker_mounts_directory }}/authelia/config:/config'
 
   authelia_redis:
-    image: redis:8.6.3@sha256:4d25e2fe601f7ffaeb4437cb6ced3518bc36edf34ebe98863c80836943d94529
+    image: redis:8.8.0@sha256:25e102bdf0bd1ea1f5840ce8873275ba12dc544740a1c9bda9fc71001f5c7190
     container_name: authelia_redis
     restart: unless-stopped
     networks:
