@@ -44,11 +44,6 @@
     };
   };
 
-  networking = {
-    useNetworkd = true;
-    firewall.enable = true;
-  };
-
   # Prevent systemd-resolved from binding local port 53 (127.0.0.53),
   # which conflicts with Technitium binding on 0.0.0.0:53.
   services.resolved.extraConfig = ''

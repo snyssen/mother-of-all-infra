@@ -5,8 +5,9 @@ dns:
 
 technitium:
   hosts:
-    technitium-primary:
-      ansible_host: "technitium-primary"
+    # TODO: re-enable technitium-primary once deployed
+    # technitium-primary:
+    #   ansible_host: "technitium-primary"
     technitium-secondary:
       ansible_host: "technitium-secondary"
 

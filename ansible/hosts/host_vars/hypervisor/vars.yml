@@ -20,33 +20,33 @@ libvirt_vms:
     #   - vendor_id: "0x1a86"
     #     product_id: "0x7523"
   # NixOS VM installed from ISO image
-  - name: scrypted
-    state: absent
-    vcpu: 2
-    ram_mb: 4096
-    mac_address: "52:54:00:34:ab:cd"
-    disk_gb: 64
-    virtiofs_luks_key:
-      enable: true
-    iso_image:
-      url: "https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso"
-      dest: "/mnt/vmstore/scrypted/installer.iso"
-      # Unfortunately, the NixOS checksum url contains more than only the checksum.
-      # checksum: "sha256:https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso.sha256"
-      checksum: "sha256:65ac2bb636619a1eae37a9605c1ed9bbc94da5c655878d35d1162772ea5adc98"
-      enable_mount: false # Set to false once initial setup is done, so iso is removed from boot options
+  # - name: scrypted
+  #   state: absent
+  #   vcpu: 2
+  #   ram_mb: 4096
+  #   mac_address: "52:54:00:34:ab:cd"
+  #   disk_gb: 64
+  #   virtiofs_luks_key:
+  #     enable: true
+  #   iso_image:
+  #     url: "https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso"
+  #     dest: "/mnt/vmstore/scrypted/installer.iso"
+  #     # Unfortunately, the NixOS checksum url contains more than only the checksum.
+  #     # checksum: "sha256:https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso.sha256"
+  #     checksum: "sha256:65ac2bb636619a1eae37a9605c1ed9bbc94da5c655878d35d1162772ea5adc98"
+  #     enable_mount: false # Set to false once initial setup is done, so iso is removed from boot options
   # Technitium DNS primary — NixOS VM; serves as the writable primary DNS instance
-  - name: technitium-primary
-    state: present
-    vcpu: 2
-    ram_mb: 2048
-    mac_address: "52:54:00:c0:01:01"
-    disk_gb: 32
-    virtiofs_luks_key:
-      enable: true
-    disk_image:
-      dest: "/mnt/vmstore/technitium-primary/disk.qcow2"
-      build: true
+  # - name: technitium-primary
+  #   state: absent
+  #   vcpu: 2
+  #   ram_mb: 2048
+  #   mac_address: "52:54:00:c0:01:01"
+  #   disk_gb: 32
+  #   virtiofs_luks_key:
+  #     enable: true
+  #   disk_image:
+  #     dest: "/mnt/vmstore/technitium-primary/disk.qcow2"
+  #     build: true
   # Technitium DNS secondary — NixOS VM; read-only replica replicating zones from primary
   - name: technitium-secondary
     state: present

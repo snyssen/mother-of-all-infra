@@ -11,7 +11,7 @@ keys: &all_keys
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
   - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
   - &root_technitium_primary age19qutetnxjzlhyfvfxdef2z9ygtqrnq22tf476veq06uq67evy4qsuqx72h
-  - &root_technitium_secondary age1n44zlyh9hlqdcyf6mqq4nmyxa2ap9vu2cmtt08lmf3gnn8h0sglsg2xeza
+  - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$

@@ -1,11 +1,18 @@
 { ... }:
+let
+  interface = "enp2s0";
+in
 {
-  networking.interfaces.enp2s0.useDHCP = false;
+  networking = {
+    useNetworkd = true;
+    firewall.enable = true;
+    interfaces.${interface}.useDHCP = false;
+  };
 
-  systemd.network.networks."20-enp2s0" = {
-    matchConfig.Name = "enp2s0";
+  systemd.network.networks."20-${interface}" = {
+    matchConfig.Name = "${interface}";
     networkConfig = {
-      Address = "192.168.1.3/24";
+      Address = "192.168.1.2/24";
       Gateway = "192.168.1.1";
       DNS = [
         "9.9.9.9"

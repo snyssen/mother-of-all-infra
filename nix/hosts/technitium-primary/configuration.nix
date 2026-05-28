@@ -31,7 +31,23 @@
     flake.modules.nixos.grafana-alloy
   ];
 
-  disko.layout = "single-btrfs-luks-virtiofs-key";
+  # TODO: This layout won't work actually because this host's disk is very small, so we need to add an external disk and move the nix store there
+  disko =
+    let
+      ly = "single-btrfs-luks";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        mainDiskPath = "/dev/mmcblk0";
+        usbKeysIds = [
+          # TODO: create a dedicated USB key for this host
+          "8B34-7D3C" # Philips 8GB
+          "9FBA-884A" # Generic Flash Disk (no casing)
+        ];
+        swap.enable = true;
+      };
+    };
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets = {
@@ -42,11 +58,6 @@
       sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
     };
-  };
-
-  networking = {
-    useNetworkd = true;
-    firewall.enable = true;
   };
 
   # Prevent systemd-resolved from binding local port 53 (127.0.0.53),
