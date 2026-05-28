@@ -1,0 +1,99 @@
+---
+- name: Build effective DHCP scope values from defaults
+  ansible.builtin.set_fact:
+    technitium_dns_setup_dhcp_scope_effective: >-
+      {{
+        technitium_dns_setup_dhcp_scope_defaults
+        | combine(technitium_dns_setup_dhcp_scope, recursive=True)
+      }}
+
+- name: Validate DHCP scope name is provided
+  ansible.builtin.assert:
+    that:
+      - technitium_dns_setup_dhcp_scope_effective.name is defined
+      - technitium_dns_setup_dhcp_scope_effective.name | length > 0
+    fail_msg: "Each DHCP scope entry must define a non-empty 'name'."
+
+- name: Validate DHCP leaseTimeHours is non-negative
+  ansible.builtin.assert:
+    that:
+      - (technitium_dns_setup_dhcp_scope_effective.leaseTimeHours | float) >= 0
+    fail_msg: "DHCP scope leaseTimeHours must be a non-negative number."
+
+- name: Validate DHCP scope exclusions format
+  ansible.builtin.assert:
+    that:
+      - technitium_dns_setup_dhcp_scope_exclusion.startingAddress is defined
+      - technitium_dns_setup_dhcp_scope_exclusion.startingAddress | length > 0
+      - technitium_dns_setup_dhcp_scope_exclusion.endingAddress is defined
+      - technitium_dns_setup_dhcp_scope_exclusion.endingAddress | length > 0
+    fail_msg: "Each scope exclusion must define non-empty startingAddress and endingAddress."
+  loop: "{{ technitium_dns_setup_dhcp_scope_effective.exclusions | default([]) }}"
+  loop_control:
+    loop_var: technitium_dns_setup_dhcp_scope_exclusion
+    label: >-
+      {{ technitium_dns_setup_dhcp_scope_exclusion.startingAddress | default('missing-start') }}
+      -
+      {{ technitium_dns_setup_dhcp_scope_exclusion.endingAddress | default('missing-end') }}
+
+- name: Compute DHCP lease time total minutes from leaseTimeHours
+  ansible.builtin.set_fact:
+    technitium_dns_setup_dhcp_scope_lease_total_minutes: >-
+      {{ ((technitium_dns_setup_dhcp_scope_effective.leaseTimeHours | float) * 60) | round(0, 'common') | int }}
+
+- name: Compute DHCP lease time API day/hour/minute components
+  ansible.builtin.set_fact:
+    technitium_dns_setup_dhcp_scope_lease_days: >-
+      {{ technitium_dns_setup_dhcp_scope_lease_total_minutes // 1440 }}
+    technitium_dns_setup_dhcp_scope_lease_hours: >-
+      {{ (technitium_dns_setup_dhcp_scope_lease_total_minutes % 1440) // 60 }}
+    technitium_dns_setup_dhcp_scope_lease_minutes: >-
+      {{ technitium_dns_setup_dhcp_scope_lease_total_minutes % 60 }}
+
+- name: Ensure DHCP scope is configured
+  effectivelywild.technitium_dns.technitium_dns_set_dhcp_scope:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    name: "{{ technitium_dns_setup_dhcp_scope_effective.name }}"
+    startingAddress: "{{ technitium_dns_setup_dhcp_scope_effective.startingAddress }}"
+    endingAddress: "{{ technitium_dns_setup_dhcp_scope_effective.endingAddress }}"
+    exclusions: "{{ technitium_dns_setup_dhcp_scope_effective.exclusions | default([]) }}"
+    subnetMask: "{{ technitium_dns_setup_dhcp_scope_effective.subnetMask }}"
+    leaseTimeDays: "{{ technitium_dns_setup_dhcp_scope_lease_days }}"
+    leaseTimeHours: "{{ technitium_dns_setup_dhcp_scope_lease_hours }}"
+    leaseTimeMinutes: "{{ technitium_dns_setup_dhcp_scope_lease_minutes }}"
+    pingCheckEnabled: "{{ technitium_dns_setup_dhcp_scope_effective.pingCheckEnabled }}"
+    domainName: "{{ technitium_dns_setup_dhcp_scope_effective.domainName }}"
+    routerAddress: "{{ technitium_dns_setup_dhcp_scope_effective.routerAddress }}"
+
+- name: Ensure DHCP scope is enabled when requested
+  effectivelywild.technitium_dns.technitium_dns_enable_dhcp_scope:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    name: "{{ technitium_dns_setup_dhcp_scope_effective.name }}"
+  when: technitium_dns_setup_dhcp_scope_effective.enabled | bool
+
+- name: Ensure DHCP scope is disabled when requested
+  effectivelywild.technitium_dns.technitium_dns_disable_dhcp_scope:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    name: "{{ technitium_dns_setup_dhcp_scope_effective.name }}"
+  when: not (technitium_dns_setup_dhcp_scope_effective.enabled | bool)
+
+- name: Ensure declared reserved leases exist for this scope
+  ansible.builtin.include_tasks: _dhcp_scope_reserved_lease.yml
+  loop: "{{ technitium_dns_setup_dhcp_scope_effective.reservedLeases | default([]) }}"
+  loop_control:
+    loop_var: technitium_dns_setup_dhcp_reserved_lease
+    label: >-
+      {{
+        technitium_dns_setup_dhcp_reserved_lease.hardwareAddress
+        | default(technitium_dns_setup_dhcp_reserved_lease.macAddress
+        | default(technitium_dns_setup_dhcp_reserved_lease.mac_address
+        | default('missing-mac')))
+      }}
+  vars:
+    technitium_dns_setup_dhcp_scope_name: "{{ technitium_dns_setup_dhcp_scope_effective.name }}"

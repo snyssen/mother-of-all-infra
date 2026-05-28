@@ -53,3 +53,17 @@
   when:
     - technitium_dns_setup_cluster_role in ['primary', 'standalone']
     - technitium_dns_setup_block_list_urls | length > 0
+
+- name: Configure DHCP scopes
+  ansible.builtin.include_tasks: dhcp_scopes.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_dhcp_manage_scopes | bool
+    - technitium_dns_setup_dhcp_scopes | length > 0
+
+- name: Configure global DHCP reserved leases
+  ansible.builtin.include_tasks: dhcp_reserved_leases.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_dhcp_manage_reserved_leases | bool
+    - technitium_dns_setup_dhcp_reserved_leases | length > 0

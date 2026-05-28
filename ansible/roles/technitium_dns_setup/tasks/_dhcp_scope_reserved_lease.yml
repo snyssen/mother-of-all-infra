@@ -1,0 +1,44 @@
+---
+- name: Build effective reserved lease values
+  ansible.builtin.set_fact:
+    technitium_dns_setup_dhcp_reserved_lease_effective:
+      hardwareAddress: >-
+        {{
+          technitium_dns_setup_dhcp_reserved_lease.hardwareAddress
+          | default(technitium_dns_setup_dhcp_reserved_lease.macAddress)
+          | default(technitium_dns_setup_dhcp_reserved_lease.mac_address)
+        }}
+      ipAddress: >-
+        {{
+          technitium_dns_setup_dhcp_reserved_lease.ipAddress
+          | default(technitium_dns_setup_dhcp_reserved_lease.address)
+          | default(technitium_dns_setup_dhcp_reserved_lease.ip_address)
+        }}
+      comments: >-
+        {{
+          technitium_dns_setup_dhcp_reserved_lease.comments
+          | default(technitium_dns_setup_dhcp_reserved_lease.comment)
+          | default('')
+        }}
+
+- name: Validate reserved lease required fields
+  ansible.builtin.assert:
+    that:
+      - technitium_dns_setup_dhcp_scope_name is defined
+      - technitium_dns_setup_dhcp_scope_name | length > 0
+      - technitium_dns_setup_dhcp_reserved_lease_effective.hardwareAddress is defined
+      - technitium_dns_setup_dhcp_reserved_lease_effective.hardwareAddress | length > 0
+      - technitium_dns_setup_dhcp_reserved_lease_effective.ipAddress is defined
+      - technitium_dns_setup_dhcp_reserved_lease_effective.ipAddress | length > 0
+    fail_msg: >-
+      Reserved lease entries require scope name, MAC address, and IP address.
+
+- name: Ensure reserved lease is present
+  effectivelywild.technitium_dns.technitium_dns_add_reserved_lease:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    name: "{{ technitium_dns_setup_dhcp_scope_name }}"
+    hardwareAddress: "{{ technitium_dns_setup_dhcp_reserved_lease_effective.hardwareAddress }}"
+    ipAddress: "{{ technitium_dns_setup_dhcp_reserved_lease_effective.ipAddress }}"
+    comments: "{{ technitium_dns_setup_dhcp_reserved_lease_effective.comments | default(omit, true) }}"

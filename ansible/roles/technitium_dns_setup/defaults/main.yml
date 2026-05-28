@@ -39,6 +39,29 @@ technitium_dns_setup_store_apps: []
 technitium_dns_setup_block_list_urls: []
 technitium_dns_setup_block_list_update_interval_hours: 24
 
+# DHCP scopes to manage on the primary/standalone instance.
+# Scope entries are ensure-only: unmanaged scopes are left untouched.
+technitium_dns_setup_dhcp_manage_scopes: true
+technitium_dns_setup_dhcp_scopes: []
+
+# Optional global reserved leases list.
+# Each entry must include a scope name and lease fields.
+technitium_dns_setup_dhcp_manage_reserved_leases: true
+technitium_dns_setup_dhcp_reserved_leases: []
+
+# Default values used when scope fields are omitted.
+technitium_dns_setup_dhcp_scope_defaults:
+  enabled: true
+  startingAddress: "192.168.1.1"
+  endingAddress: "192.168.1.254"
+  exclusions: []
+  subnetMask: "255.255.255.0"
+  leaseTimeHours: 24
+  pingCheckEnabled: false
+  domainName: "lan"
+  routerAddress: "192.168.1.1"
+  reservedLeases: []
+
 # DNS zones to ensure exist on the primary instance.
 # Replicated to secondaries via Technitium clustering.
 technitium_dns_setup_zones: []

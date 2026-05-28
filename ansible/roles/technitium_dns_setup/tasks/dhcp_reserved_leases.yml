@@ -1,0 +1,25 @@
+---
+- name: Ensure declared global reserved leases exist
+  ansible.builtin.include_tasks: _dhcp_scope_reserved_lease.yml
+  loop: "{{ technitium_dns_setup_dhcp_reserved_leases }}"
+  loop_control:
+    loop_var: technitium_dns_setup_dhcp_reserved_lease
+    label: >-
+      {{
+        technitium_dns_setup_dhcp_reserved_lease.scope
+        | default(technitium_dns_setup_dhcp_reserved_lease.scopeName
+        | default('missing-scope'))
+      }}
+      /
+      {{
+        technitium_dns_setup_dhcp_reserved_lease.hardwareAddress
+        | default(technitium_dns_setup_dhcp_reserved_lease.macAddress
+        | default(technitium_dns_setup_dhcp_reserved_lease.mac_address
+        | default('missing-mac')))
+      }}
+  vars:
+    technitium_dns_setup_dhcp_scope_name: >-
+      {{
+        technitium_dns_setup_dhcp_reserved_lease.scope
+        | default(technitium_dns_setup_dhcp_reserved_lease.scopeName)
+      }}

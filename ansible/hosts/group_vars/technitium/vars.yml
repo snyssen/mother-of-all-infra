@@ -18,6 +18,26 @@ technitium_dns_setup_block_list_urls:
   - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
   - https://big.oisd.nl/
 
+# DHCP scope management (optional).
+# Uncomment and adapt when preparing DHCP migration/cutover.
+technitium_dns_setup_dhcp_scopes:
+  - name: Default
+    enabled: false
+    startingAddress: 192.168.1.1
+    endingAddress: 192.168.1.254
+    exclusions:
+      - startingAddress: 192.168.1.1
+        endingAddress: 192.168.1.20
+    subnetMask: 255.255.255.0
+    leaseTimeHours: 24
+    pingCheckEnabled: false
+    domainName: lan
+    routerAddress: 192.168.1.1
+    reservedLeases:
+      - hardwareAddress: "70:c9:32:b1:f0:d6"
+        address: "192.168.1.114"
+        comments: "Dreame Vacuum (Saori)"
+
 # Split-horizon APP records using Technitium's SplitHorizon plugin.
 # The SplitHorizon app is installed automatically when this list is non-empty.
 #
