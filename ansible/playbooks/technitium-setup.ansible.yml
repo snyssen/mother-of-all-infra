@@ -1,0 +1,39 @@
+# Technitium DNS/DHCP cluster setup playbook.
+#
+# Configures both Technitium DNS instances (primary and secondary) using the
+# `technitium_dns_setup` role. The role handles, in order:
+#   1. Initial setup  — changes the default admin password to the vault value
+#   2. Clustering     — initializes the primary node, then joins the secondary
+#   3. Zones/records  — creates DNS zones and split-horizon APP records (primary only;
+#                       these are automatically replicated to the secondary via clustering)
+#
+# Before running this playbook:
+#   a. Both VMs must be provisioned and reachable (use `just nix-remote-install <host>`).
+#   b. Add to the Ansible vault:
+#        vault_technitium_dns_setup_admin_password — desired admin password for both instances
+#   c. Fill in the TODO values in:
+#        ansible/hosts/host_vars/technitium-primary/vars.yml   (cluster domain + IP)
+#        ansible/hosts/host_vars/technitium-secondary/vars.yml (primary URL + IPs)
+#        ansible/hosts/group_vars/technitium/vars.yml          (zones + split records)
+#
+# Usage:
+#   just ansible-playbook playbook=technitium-setup flags='-i hosts/prod.yml'
+---
+
+# ---------------------------------------------------------------------------
+# Primary: initial setup + cluster init + zones and records
+# ---------------------------------------------------------------------------
+- name: Configure Technitium DNS primary
+  hosts: technitium-primary
+  gather_facts: false
+  roles:
+    - technitium_dns_setup
+
+# ---------------------------------------------------------------------------
+# Secondary: initial setup + cluster join (zones/records sync automatically)
+# ---------------------------------------------------------------------------
+- name: Configure Technitium DNS secondary
+  hosts: technitium-secondary
+  gather_facts: false
+  roles:
+    - technitium_dns_setup

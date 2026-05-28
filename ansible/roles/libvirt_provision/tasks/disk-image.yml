@@ -1,5 +1,19 @@
 ---
-- name: "{{ vm.name }} | Download and extract disk image"
+- name: Check whether disk image already exists
+  become: true
+  ansible.builtin.stat:
+    path: "{{ vm.disk_image.dest }}"
+  register: _vm_disk_image_stat
+
+- name: Validate disk image source
+  ansible.builtin.assert:
+    that:
+      - _vm_disk_image_stat.stat.exists or (vm.disk_image.url is defined)
+    fail_msg: >-
+      VM '{{ vm.name }}' has no existing disk image at '{{ vm.disk_image.dest }}'
+      and no 'vm.disk_image.url' was provided to download one.
+
+- name: Download and extract disk image when missing
   ansible.builtin.include_tasks:
     file: extract.yml
   vars:
@@ -13,8 +27,24 @@
           is not none
         )) | bool
       }}
+  when:
+    - not _vm_disk_image_stat.stat.exists
+    - vm.disk_image.url is defined
 
-- name: "{{ vm.name }} | Resize disk image if needed"
+- name: Ensure disk image is available before resize
+  become: true
+  ansible.builtin.stat:
+    path: "{{ vm.disk_image.dest }}"
+  register: _vm_disk_image_final_stat
+  when: not _vm_disk_image_stat.stat.exists
+
+- name: Fail if disk image is still missing
+  ansible.builtin.assert:
+    that:
+      - _vm_disk_image_stat.stat.exists or (_vm_disk_image_final_stat.stat.exists | default(false))
+    fail_msg: "Disk image '{{ vm.disk_image.dest }}' is missing for VM '{{ vm.name }}'."
+
+- name: Resize disk image if needed
   ansible.builtin.include_tasks:
     file: resize-qcow2-disk.yml
   vars:

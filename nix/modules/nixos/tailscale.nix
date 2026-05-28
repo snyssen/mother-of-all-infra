@@ -36,6 +36,40 @@ in
     };
     advertiseExitNode = lib.mkEnableOption "advertise this node as an exit node";
     advertiseConnector = lib.mkEnableOption "advertise this node as a connector node (for subnet routing)";
+
+    certificate = {
+      enable = lib.mkEnableOption "issue and renew a Tailscale certificate and PKCS#12 bundle";
+      domain = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = "FQDN to request via tailscale cert.";
+      };
+      outputDir = lib.mkOption {
+        type = lib.types.str;
+        default = "/var/lib/tailscale-certs";
+        description = "Directory where cert/key/pfx files are written.";
+      };
+      outputName = lib.mkOption {
+        type = lib.types.str;
+        default = "tailscale";
+        description = "Base filename for generated files (<name>.crt, <name>.key, <name>.pfx).";
+      };
+      renewOnCalendar = lib.mkOption {
+        type = lib.types.str;
+        default = "daily";
+        description = "systemd timer OnCalendar expression for certificate renewal.";
+      };
+      randomizedDelaySec = lib.mkOption {
+        type = lib.types.str;
+        default = "15m";
+        description = "Randomized delay applied by the renewal timer.";
+      };
+      restartUnits = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Systemd units to restart after certificate refresh (e.g. technitium-dns-server.service).";
+      };
+    };
   };
 
   config = lib.mkMerge [
@@ -73,6 +107,62 @@ in
         unitConfig = {
           # Disable restart rate-limiting so the service retries indefinitely
           StartLimitIntervalSec = 0;
+        };
+      };
+    })
+    (lib.mkIf cfg.certificate.enable {
+      assertions = [
+        {
+          assertion = cfg.certificate.domain != "";
+          message = "tailscale.certificate.domain must be set when tailscale.certificate.enable is true.";
+        }
+      ];
+
+      systemd.services.tailscale-certificate-refresh = {
+        description = "Refresh Tailscale certificate and PKCS#12 bundle";
+        wants = [
+          "network-online.target"
+          "tailscaled.service"
+        ];
+        after = [
+          "network-online.target"
+          "tailscaled.service"
+        ];
+        serviceConfig = {
+          Type = "oneshot";
+        };
+        script = ''
+          set -euo pipefail
+
+          mkdir -p "${cfg.certificate.outputDir}"
+          chmod 0755 "${cfg.certificate.outputDir}"
+
+          ${pkgs.tailscale}/bin/tailscale cert \
+            --cert-file "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.crt" \
+            --key-file "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.key" \
+            "${cfg.certificate.domain}"
+
+          ${pkgs.openssl}/bin/openssl pkcs12 -export \
+            -inkey "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.key" \
+            -in "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.crt" \
+            -out "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.pfx" \
+            -passout pass:
+
+          chmod 0644 "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.pfx"
+          chmod 0644 "${cfg.certificate.outputDir}/${cfg.certificate.outputName}.crt"
+
+          ${lib.concatMapStringsSep "\n" (unit: "systemctl restart ${unit}") cfg.certificate.restartUnits}
+        '';
+        wantedBy = [ "multi-user.target" ];
+      };
+
+      systemd.timers.tailscale-certificate-refresh = {
+        description = "Periodic Tailscale certificate refresh";
+        wantedBy = [ "timers.target" ];
+        timerConfig = {
+          OnCalendar = cfg.certificate.renewOnCalendar;
+          Persistent = true;
+          RandomizedDelaySec = cfg.certificate.randomizedDelaySec;
         };
       };
     })

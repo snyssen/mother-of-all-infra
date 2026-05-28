@@ -1,3 +1,5 @@
+# This layout is intended to be used by VMs running on KVM/QEMU
+# with a single virtio disk and virtiofs for passing the LUKS key file from the host into the initrd.
 { config, lib, ... }:
 let
   layoutName = "single-btrfs-luks-virtiofs-key";
@@ -25,6 +27,13 @@ in
       default = "luks.key";
       description = "Filename of the LUKS key file inside the virtiofs share";
     };
+    qcowOptions = {
+      diskImageSize = lib.mkOption {
+        type = lib.types.str;
+        default = "20G";
+        description = "Size of the qcow2 disk image to create (e.g. '20G')";
+      };
+    };
     swap = {
       enable = lib.mkEnableOption "swap partition" // {
         default = true;
@@ -45,11 +54,13 @@ in
       "virtiofs"
     ];
 
+    disko.imageBuilder.imageFormat = "qcow2";
     disko.devices = {
       disk = {
         main = {
           device = cfg.mainDiskPath;
           type = "disk";
+          imageSize = cfg.qcowOptions.diskImageSize;
           content = {
             type = "gpt";
             partitions = {

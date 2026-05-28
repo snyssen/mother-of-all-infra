@@ -1,0 +1,75 @@
+---
+# Automate Technitium DNS Server initial setup.
+#
+# Technitium ships with default credentials (admin / admin).  This task file:
+#   1. Probes the instance: tries to log in with the vault-managed admin password.
+#   2. If the probe fails, the instance is still on the default credentials:
+#      it logs in with admin/admin, changes the password, then logs in again.
+#   3. Stores the resulting session token as the `technitium_dns_setup_session_token` fact,
+#      which is used by all subsequent tasks in this role.
+#
+# NOTE: Technitium always returns HTTP 200; errors are indicated by
+#       `response.json.status == "error"` in the body.
+
+- name: Probe — try login with vault admin password
+  ansible.builtin.uri:
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      user: admin
+      pass: "{{ technitium_dns_setup_admin_password }}"
+      includeInfo: "false"
+    status_code: [200]
+    return_content: true
+  register: _probe_login
+  failed_when: false
+
+- name: First-time setup — change default admin password
+  when: _probe_login.json.status == 'error'
+  block:
+    - name: Login with default admin/admin credentials
+      ansible.builtin.uri:
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          user: admin
+          pass: admin
+          includeInfo: "false"
+        status_code: [200]
+        return_content: true
+      register: _default_login
+      failed_when: _default_login.json.status != 'ok'
+
+    - name: Change admin password to vault-managed value
+      ansible.builtin.uri:
+        url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/changePassword"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          token: "{{ _default_login.json.token }}"
+          pass: admin
+          newPass: "{{ technitium_dns_setup_admin_password }}"
+        status_code: [200]
+        return_content: true
+      register: _change_pass
+      failed_when: _change_pass.json.status != 'ok'
+
+- name: Login to obtain session token for this play
+  ansible.builtin.uri:
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/user/login"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      user: admin
+      pass: "{{ technitium_dns_setup_admin_password }}"
+      includeInfo: "false"
+    status_code: [200]
+    return_content: true
+  register: _session_login
+  failed_when: _session_login.json.status != 'ok'
+
+- name: Store session token as fact
+  ansible.builtin.set_fact:
+    technitium_dns_setup_session_token: "{{ _session_login.json.token }}"

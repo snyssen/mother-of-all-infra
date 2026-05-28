@@ -1,0 +1,30 @@
+ansible_user: "{{ vault_ansible_user }}"
+ansible_become_pass: "{{ vault_ansible_become_pass }}"
+
+# Technitium DNS Server API configuration for the primary instance.
+# The API host uses HTTP on port 5380 for initial setup (before HTTPS is enabled by clustering).
+# After cluster initialization, HTTPS on port 53443 is automatically enabled.
+technitium_dns_setup_api_host: technitium-primary
+technitium_dns_setup_api_port: 5380
+
+# Admin password for the Technitium web UI.
+# On first run this password replaces the default "admin" password.
+# Stored in vault as vault_technitium_dns_setup_admin_password.
+technitium_dns_setup_admin_password: "{{ vault_technitium_dns_setup_admin_password }}"
+
+# Role of this node in the Technitium cluster.
+technitium_dns_setup_cluster_role: primary
+
+# Fully-qualified domain name used to identify the Technitium cluster.
+# This is a Technitium-internal name and cannot be changed after initialization.
+# Example: "dns-cluster.internal.example.com"
+technitium_dns_setup_cluster_domain: "taild023c5.ts.net"
+
+# IP address of this primary node that is reachable by
+# all secondary nodes. Use the Tailscale IP (100.x.x.x) range.
+technitium_dns_setup_cluster_primary_ip_address: "100.116.172.5" # TODO: update
+
+# Use a Tailscale-issued certificate (converted to PKCS#12) for Technitium HTTPS.
+technitium_dns_setup_tls_enable_managed_certificate: true
+technitium_dns_setup_tls_certificate_path: "/var/lib/technitium-dns-server/certs/technitium-cluster.pfx"
+technitium_dns_setup_tls_port: 53443

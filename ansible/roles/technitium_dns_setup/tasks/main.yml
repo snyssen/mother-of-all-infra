@@ -1,0 +1,69 @@
+---
+- name: Perform initial setup (password change)
+  ansible.builtin.include_tasks: initial_setup.yml
+
+- name: Configure TLS certificate if enabled and path provided
+  when:
+    - technitium_dns_setup_tls_enable_managed_certificate | bool
+    - technitium_dns_setup_tls_certificate_path | length > 0
+  block:
+    - name: Configure HTTPS certificate for this Technitium node
+      effectivelywild.technitium_dns.technitium_dns_set_server_settings:
+        api_url: "http://{{ technitium_dns_setup_api_host }}"
+        api_port: "{{ technitium_dns_setup_api_port }}"
+        api_token: "{{ technitium_dns_setup_session_token }}"
+        webServiceEnableTls: true
+        webServiceTlsPort: "{{ technitium_dns_setup_tls_port }}"
+        webServiceUseSelfSignedTlsCertificate: false
+        webServiceTlsCertificatePath: "{{ technitium_dns_setup_tls_certificate_path }}"
+        webServiceTlsCertificatePassword: "{{ technitium_dns_setup_tls_certificate_password }}"
+      when:
+        - technitium_dns_setup_tls_enable_managed_certificate | bool
+        - technitium_dns_setup_tls_certificate_path | length > 0
+    - name: Wait for Technitium DNS server to apply TLS settings and restart
+      ansible.builtin.wait_for:
+        host: "{{ technitium_dns_setup_api_host }}"
+        port: "{{ technitium_dns_setup_tls_port }}"
+        delay: 5
+        timeout: 30
+
+- name: Initialize cluster as primary node
+  ansible.builtin.include_tasks: cluster_primary.yml
+  when:
+    - technitium_dns_setup_cluster_role == 'primary'
+    - technitium_dns_setup_cluster_domain | length > 0
+    - technitium_dns_setup_cluster_primary_ip_address | length > 0
+
+- name: Join cluster as secondary node
+  ansible.builtin.include_tasks: cluster_secondary.yml
+  when:
+    - technitium_dns_setup_cluster_role == 'secondary'
+    - technitium_dns_setup_cluster_primary_url | length > 0
+
+- name: Configure DNS zones and records
+  ansible.builtin.include_tasks: zones_and_records.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - (technitium_dns_setup_zones | length > 0)
+      or (technitium_dns_setup_split_records | length > 0)
+      or (technitium_dns_setup_store_apps | length > 0)
+
+- name: Configure global block list URLs
+  ansible.builtin.include_tasks: blocklists.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_block_list_urls | length > 0
+
+- name: Configure DHCP scopes
+  ansible.builtin.include_tasks: dhcp_scopes.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_dhcp_manage_scopes | bool
+    - technitium_dns_setup_dhcp_scopes | length > 0
+
+- name: Configure global DHCP reserved leases
+  ansible.builtin.include_tasks: dhcp_reserved_leases.yml
+  when:
+    - technitium_dns_setup_cluster_role in ['primary', 'standalone']
+    - technitium_dns_setup_dhcp_manage_reserved_leases | bool
+    - technitium_dns_setup_dhcp_reserved_leases | length > 0

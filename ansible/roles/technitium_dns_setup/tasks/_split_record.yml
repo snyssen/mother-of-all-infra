@@ -1,0 +1,55 @@
+---
+# Helper task file: create one split-horizon APP record.
+# Called by zones_and_records.yml via include_tasks, with loop_var technitium_dns_setup_split_record.
+#
+# Builds the SplitHorizon JSON data dict from the `entries` list:
+#   entries: [{network: "192.168.1.0/24", ip: "192.168.1.10"}, ...]
+# becomes:
+#   {"192.168.1.0/24": ["192.168.1.10"], ...}
+#
+# The SplitHorizon plugin matches the DNS client's source address against the
+# CIDR keys in order; the first matching network's IP list is returned.
+#
+# NOTE: DNS name special characters (@, *) must be converted to fully-qualified
+# domain names for the Technitium API:
+#   - "@" (zone apex) → zone name (e.g., "snyssen.be")
+#   - "*" (wildcard) → "*.zone" (e.g., "*.snyssen.be")
+#   - "sub" → "sub.zone" (e.g., "sub.snyssen.be")
+
+- name: Reset split-horizon data dict
+  ansible.builtin.set_fact:
+    _split_data: {}
+
+- name: Build split-horizon data dict from entries
+  ansible.builtin.set_fact:
+    _split_data: "{{ _split_data | combine({entry.network: [entry.ip]}) }}"
+  loop: "{{ technitium_dns_setup_split_record.entries }}"
+  loop_control:
+    loop_var: entry
+    label: "{{ entry.network }} → {{ entry.ip }}"
+
+- name: Normalize record name to fully-qualified domain
+  ansible.builtin.set_fact:
+    _record_name: |-
+      {%- if technitium_dns_setup_split_record.name == "@" -%}
+        {{- technitium_dns_setup_split_record.zone -}}
+      {%- elif technitium_dns_setup_split_record.name == "*" -%}
+        *.{{- technitium_dns_setup_split_record.zone -}}
+      {%- elif technitium_dns_setup_split_record.name.endswith("." ~ technitium_dns_setup_split_record.zone) -%}
+        {{- technitium_dns_setup_split_record.name -}}
+      {%- else -%}
+        {{- technitium_dns_setup_split_record.name }}.{{ technitium_dns_setup_split_record.zone -}}
+      {%- endif -%}
+
+- name: Create split-horizon APP record
+  effectivelywild.technitium_dns.technitium_dns_record:
+    api_url: "http://{{ technitium_dns_setup_api_host }}"
+    api_port: "{{ technitium_dns_setup_api_port }}"
+    api_token: "{{ technitium_dns_setup_session_token }}"
+    zone: "{{ technitium_dns_setup_split_record.zone }}"
+    name: "{{ _record_name }}"
+    type: APP
+    appName: Split Horizon
+    classPath: SplitHorizon.SimpleAddress
+    recordData: "{{ _split_data | to_json }}"
+    state: present

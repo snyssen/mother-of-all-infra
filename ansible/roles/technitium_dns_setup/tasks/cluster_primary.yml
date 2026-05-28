@@ -1,0 +1,55 @@
+---
+# Initialize this instance as the primary node of a Technitium cluster.
+#
+# Technitium's built-in clustering syncs the entire configuration (settings,
+# zones, records, apps, blocklists) from the primary to all secondary nodes.
+# This means zones and records only need to be managed on the primary.
+#
+# Note: if HTTPS is not already enabled, Technitium will automatically enable
+# it with a self-signed certificate during cluster initialization.
+#
+# Required variables (set in host_vars/technitium-primary/vars.yml):
+#   technitium_dns_setup_cluster_domain                — internal cluster FQDN (cannot be changed later)
+#   technitium_dns_setup_cluster_primary_ip_address   — IP address reachable by secondaries
+
+- name: Check current cluster status
+  ansible.builtin.uri:
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/admin/cluster/state"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_dns_setup_session_token }}"
+    status_code: [200]
+    return_content: true
+  register: _cluster_status
+  failed_when: _cluster_status.json.status != 'ok'
+
+- name: Initialize primary cluster node
+  ansible.builtin.uri:
+    url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/admin/cluster/init"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_dns_setup_session_token }}"
+      clusterDomain: "{{ technitium_dns_setup_cluster_domain }}"
+      primaryNodeIpAddress: "{{ technitium_dns_setup_cluster_primary_ip_address }}"
+    status_code: [200]
+    return_content: true
+  register: _cluster_init
+  failed_when: _cluster_init.json.status != 'ok'
+  when: not _cluster_status.json.response.clusterInitialized
+
+- name: Report cluster initialization result
+  ansible.builtin.pause:
+    seconds: 10
+    prompt: >-
+      Technitium cluster initialized as primary node.
+      Domain: {{ technitium_dns_setup_cluster_domain }}.
+      Secondaries can now join via HTTPS at port 53443.
+      Waiting for cluster to stabilize before proceeding with further configuration…
+  when: not _cluster_status.json.response.clusterInitialized
+
+- name: Report cluster already initialized
+  ansible.builtin.debug:
+    msg: "Technitium cluster already initialized on {{ inventory_hostname }} — skipping."
+  when: _cluster_status.json.response.clusterInitialized

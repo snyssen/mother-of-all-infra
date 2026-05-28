@@ -1,0 +1,7 @@
+---
+- name: Configure declared DHCP scopes
+  ansible.builtin.include_tasks: _dhcp_scope.yml
+  loop: "{{ technitium_dns_setup_dhcp_scopes }}"
+  loop_control:
+    loop_var: technitium_dns_setup_dhcp_scope
+    label: "{{ technitium_dns_setup_dhcp_scope.name | default('unnamed-scope') }}"

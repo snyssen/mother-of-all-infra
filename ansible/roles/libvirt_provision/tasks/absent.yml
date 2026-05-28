@@ -44,3 +44,9 @@
   ansible.builtin.file:
     path: "{{ libvirt_vmstore_root }}/{{ vm.name }}"
     state: absent
+
+- name: "{{ vm.name }} | Remove VM LUKS key directory"
+  become: true
+  ansible.builtin.file:
+    path: "{{ libvirt_vm_keys_root }}/{{ vm.name }}"
+    state: absent

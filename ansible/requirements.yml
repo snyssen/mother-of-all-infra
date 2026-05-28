@@ -9,6 +9,8 @@ collections:
     source: https://galaxy.ansible.com
   - name: artis3n.tailscale
     source: https://galaxy.ansible.com
+  - name: effectivelywild.technitium_dns
+    source: https://galaxy.ansible.com
 
 roles:
   - name: snyssen.oh-my-zsh-p10k
