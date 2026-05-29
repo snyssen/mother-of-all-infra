@@ -460,6 +460,7 @@ monitoring__extra_monitored_hosts:
   - pne.ingress.snyssen.be
   - 100.96.180.95:9100 # blackfog
   - 100.90.124.28:9100 # hypervisor
+  - 100.64.88.28:9100 # technitium-secondary
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:
