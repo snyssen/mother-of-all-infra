@@ -375,8 +375,10 @@ dashboard__shortcuts:
             url: http://192.168.1.2
           - name: Tailnet DNS
             url: https://ts-dns.taild023c5.ts.net
-          - name: DDNS updater
-            url: https://ddns.snyssen.be
+          - name: technitium-primary
+            url: https://technitium-primary.taild023c5.ts.net:53443/
+          - name: technitium-secondary
+            url: https://technitium-secondary.taild023c5.ts.net:53443/
           - name: Dynu
             url: https://www.dynu.com/en-US/ControlPanel
           - name: Porkbun
