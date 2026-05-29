@@ -22,7 +22,7 @@ technitium_dns_setup_block_list_urls:
 # Uncomment and adapt when preparing DHCP migration/cutover.
 technitium_dns_setup_dhcp_scopes:
   - name: Default
-    enabled: false
+    enabled: true
     startingAddress: 192.168.1.1
     endingAddress: 192.168.1.254
     exclusions:
