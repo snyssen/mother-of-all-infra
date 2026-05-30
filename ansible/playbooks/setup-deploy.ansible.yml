@@ -1,11 +1,7 @@
 - name: Setup common configs
-  hosts: dns,apps,backup
+  hosts: apps,backup
   roles:
     - setup_common
-- name: Setup DNS
-  hosts: dns
-  roles:
-    - name: dns_adguard
 
 - name: Setup storage configs
   hosts: apps,backup

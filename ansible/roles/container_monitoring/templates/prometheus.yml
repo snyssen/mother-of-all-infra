@@ -40,9 +40,6 @@ scrape_configs:
   - job_name: 'jellyfin'
     static_configs:
       - targets: ['jellyfin:8096']
-  - job_name: 'adguard'
-    static_configs:
-      - targets: ['adguard_exporter:9617']
   - job_name: "healthchecks"
     scrape_interval: 60s
     metrics_path: /projects/{{ monitoring__healthchecks_project_uuid }}/metrics/{{ monitoring__healthchecks_api_key }}

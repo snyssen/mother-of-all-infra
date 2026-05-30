@@ -150,22 +150,6 @@ services:
       timeout: 5s
       retries: 5
 
-  adguard_exporter:
-    image: ebrianne/adguard-exporter:v1.14@sha256:44bb9e0e98f490e7e40c84461a38a59a41e03a21837b70105e048121e7962cb6
-    container_name: adguard_exporter
-    restart: unless-stopped
-    networks:
-      - monitoring
-    environment:
-      - adguard_protocol=http
-      - adguard_hostname={{ hostvars[groups['dns'][0]].ansible_host }}
-      - adguard_username={{ monitoring__adguard_exporter_username }}
-      - adguard_password={{ monitoring__adguard_exporter_password }}
-      - server_port=9617
-      - interval=10s
-      - log_limit=10000
-    mem_limit: 52m
-
 networks:
   monitoring:
     external: true

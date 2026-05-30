@@ -1,8 +1,3 @@
-dns:
-  hosts:
-    192.168.1.2:
-      ansible_host: "192.168.1.2"
-
 technitium:
   hosts:
     # TODO: re-enable technitium-primary once deployed
@@ -25,7 +20,6 @@ monitored:
   hosts:
     snyssen.be:
     backup.snyssen.be:
-    192.168.1.2:
 
 livecams:
   hosts:
