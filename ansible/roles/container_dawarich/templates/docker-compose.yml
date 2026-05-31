@@ -181,6 +181,7 @@ services:
       - "{{ docker_mounts_directory }}/dawarich/photon:/photon/data"
     restart: unless-stopped
     networks:
+      - internal
       - web
 
 networks:
