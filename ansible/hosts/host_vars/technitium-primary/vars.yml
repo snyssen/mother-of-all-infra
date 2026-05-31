@@ -22,7 +22,7 @@ technitium_dns_setup_cluster_domain: "taild023c5.ts.net"
 
 # IP address of this primary node that is reachable by
 # all secondary nodes. Use the Tailscale IP (100.x.x.x) range.
-technitium_dns_setup_cluster_primary_ip_address: "100.116.172.5" # TODO: update
+technitium_dns_setup_cluster_primary_ip_address: "100.117.7.65"
 
 # Use a Tailscale-issued certificate (converted to PKCS#12) for Technitium HTTPS.
 technitium_dns_setup_tls_enable_managed_certificate: true
