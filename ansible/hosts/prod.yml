@@ -1,8 +1,7 @@
 technitium:
   hosts:
-    # TODO: re-enable technitium-primary once deployed
-    # technitium-primary:
-    #   ansible_host: "technitium-primary"
+    technitium-primary:
+      ansible_host: "technitium-primary"
     technitium-secondary:
       ansible_host: "technitium-secondary"
 
