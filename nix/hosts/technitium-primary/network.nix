@@ -1,6 +1,6 @@
 { ... }:
 let
-  interface = "enp2s0";
+  interface = "enp3s0";
 in
 {
   networking = {

@@ -34,18 +34,31 @@
   # TODO: This layout won't work actually because this host's disk is very small, so we need to add an external disk and move the nix store there
   disko =
     let
-      ly = "single-btrfs-luks";
+      ly = "btrfs-luks-main-secondary-subvols";
     in
     {
       layout = ly;
       "${ly}" = {
         mainDiskPath = "/dev/mmcblk0";
+        main.mountNix = false;
         usbKeysIds = [
-          # TODO: create a dedicated USB key for this host
+          "94E8-6B03" # SanDisk 16GB (micro SD card with adapter)
           "8B34-7D3C" # Philips 8GB
           "9FBA-884A" # Generic Flash Disk (no casing)
         ];
         swap.enable = true;
+        swap.size = "4G";
+        secondaryDisks = [
+          {
+            name = "data";
+            diskPath = "/dev/sda";
+            mountpoints = {
+              "nix" = "/nix";
+              "varlib" = "/var/lib";
+            };
+            storageMedia = "ssd";
+          }
+        ];
       };
     };
 
@@ -117,6 +130,7 @@
         hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
         openssh.authorizedKeys.keys = [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG68A6FS8yzwzaOUsoKHL9bc+2gB1P5OQriFjEWzG/LH snyssen@blackfog"
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIERQS+yhsr8HU1xoTnIOlJLWD9sJnKbiNQglBH/xaGM7 snyssen@purplehaze"
         ];
       };
     };

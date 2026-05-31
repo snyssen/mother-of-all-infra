@@ -10,7 +10,7 @@ keys: &all_keys
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
   - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
-  - &root_technitium_primary age19qutetnxjzlhyfvfxdef2z9ygtqrnq22tf476veq06uq67evy4qsuqx72h
+  - &root_technitium_primary age1flln5jgw557ft9zff073ccer3hjcv344zaypm7gvrx9zlcnzsgws6ssrxg
   - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
 creation_rules:
   # global secrets
