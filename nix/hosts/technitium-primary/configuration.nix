@@ -107,6 +107,7 @@
   services.technitium-dns-server = {
     enable = true;
     openFirewall = true;
+    package = pkgs.unstable.technitium-dns-server;
   };
   # services.technitium-dns-server.openFirewall = true; does not open the firewall for DHCP, so we do so below
   networking.firewall.allowedUDPPorts = [

@@ -16,7 +16,7 @@ technitium_dns_setup_cluster_primary_url: ""
 
 # IP address of this secondary node reachable by the primary.
 # Required when technitium_dns_setup_cluster_role is 'secondary'.
-technitium_dns_setup_cluster_secondary_ip_address: ""
+technitium_dns_setup_cluster_secondary_ip_addresses: []
 
 # Force an immediate configuration resync on secondaries.
 # Useful when a node has already joined but appears stale.

@@ -32,7 +32,7 @@
     body_format: form-urlencoded
     body:
       token: "{{ technitium_dns_setup_session_token }}"
-      secondaryNodeIpAddress: "{{ technitium_dns_setup_cluster_secondary_ip_address }}"
+      secondaryNodeIpAddresses: "{{ technitium_dns_setup_cluster_secondary_ip_addresses }}"
       primaryNodeUrl: "{{ technitium_dns_setup_cluster_primary_url }}"
       primaryNodeIpAddress: >-
         {{ technitium_dns_setup_cluster_primary_ip_address

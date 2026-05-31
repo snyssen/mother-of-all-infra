@@ -23,7 +23,8 @@ technitium_dns_setup_cluster_primary_ip_address: "100.117.7.65"
 
 # IP address of this secondary node that is reachable by the primary.
 # Use the Tailscale IP (100.x.x.x) range.
-technitium_dns_setup_cluster_secondary_ip_address: "100.64.88.28"
+technitium_dns_setup_cluster_secondary_ip_addresses:
+  - "100.64.88.28"
 
 technitium_dns_setup_trigger_secondary_resync: true
 
