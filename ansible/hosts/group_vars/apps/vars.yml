@@ -460,7 +460,8 @@ monitoring__extra_monitored_hosts:
   - pne.ingress.snyssen.be
   - 100.96.180.95:9100 # blackfog
   - 100.90.124.28:9100 # hypervisor
-  - 100.64.88.28:9100 # technitium-secondary
+  - technitium-primary.taild023c5.ts.net:9100 # technitium-primary
+  - technitium-secondary.taild023c5.ts.net:9100 # technitium-secondary
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:
@@ -470,6 +471,10 @@ monitoring__uptime_monitors:
     url: https://hass.snyssen.be
   - name: router
     url: http://192.168.1.1
+  - name: technitium-primary
+    url: https://technitium-primary.taild023c5.ts.net:53443/
+  - name: technitium-secondary
+    url: https://technitium-secondary.taild023c5.ts.net:53443/
 monitoring__umami_db_pass: "{{ vault_monitoring__umami_db_pass }}"
 monitoring__umami_app_secret: "{{ vault_monitoring__umami_app_secret }}"
 monitoring__healthchecks_project_uuid: "{{ vault_monitoring__healthchecks_project_uuid }}"
