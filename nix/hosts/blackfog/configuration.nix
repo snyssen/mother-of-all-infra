@@ -69,9 +69,9 @@ in
       };
     };
 
+  sops.defaultSshKeys.mode = "user";
   sops.secrets = {
     "users/snyssen/passwordHash" = {
-      sopsFile = ./data/secrets.yaml;
       neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
     };
   };
@@ -134,6 +134,7 @@ in
 
   services.ollama = {
     enable = true;
+    # Optional: preload models, see https://ollama.com/library
     loadModels = [
       "gemma3:4b"
       "deepseek-r1:8b"

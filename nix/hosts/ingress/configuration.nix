@@ -40,18 +40,12 @@
     ./traefik-configuration.nix
   ];
 
-  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets = {
     "users/snyssen/passwordHash" = {
-      sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
     };
-    "tailscale/authKey" = {
-      sopsFile = ./data/secrets.yaml;
-    };
-    "crowdsec-firewall-bouncer/api_key" = {
-      sopsFile = ./data/secrets.yaml;
-    };
+    "tailscale/authKey" = { };
+    "crowdsec-firewall-bouncer/api_key" = { };
   };
 
   users = {
