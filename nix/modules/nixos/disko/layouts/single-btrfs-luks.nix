@@ -34,6 +34,13 @@ in
         default = "8G";
       };
     };
+    mountPointsNeededForBoot = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "/"
+        "/home"
+      ];
+    };
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
@@ -144,5 +151,14 @@ in
         };
       };
     };
+
+    fileSystems = lib.listToAttrs (
+      lib.map (vol: {
+        name = vol;
+        value = {
+          neededForBoot = true;
+        };
+      }) cfg.mountPointsNeededForBoot
+    );
   };
 }
