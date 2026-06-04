@@ -136,9 +136,11 @@ in
     enable = true;
     # Optional: preload models, see https://ollama.com/library
     loadModels = [
-      "gemma3:4b"
       "deepseek-r1:8b"
-      "deepseek-coder:33b"
+      "gemma4:latest"
+      "gemma4:31b"
+      "qwen3:30b"
+      "qwen3-coder:30b"
     ];
   };
   services.open-webui = {
