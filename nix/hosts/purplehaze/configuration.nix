@@ -40,7 +40,6 @@ in
     flake.modules.nixos.stylix
     flake.modules.nixos.cosmic
     flake.modules.nixos.gnome
-    flake.modules.nixos.user
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
@@ -52,11 +51,23 @@ in
     flake.modules.nixos.sunshine
   ];
 
-  sops.secrets."paperless/api-token" = {
-    sopsFile = ./data/secrets.yaml;
-    owner = "scanservjs";
-    group = "scanservjs";
-    mode = "0400";
+  sops.defaultSshKeys.mode = "user";
+  sops.secrets = {
+    "users/snyssen/passwordHash" = {
+      neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
+    };
+  };
+
+  users = {
+    mutableUsers = false;
+    users.snyssen = {
+      isNormalUser = true;
+      extraGroups = [
+        "wheel"
+        "networkmanager"
+      ];
+      hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
+    };
   };
 
   disko =
@@ -124,13 +135,19 @@ in
       };
     };
     scanner.configuration = {
+      sops.secrets."paperless/api-token" = {
+        sopsFile = ./data/secrets.yaml;
+        owner = "scanservjs";
+        group = "scanservjs";
+        mode = "0400";
+      };
       printing = {
         enable = true;
         scanner = {
           enable = true;
           paperless = {
             enable = true;
-            apiTokenPath = config.sops.secrets."paperless/api-token".path;
+            apiTokenPath = config.specialisation.scanner.configuration.sops.secrets."paperless/api-token".path;
           };
         };
       };
