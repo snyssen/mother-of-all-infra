@@ -371,8 +371,6 @@ dashboard__shortcuts:
         url: https://hass.snyssen.be
       - name: DNS management
         children:
-          - name: Tailnet DNS
-            url: https://ts-dns.taild023c5.ts.net
           - name: technitium-primary
             url: https://technitium-primary.taild023c5.ts.net:53443/
           - name: technitium-secondary
