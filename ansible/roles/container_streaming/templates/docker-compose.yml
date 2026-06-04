@@ -77,7 +77,7 @@ services:
       - "{{ docker_mounts_directory }}/audiobookshelf/metadata:/metadata"
 
   torrent:
-    image: lscr.io/linuxserver/transmission:4.1.1@sha256:cc1b5ba5b79ff201cb9a8c3cb5d94f1fb2b22baea87ad476a5bde087ec26c4be
+    image: lscr.io/linuxserver/transmission:4.1.2@sha256:aa4926b22bc25e89820acf427f8a5d1426c34a7ae9bd834e06eda43b12d839c3
     container_name: torrent
     network_mode: container:vpn
     environment:
@@ -331,7 +331,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.1.1@sha256:d69f114f6169f895ddc551a63f7d77e3b6574510e8686e819b5b26e0eff48ef9
+    image: ghcr.io/neptunehub/audiomuse-ai:2.1.2@sha256:fb99b12ec39e82a826ca7a167092bf8cd53d98f61c87cdd52c09ad68f978bc66
     container_name: audiomuse_web
     networks:
       - web
@@ -361,7 +361,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.1.1@sha256:d69f114f6169f895ddc551a63f7d77e3b6574510e8686e819b5b26e0eff48ef9
+    image: ghcr.io/neptunehub/audiomuse-ai:2.1.2@sha256:fb99b12ec39e82a826ca7a167092bf8cd53d98f61c87cdd52c09ad68f978bc66
     container_name: audiomuse_worker
     networks:
       - db
