@@ -1,6 +1,6 @@
 services:
   mobilizon_db:
-    image: postgis/postgis:17-3.5-alpine@sha256:c49b04b3a259ad13571903ad1de1f446c546c37d78b646fb8e2228f6c46f895c
+    image: postgis/postgis:17-3.5-alpine@sha256:a016fe2e2dbaf4b5a101efb60961609f4a7826fdb4057fdcd8dfd275fb2d9697
     container_name: mobilizon_db
     volumes:
       - "{{ docker_mounts_directory }}/mobilizon/postgres:/var/lib/postgresql/data"
