@@ -5,9 +5,7 @@
     "config:best-practices",
     "group:allNonMajor",
     ":semanticCommits",
-    ":pinVersions",
-    ":automergeDigest",
-    ":automergeBranch"
+    ":pinVersions"
   ],
   "packageRules": [
     // Ignore CalVer

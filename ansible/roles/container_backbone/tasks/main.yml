@@ -4,9 +4,7 @@
     state: directory
   with_items:
     - "{{ docker_mounts_directory }}/traefik"
-    - "{{ docker_mounts_directory }}/gluetun"
     - "{{ docker_mounts_directory }}/authelia"
-    - "{{ docker_mounts_directory }}/tailscale_dns"
 
 - name: Set LDAP base domain
   ansible.builtin.set_fact:

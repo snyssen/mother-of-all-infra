@@ -78,6 +78,11 @@
       mode: "750"
       owner: "999"
       group: "999"
+    # vpn
+    - src: "{{ docker_mounts_directory }}/gluetun"
+      owner: "{{ ansible_user_id }}"
+      group: "{{ ansible_user_gid }}"
+      mode: "700"
 
 - name: Deploying Sabnzbd config
   become: true

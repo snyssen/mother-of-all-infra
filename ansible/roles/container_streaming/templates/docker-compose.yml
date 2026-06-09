@@ -79,7 +79,7 @@ services:
   torrent:
     image: lscr.io/linuxserver/transmission:4.1.2@sha256:aa4926b22bc25e89820acf427f8a5d1426c34a7ae9bd834e06eda43b12d839c3
     container_name: torrent
-    network_mode: container:vpn
+    network_mode: service:vpn
     environment:
       - PUID=33
       - PGID={{ ansible_user_gid }}
@@ -89,11 +89,24 @@ services:
       - /mnt/storage/streaming/torrent:/data/torrent
     restart: unless-stopped
     mem_limit: 712m
+    depends_on:
+      - vpn
+
+  # transmission-port-update:
+  #   image: ghcr.io/jgramling17/transmission-gluetun-port-update:latest@sha256:d14feda474ed90243f6c0fd170c7e89ea7933430693c3d7a6a948a08dc92183a
+  #   container_name: transmission_port_update
+  #   network_mode: service:vpn
+  #   environment:
+  #     - TRANSMISSION_RPC_PORT=9091
+  #     # Left empty on purpose, we don't have auth enabled on Transmission
+  #     - TRANSMISSION_RPC_USERNAME=
+  #     - TRANSMISSION_RPC_PASSWORD=
+  #   restart: "unless-stopped"
 
   usenet:
     image: lscr.io/linuxserver/sabnzbd:5.0.3@sha256:3de84922d3b4c5e7062b3cbd1e08f57d8dc113a8be4dc0447d33e2da293bab26
     container_name: usenet
-    network_mode: container:vpn
+    network_mode: service:vpn
     environment:
       - PUID=33
       - PGID={{ ansible_user_gid }}
@@ -103,6 +116,8 @@ services:
       - /mnt/storage/streaming/usenet:/data/usenet
     restart: unless-stopped
     mem_limit: 256m
+    depends_on:
+      - vpn
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:4.0.17@sha256:0b3f344388bd7bed4f2f770058de795e76447e4a481b83c8d5f8fed489371fde
@@ -110,19 +125,14 @@ services:
     environment:
       - PUID=33
       - PGID={{ ansible_user_gid}}
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.sonarr.entryPoints=websecure
-      - traefik.http.routers.sonarr.rule=Host(`sonarr.{{ main_domain }}`)
-      - traefik.http.services.sonarr.loadBalancer.server.port=8989
-      - traefik.http.routers.sonarr.middlewares=authelia@docker
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/sonarr/config:/config"
       - /mnt/storage/streaming:/data
     restart: unless-stopped
     mem_limit: 1g
+    depends_on:
+      - vpn
 
   radarr:
     image: lscr.io/linuxserver/radarr:6.1.1@sha256:c0a4335d4249b46102f64cf6fa27ffc3bddfd9138fac1e4ddf238afd37f02d1f
@@ -131,40 +141,30 @@ services:
       - PUID=33
       - PGID={{ ansible_user_gid }}
       - TZ=Europe/Brussels
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.radarr.entryPoints=websecure
-      - traefik.http.routers.radarr.rule=Host(`radarr.{{ main_domain }}`)
-      - traefik.http.services.radarr.loadBalancer.server.port=7878
-      - traefik.http.routers.radarr.middlewares=authelia@docker
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/radarr/config:/config"
       - /mnt/storage/streaming:/data
     restart: unless-stopped
     mem_limit: 1g
+    depends_on:
+      - vpn
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:8.1.2135@sha256:8455e2c2f3a7e0fb56ab4de6be924d81aa441bfe9a740cf110d46b25a39b42ba
+    image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
     environment:
       - PUID=33
       - PGID={{ ansible_user_gid}}
       - TZ=Europe/Brussels
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.lidarr.entryPoints=websecure
-      - traefik.http.routers.lidarr.rule=Host(`lidarr.{{ main_domain }}`)
-      - traefik.http.services.lidarr.loadBalancer.server.port=8686
-      - traefik.http.routers.lidarr.middlewares=authelia@docker
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/lidarr/config:/config"
       - /mnt/storage/streaming:/data
     restart: unless-stopped
     mem_limit: 1g
+    depends_on:
+      - vpn
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:2.3.5@sha256:2489c6dbaf11e3a6d71aeb2e6980d04193d4af611aa7064a974851222fd41722
@@ -173,18 +173,13 @@ services:
       - PUID=33
       - PGID={{ ansible_user_gid}}
       - TZ=Europe/Brussels
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.prowlarr.entryPoints=websecure
-      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.{{ main_domain }}`)
-      - traefik.http.services.prowlarr.loadBalancer.server.port=9696
-      - traefik.http.routers.prowlarr.middlewares=authelia@docker
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/prowlarr/config:/config"
     restart: unless-stopped
     mem_limit: 1g
+    depends_on:
+      - vpn
 
   bazarr:
     image: lscr.io/linuxserver/bazarr:1.5.6@sha256:4b5e510042bf471c8bafab89cada9774fba2fb25f16ec64235151cacbe847c10
@@ -193,19 +188,14 @@ services:
       - PUID=33
       - PGID={{ ansible_user_gid}}
       - TZ=Europe/Brussels
-    networks:
-      - web
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.bazarr.entryPoints=websecure
-      - traefik.http.routers.bazarr.rule=Host(`bazarr.{{ main_domain }}`)
-      - traefik.http.services.bazarr.loadBalancer.server.port=6767
-      - traefik.http.routers.bazarr.middlewares=authelia@docker
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/bazarr/config:/config"
       - /mnt/storage/streaming:/data
     restart: unless-stopped
     mem_limit: 1g
+    depends_on:
+      - vpn
 
   pinchflat:
     image: ghcr.io/kieraneglin/pinchflat:v2025.6.6@sha256:4e975edf58f0861a5cbfe8fc6aac4851ff5a02dfc3f05ffeea4982e3084a5a4a
@@ -215,10 +205,12 @@ services:
     environment:
       # Set the timezone to your local timezone
       - TZ={{ iana_timezone }}
-    network_mode: container:vpn
+    network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/pinchflat/config:/config"
       - /mnt/storage/streaming/media/tv:/downloads
+    depends_on:
+      - vpn
 
   lidatube:
     image: thewicklowwolf/lidatube:0.2.51@sha256:057c89fa90aa7fd82a8c516daca31798bbb6c19e218dd87fde2a7232e8bb7481
@@ -382,6 +374,93 @@ services:
     depends_on:
       - audiomuse_redis
     restart: unless-stopped
+
+  vpn:
+    image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
+    container_name: vpn
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    networks:
+      - web
+    # TODO: ...I can't actually remember why I would open any port here? I'll leave them commented for now, so I can revert the change if I find out I needed them for something (+ add some explanations!)
+    # ports:
+    #   - 8888:8888/tcp # HTTP proxy
+    #   - 8388:8388/tcp # Shadowsocks
+    #   - 8388:8388/udp # Shadowsocks
+    #   - 6881:6881
+    #   - 6881:6881/udp
+    volumes:
+      - "{{ docker_mounts_directory }}/gluetun:/gluetun"
+    environment:
+      # See https://github.com/qdm12/gluetun/wiki
+      - VPN_SERVICE_PROVIDER={{ vpn__service_provider }}
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY={{ vpn__wireguard_pk }}
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
+      - DNS_UNBLOCK_HOSTNAMES=news.eweka.nl
+      # Timezone for accurate log times
+      - TZ={{ iana_timezone }}
+      # Server list updater. See https://github.com/qdm12/gluetun/wiki/Updating-Servers#periodic-update
+      - UPDATER_PERIOD=24h
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE='{"auth":"apikey","apikey":"{{ vpn__control_server_api_key }}"}'
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      # Torrents
+      - traefik.http.routers.torrent.entryPoints=websecure
+      - traefik.http.routers.torrent.rule=Host(`torrent.{{ main_domain }}`)
+      - traefik.http.routers.torrent.service=torrent
+      - traefik.http.services.torrent.loadBalancer.server.port=9091
+      - traefik.http.routers.torrent.middlewares=authelia@docker
+      # Usenet
+      - traefik.http.routers.usenet.entryPoints=websecure
+      - traefik.http.routers.usenet.rule=Host(`usenet.{{ main_domain }}`)
+      - traefik.http.routers.usenet.service=usenet
+      - traefik.http.services.usenet.loadBalancer.server.port=8080
+      - traefik.http.routers.usenet.middlewares=authelia@docker
+      # Pinchflat
+      - traefik.http.routers.pinchflat.entryPoints=websecure
+      - traefik.http.routers.pinchflat.rule=Host(`yt.{{ main_domain }}`)
+      - traefik.http.routers.pinchflat.service=pinchflat
+      - traefik.http.services.pinchflat.loadBalancer.server.port=8945
+      - traefik.http.routers.pinchflat.middlewares=authelia@docker
+      # Sonarr
+      - traefik.http.routers.sonarr.entryPoints=websecure
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.{{ main_domain }}`)
+      - traefik.http.routers.sonarr.service=sonarr
+      - traefik.http.services.sonarr.loadBalancer.server.port=8989
+      - traefik.http.routers.sonarr.middlewares=authelia@docker
+      # Radarr
+      - traefik.http.routers.radarr.entryPoints=websecure
+      - traefik.http.routers.radarr.rule=Host(`radarr.{{ main_domain }}`)
+      - traefik.http.routers.radarr.service=radarr
+      - traefik.http.services.radarr.loadBalancer.server.port=7878
+      - traefik.http.routers.radarr.middlewares=authelia@docker
+      # Lidarr
+      - traefik.http.routers.lidarr.entryPoints=websecure
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.{{ main_domain }}`)
+      - traefik.http.routers.lidarr.service=lidarr
+      - traefik.http.services.lidarr.loadBalancer.server.port=8686
+      - traefik.http.routers.lidarr.middlewares=authelia@docker
+      # Prowlarr
+      - traefik.http.routers.prowlarr.entryPoints=websecure
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.{{ main_domain }}`)
+      - traefik.http.routers.prowlarr.service=prowlarr
+      - traefik.http.services.prowlarr.loadBalancer.server.port=9696
+      - traefik.http.routers.prowlarr.middlewares=authelia@docker
+      # Bazarr
+      - traefik.http.routers.bazarr.entryPoints=websecure
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.{{ main_domain }}`)
+      - traefik.http.routers.bazarr.service=bazarr
+      - traefik.http.services.bazarr.loadBalancer.server.port=6767
+      - traefik.http.routers.bazarr.middlewares=authelia@docker
+    # FIXME: This is a workaround for the healthcheck not recovering from a failstate even when the underlying VPN connection does, thus preventing routing to underlying apps
+    # healthcheck:
+    #   disable: true
 
 networks:
   web:
