@@ -4,6 +4,7 @@
   "extends": [
     "config:best-practices",
     "group:allNonMajor",
+    "group:allDigest",
     ":semanticCommits",
     ":pinVersions"
   ],
