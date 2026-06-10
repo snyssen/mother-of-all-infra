@@ -2,6 +2,24 @@
 let
   layoutName = "single-btrfs-luks";
   cfg = config.disko."${layoutName}";
+
+  usbMountScript = ''
+    mkdir -m 0755 -p /key
+    echo "Waiting for USB key for LUKS decryption to appear..."
+    current_attempt=0
+    while true; do
+      current_attempt=$((current_attempt+1))
+      echo "  Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
+      if (ls /dev/disk/by-uuid | grep -e '${lib.strings.concatStringsSep "' -e '" cfg.usbKeysIds}' -q) || [ $current_attempt -eq '${builtins.toString cfg.usbMount.attempts}' ]; then
+        break
+      fi
+      sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
+    done
+    echo "Trying to mount USB key..."
+    ${lib.strings.concatMapStringsSep " || " (
+      id: "mount -n -t vfat -o ro -U ${id} /key"
+    ) cfg.usbKeysIds}
+  '';
 in
 {
   options.disko."${layoutName}" = {
@@ -44,6 +62,18 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key = {
+      description = "Mount USB key before LUKS activation";
+      wantedBy = [ "cryptsetup-pre.target" ];
+      before = [ "cryptsetup-pre.target" ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = usbMountScript;
+    };
+
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
       "uas"
@@ -86,25 +116,6 @@ in
                   settings = {
                     allowDiscards = true; # Allow TRIM operations on SSD
                     keyFile = "/key/${cfg.keyFilename}";
-                    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-                    fallbackToPassword = true;
-                    preOpenCommands = ''
-                      mkdir -m 0755 -p /key
-                      echo "Waiting for USB key for LUKS decryption to appear..."
-                      current_attempt=0
-                      while true; do
-                        current_attempt=$((current_attempt+1))
-                        echo "  Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
-                        if (ls /dev/disk/by-uuid | grep -e '${lib.strings.concatStringsSep "' -e '" cfg.usbKeysIds}' -q) || [ $current_attempt -eq '${builtins.toString cfg.usbMount.attempts}' ]; then
-                          break
-                        fi
-                        sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
-                      done
-                      echo "Trying to mount USB key..."
-                      ${lib.strings.concatMapStringsSep " || " (
-                        id: "mount -n -t vfat -o ro -U ${id} /key"
-                      ) cfg.usbKeysIds}
-                    '';
                   };
                   content = {
                     type = "btrfs";

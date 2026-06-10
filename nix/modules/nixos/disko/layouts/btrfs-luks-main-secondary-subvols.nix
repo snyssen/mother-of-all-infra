@@ -31,9 +31,6 @@ let
     storageMedia:
     {
       keyFile = "/key/${cfg.keyFilename}";
-      # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-      fallbackToPassword = true;
-      preOpenCommands = usbMountScript;
     }
     // lib.optionalAttrs (storageMedia == "ssd") {
       allowDiscards = true;
@@ -210,6 +207,18 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key = {
+      description = "Mount USB key before LUKS activation";
+      wantedBy = [ "cryptsetup-pre.target" ];
+      before = [ "cryptsetup-pre.target" ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = usbMountScript;
+    };
+
     assertions = [
       {
         assertion = builtins.length secondaryDiskNames == builtins.length (lib.unique secondaryDiskNames);

@@ -48,9 +48,6 @@ let
       luksDevice = i: "/dev/mapper/${luksName i}";
       luksSettings = {
         keyFile = "/key/${cfg.keyFilename}";
-        # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-        fallbackToPassword = true;
-        preOpenCommands = usbMountScript;
       }
       // lib.optionalAttrs (poolCfg.storageMedia == "ssd") {
         # Allow TRIM operations on SSDs/NVMe drives
@@ -241,6 +238,18 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key = {
+      description = "Mount USB key before LUKS activation";
+      wantedBy = [ "cryptsetup-pre.target" ];
+      before = [ "cryptsetup-pre.target" ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = usbMountScript;
+    };
+
     assertions =
       # Ensure each pool configured for btrfs RAID1 has at least 2 disks.
       (lib.mapAttrsToList (poolName: poolCfg: {
@@ -251,8 +260,7 @@ in
       # which are used under `disko.devices.disk` and merged via `//`.
       ++ (lib.mapAttrsToList (poolName: poolCfg: {
         assertion = !(builtins.elem poolName [ "main" ]);
-        message =
-          "disko.${layoutName}.pools.${poolName}: pool name '${poolName}' conflicts with reserved disk name 'main' used for the OS disk. Please choose a different pool name.";
+        message = "disko.${layoutName}.pools.${poolName}: pool name '${poolName}' conflicts with reserved disk name 'main' used for the OS disk. Please choose a different pool name.";
       }) cfg.pools);
 
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
@@ -298,9 +306,6 @@ in
                   settings = {
                     allowDiscards = true; # Allow TRIM operations on SSD
                     keyFile = "/key/${cfg.keyFilename}";
-                    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-                    fallbackToPassword = true;
-                    preOpenCommands = usbMountScript;
                   };
                   content = {
                     type = "btrfs";

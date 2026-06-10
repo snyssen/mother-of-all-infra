@@ -47,6 +47,39 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key-virtiofs = {
+      description = "Mount virtiofs key share before LUKS activation";
+      wantedBy = [ "cryptsetup-pre.target" ];
+      before = [ "cryptsetup-pre.target" ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        mkdir -m 0700 -p ${cfg.mountPoint}
+        echo "Mounting virtiofs key share (${cfg.virtiofsTag}) at ${cfg.mountPoint}..."
+        mount -n -o ro -t virtiofs ${cfg.virtiofsTag} ${cfg.mountPoint}
+      '';
+    };
+
+    boot.initrd.systemd.services.umount-luks-key-virtiofs = {
+      description = "Unmount virtiofs key share after LUKS activation";
+      wantedBy = [ "cryptsetup.target" ];
+      after = [ "cryptsetup.target" ];
+      before = [ "initrd-switch-root.target" ];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+      };
+      script = ''
+        if grep -q ' ${cfg.mountPoint} ' /proc/mounts; then
+          echo "Unmounting virtiofs key share at ${cfg.mountPoint}..."
+          umount ${cfg.mountPoint}
+        fi
+      '';
+    };
+
     # Kernel modules needed for mounting virtiofs shares in the initrd stage
     boot.initrd.kernelModules = [
       "virtio_pci"
@@ -88,29 +121,6 @@ in
                   settings = {
                     allowDiscards = true;
                     keyFile = "${cfg.mountPoint}/${cfg.keyFileName}";
-                    fallbackToPassword = true;
-                    # Mount the virtiofs key share read-only and without touching /etc/mtab.
-                    # The share is intentionally initrd-only: postOpenCommands unmounts it
-                    # immediately after cryptroot is opened so that it never appears in
-                    # stage-2.  Leaving it mounted causes `nh os switch` (and any NixOS
-                    # activation) to fail with:
-                    #   virtiofs: Unknown parameter 'mode'
-                    # because systemd synthesises a transient run-keys.mount unit from
-                    # /proc/self/mountinfo and, during activation, tries to re-apply mount
-                    # options that include mode=750 from an underlying ramfs layer as if
-                    # they were virtiofs options.
-                    preOpenCommands = ''
-                      mkdir -m 0700 -p ${cfg.mountPoint}
-                      echo "Mounting virtiofs key share (${cfg.virtiofsTag}) at ${cfg.mountPoint}..."
-                      mount -n -o ro -t virtiofs ${cfg.virtiofsTag} ${cfg.mountPoint}
-                    '';
-                    # Unmount immediately after cryptroot is opened so the virtiofs share
-                    # does not persist into stage-2.  See the comment above preOpenCommands
-                    # for the full explanation.
-                    postOpenCommands = ''
-                      echo "Unmounting virtiofs key share at ${cfg.mountPoint}..."
-                      umount ${cfg.mountPoint}
-                    '';
                   };
                   content = {
                     type = "btrfs";
