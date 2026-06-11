@@ -31,7 +31,6 @@
     flake.modules.nixos.grafana-alloy
   ];
 
-  # TODO: This layout won't work actually because this host's disk is very small, so we need to add an external disk and move the nix store there
   disko =
     let
       ly = "btrfs-luks-main-secondary-subvols";
@@ -46,6 +45,10 @@
           "8B34-7D3C" # Philips 8GB
           "9FBA-884A" # Generic Flash Disk (no casing)
         ];
+        usbMount = {
+          attempts = 12;
+          waitBetweenAttempts = 5;
+        };
         swap.enable = true;
         swap.size = "4G";
         secondaryDisks = [

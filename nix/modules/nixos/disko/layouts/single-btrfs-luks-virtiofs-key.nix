@@ -49,12 +49,14 @@ in
   config = lib.mkIf (config.disko.layout == layoutName) {
     boot.initrd.systemd.services.mount-luks-key-virtiofs = {
       description = "Mount virtiofs key share before LUKS activation";
-      wantedBy = [ "cryptsetup-pre.target" ];
-      before = [ "cryptsetup-pre.target" ];
+      wantedBy = [ "systemd-cryptsetup@cryptroot.service" ];
+      before = [ "systemd-cryptsetup@cryptroot.service" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
       };
       script = ''
         mkdir -m 0700 -p ${cfg.mountPoint}
@@ -65,12 +67,14 @@ in
 
     boot.initrd.systemd.services.umount-luks-key-virtiofs = {
       description = "Unmount virtiofs key share after LUKS activation";
-      wantedBy = [ "cryptsetup.target" ];
-      after = [ "cryptsetup.target" ];
+      wantedBy = [ "systemd-cryptsetup@cryptroot.service" ];
+      after = [ "systemd-cryptsetup@cryptroot.service" ];
       before = [ "initrd-switch-root.target" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig = {
         Type = "oneshot";
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
       };
       script = ''
         if grep -q ' ${cfg.mountPoint} ' /proc/mounts; then

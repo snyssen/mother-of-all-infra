@@ -9,21 +9,22 @@ let
   # multiple LUKS pre-open hooks run in sequence.
   usbMountScript = ''
     mkdir -m 0755 -p /key
-    if ! grep -q ' /key ' /proc/mounts; then
+    if [ ! -e "/key/${cfg.keyFilename}" ]; then
       echo "Waiting for USB key for LUKS decryption to appear..."
       current_attempt=0
-      while true; do
+      while [ $current_attempt -lt ${builtins.toString cfg.usbMount.attempts} ]; do
         current_attempt=$((current_attempt+1))
-        echo "  Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
-        if (ls /dev/disk/by-uuid | grep -e '${lib.strings.concatStringsSep "' -e '" cfg.usbKeysIds}' -q) || [ $current_attempt -eq '${builtins.toString cfg.usbMount.attempts}' ]; then
-          break
-        fi
+        echo "Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
+        for id in ${lib.strings.concatStringsSep " " cfg.usbKeysIds}; do
+          if [ -e "/dev/disk/by-uuid/$id" ]; then
+            echo "Trying /dev/disk/by-uuid/$id"
+            mount -n -t vfat -o ro "/dev/disk/by-uuid/$id" /key || true
+            [ -e "/key/${cfg.keyFilename}" ] && break
+          fi
+        done
+        [ -e "/key/${cfg.keyFilename}" ] && break
         sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
       done
-      echo "Trying to mount USB key..."
-      ${lib.strings.concatMapStringsSep " || " (
-        id: "mount -n -t vfat -o ro -U ${id} /key"
-      ) cfg.usbKeysIds}
     fi
   '';
 
@@ -135,6 +136,26 @@ let
       lib.filterAttrs (_: poolCfg: builtins.length poolCfg.disks >= 2) cfg.pools
     )
   );
+
+  poolLuksDeviceNames = lib.flatten (
+    lib.mapAttrsToList (
+      poolName: poolCfg:
+      lib.imap0 (
+        i: _:
+        "crypt-${poolName}-${builtins.toString i}"
+      ) poolCfg.disks
+    ) cfg.pools
+  );
+  poolCryptsetupUnits = lib.flatten (
+    lib.mapAttrsToList (
+      poolName: poolCfg:
+      lib.imap0 (
+        i: _:
+        "systemd-cryptsetup@crypt-${poolName}-${builtins.toString i}.service"
+      ) poolCfg.disks
+    ) cfg.pools
+  );
+  luksKeyDependencyUnits = [ "systemd-cryptsetup@cryptroot.service" ] ++ poolCryptsetupUnits;
 in
 {
   options.disko."${layoutName}" = {
@@ -240,12 +261,15 @@ in
   config = lib.mkIf (config.disko.layout == layoutName) {
     boot.initrd.systemd.services.mount-luks-key = {
       description = "Mount USB key before LUKS activation";
-      wantedBy = [ "cryptsetup-pre.target" ];
-      before = [ "cryptsetup-pre.target" ];
+      wantedBy = [ "initrd.target" ] ++ luksKeyDependencyUnits;
+      before = luksKeyDependencyUnits;
+
       unitConfig.DefaultDependencies = "no";
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
       };
       script = usbMountScript;
     };
