@@ -64,12 +64,15 @@ in
   config = lib.mkIf (config.disko.layout == layoutName) {
     boot.initrd.systemd.services.mount-luks-key = {
       description = "Mount USB key before LUKS activation";
-      wantedBy = [ "cryptsetup-pre.target" ];
-      before = [ "cryptsetup-pre.target" ];
+      wantedBy = [ "systemd-cryptsetup@cryptroot.service" ];
+      before = [ "systemd-cryptsetup@cryptroot.service" ];
+
       unitConfig.DefaultDependencies = "no";
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
       };
       script = usbMountScript;
     };
