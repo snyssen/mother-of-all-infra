@@ -26,6 +26,9 @@ let
         sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
       done
     fi
+    # Always exit 0: if key was found, cryptsetup will use it;
+    # if not found, cryptsetup will try the keyfile and fall back to password prompt.
+    exit 0
   '';
 
   mkLuksSettings =
@@ -96,13 +99,23 @@ let
     lib.map (d: builtins.attrValues d.mountpoints) cfg.secondaryDisks
   );
   secondaryLuksDeviceNames = lib.imap0 (
-    i: secondaryDisk:
-    "crypt-secondary-${builtins.toString i}-${secondaryDisk.name}"
+    i: secondaryDisk: "crypt-secondary-${builtins.toString i}-${secondaryDisk.name}"
   ) cfg.secondaryDisks;
-  secondaryCryptsetupUnits = lib.imap0 (
-    i: secondaryDisk:
-    "systemd-cryptsetup@crypt-secondary-${builtins.toString i}-${secondaryDisk.name}.service"
-  ) cfg.secondaryDisks;
+  mkCryptsetupUnitVariants =
+    mapperName:
+    let
+      escapedMapperName = lib.replaceStrings [ "-" ] [ "\\x2d" ] mapperName;
+    in
+    lib.unique [
+      "systemd-cryptsetup@${mapperName}.service"
+      "systemd-cryptsetup@${escapedMapperName}.service"
+    ];
+  secondaryCryptsetupUnits = lib.flatten (
+    lib.imap0 (
+      i: secondaryDisk:
+      mkCryptsetupUnitVariants "crypt-secondary-${builtins.toString i}-${secondaryDisk.name}"
+    ) cfg.secondaryDisks
+  );
   luksKeyDependencyUnits = [ "systemd-cryptsetup@cryptroot.service" ] ++ secondaryCryptsetupUnits;
   reservedMainMountpoints = [
     "/"
@@ -219,8 +232,12 @@ in
   config = lib.mkIf (config.disko.layout == layoutName) {
     boot.initrd.systemd.services.mount-luks-key = {
       description = "Mount USB key before LUKS activation";
-      wantedBy = [ "initrd.target" ] ++ luksKeyDependencyUnits;
-      before = luksKeyDependencyUnits;
+      wantedBy = [
+        "initrd.target"
+        "cryptsetup-pre.target"
+      ]
+      ++ luksKeyDependencyUnits;
+      before = [ "cryptsetup-pre.target" ] ++ luksKeyDependencyUnits;
 
       unitConfig.DefaultDependencies = "no";
       serviceConfig = {
