@@ -43,6 +43,7 @@ in
     flake.modules.nixos.logitech
     flake.modules.nixos.stylix
     flake.modules.nixos.gnome
+    flake.modules.nixos.cosmic
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
@@ -154,6 +155,14 @@ in
   };
 
   specialisation = {
+    cosmic.configuration = with theming.dark; {
+      gnome.enable = false;
+      cosmic.enable = true;
+      stylix = {
+        wallpaper = lib.mkForce wallpaper;
+        schemeName = lib.mkForce scheme;
+      };
+    };
     gaming.configuration = {
       imports = [
         flake.modules.nixos.gaming
