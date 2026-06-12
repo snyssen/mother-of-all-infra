@@ -76,13 +76,6 @@
     };
   };
 
-  # Prevent systemd-resolved from binding local port 53 (127.0.0.53),
-  # which conflicts with Technitium binding on 0.0.0.0:53.
-  # THIS SETTING WAS REMOVED IN nixos 26.05
-  # services.resolved.extraConfig = ''
-  #   DNSStubListener=no
-  # '';
-
   tailscale.autoconnect = {
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
