@@ -18,8 +18,11 @@ let
         for id in ${lib.strings.concatStringsSep " " cfg.usbKeysIds}; do
           if [ -e "/dev/disk/by-uuid/$id" ]; then
             echo "Trying /dev/disk/by-uuid/$id"
+            umount /key 2>/dev/null || true
             mount -n -t vfat -o ro "/dev/disk/by-uuid/$id" /key || true
-            [ -e "/key/${cfg.keyFilename}" ] && break
+            if [ -e "/key/${cfg.keyFilename}" ]; then
+              break
+            fi
           fi
         done
         [ -e "/key/${cfg.keyFilename}" ] && break
@@ -98,9 +101,6 @@ let
   secondaryMountpoints = lib.flatten (
     lib.map (d: builtins.attrValues d.mountpoints) cfg.secondaryDisks
   );
-  secondaryLuksDeviceNames = lib.imap0 (
-    i: secondaryDisk: "crypt-secondary-${builtins.toString i}-${secondaryDisk.name}"
-  ) cfg.secondaryDisks;
   mkCryptsetupUnitVariants =
     mapperName:
     let
