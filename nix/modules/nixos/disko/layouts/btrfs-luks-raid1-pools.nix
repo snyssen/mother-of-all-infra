@@ -9,22 +9,29 @@ let
   # multiple LUKS pre-open hooks run in sequence.
   usbMountScript = ''
     mkdir -m 0755 -p /key
-    if ! grep -q ' /key ' /proc/mounts; then
+    if [ ! -e "/key/${cfg.keyFilename}" ]; then
       echo "Waiting for USB key for LUKS decryption to appear..."
       current_attempt=0
-      while true; do
+      while [ $current_attempt -lt ${builtins.toString cfg.usbMount.attempts} ]; do
         current_attempt=$((current_attempt+1))
-        echo "  Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
-        if (ls /dev/disk/by-uuid | grep -e '${lib.strings.concatStringsSep "' -e '" cfg.usbKeysIds}' -q) || [ $current_attempt -eq '${builtins.toString cfg.usbMount.attempts}' ]; then
-          break
-        fi
+        echo "Attempt $current_attempt/${builtins.toString cfg.usbMount.attempts}"
+        for id in ${lib.strings.concatStringsSep " " cfg.usbKeysIds}; do
+          if [ -e "/dev/disk/by-uuid/$id" ]; then
+            echo "Trying /dev/disk/by-uuid/$id"
+            umount /key 2>/dev/null || true
+            mount -n -t vfat -o ro "/dev/disk/by-uuid/$id" /key || true
+            if [ -e "/key/${cfg.keyFilename}" ]; then
+              break
+            fi
+          fi
+        done
+        [ -e "/key/${cfg.keyFilename}" ] && break
         sleep ${builtins.toString cfg.usbMount.waitBetweenAttempts}
       done
-      echo "Trying to mount USB key..."
-      ${lib.strings.concatMapStringsSep " || " (
-        id: "mount -n -t vfat -o ro -U ${id} /key"
-      ) cfg.usbKeysIds}
     fi
+    # Always exit 0: if key was found, cryptsetup will use it;
+    # if not found, cryptsetup will try the keyfile and fall back to password prompt.
+    exit 0
   '';
 
   # Build all disko disk entries for a single named pool.
@@ -48,9 +55,6 @@ let
       luksDevice = i: "/dev/mapper/${luksName i}";
       luksSettings = {
         keyFile = "/key/${cfg.keyFilename}";
-        # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-        fallbackToPassword = true;
-        preOpenCommands = usbMountScript;
       }
       // lib.optionalAttrs (poolCfg.storageMedia == "ssd") {
         # Allow TRIM operations on SSDs/NVMe drives
@@ -138,6 +142,25 @@ let
       lib.filterAttrs (_: poolCfg: builtins.length poolCfg.disks >= 2) cfg.pools
     )
   );
+
+  mkCryptsetupUnitVariants =
+    mapperName:
+    let
+      escapedMapperName = lib.replaceStrings [ "-" ] [ "\\x2d" ] mapperName;
+    in
+    lib.unique [
+      "systemd-cryptsetup@${mapperName}.service"
+      "systemd-cryptsetup@${escapedMapperName}.service"
+    ];
+  poolCryptsetupUnits = lib.flatten (
+    lib.mapAttrsToList (
+      poolName: poolCfg:
+      lib.flatten (
+        lib.imap0 (i: _: mkCryptsetupUnitVariants "crypt-${poolName}-${builtins.toString i}") poolCfg.disks
+      )
+    ) cfg.pools
+  );
+  luksKeyDependencyUnits = [ "systemd-cryptsetup@cryptroot.service" ] ++ poolCryptsetupUnits;
 in
 {
   options.disko."${layoutName}" = {
@@ -241,6 +264,25 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key = {
+      description = "Mount USB key before LUKS activation";
+      wantedBy = [
+        "initrd.target"
+        "cryptsetup-pre.target"
+      ]
+      ++ luksKeyDependencyUnits;
+      before = [ "cryptsetup-pre.target" ] ++ luksKeyDependencyUnits;
+
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
+      };
+      script = usbMountScript;
+    };
+
     assertions =
       # Ensure each pool configured for btrfs RAID1 has at least 2 disks.
       (lib.mapAttrsToList (poolName: poolCfg: {
@@ -251,8 +293,7 @@ in
       # which are used under `disko.devices.disk` and merged via `//`.
       ++ (lib.mapAttrsToList (poolName: poolCfg: {
         assertion = !(builtins.elem poolName [ "main" ]);
-        message =
-          "disko.${layoutName}.pools.${poolName}: pool name '${poolName}' conflicts with reserved disk name 'main' used for the OS disk. Please choose a different pool name.";
+        message = "disko.${layoutName}.pools.${poolName}: pool name '${poolName}' conflicts with reserved disk name 'main' used for the OS disk. Please choose a different pool name.";
       }) cfg.pools);
 
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
@@ -298,9 +339,6 @@ in
                   settings = {
                     allowDiscards = true; # Allow TRIM operations on SSD
                     keyFile = "/key/${cfg.keyFilename}";
-                    # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-                    fallbackToPassword = true;
-                    preOpenCommands = usbMountScript;
                   };
                   content = {
                     type = "btrfs";

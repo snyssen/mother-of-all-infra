@@ -2,6 +2,17 @@
 let
   layoutName = "legacy-gaming";
   cfg = config.disko."${layoutName}";
+
+  usbMountScript = ''
+    mkdir -m 0755 -p /key
+    if ! grep -q ' /key ' /proc/mounts; then
+      echo "Trying to mount USB key for LUKS decryption..."
+      sleep 3
+      ${lib.strings.concatMapStringsSep " || " (
+        id: "mount -n -t vfat -o ro -U ${id} /key"
+      ) cfg.usbKeysIds}
+    fi
+  '';
 in
 {
   options.disko."${layoutName}" = {
@@ -17,6 +28,21 @@ in
   };
 
   config = lib.mkIf (config.disko.layout == layoutName) {
+    boot.initrd.systemd.services.mount-luks-key = {
+      description = "Mount USB key before LUKS activation";
+      wantedBy = [ "systemd-cryptsetup@crypted-main.service" ];
+      before = [ "systemd-cryptsetup@crypted-main.service" ];
+
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        StandardOutput = "journal+console";
+        StandardError = "journal+console";
+      };
+      script = usbMountScript;
+    };
+
     # Kernel modules needed for mounting USB VFAT devices in initrd stage
     boot.initrd.kernelModules = [
       "uas"
@@ -31,19 +57,6 @@ in
       let
         luksSettings = {
           keyFile = "/key/${cfg.keyFilename}";
-          # Inspired from: https://wiki.nixos.org/wiki/Full_Disk_Encryption#Option_2:_Copy_Key_as_file_onto_a_vfat_USB_stick
-          fallbackToPassword = true;
-          preOpenCommands = ''
-            mkdir -m 0755 -p /key
-            # Check if /key is not already mounted
-            if [[ ! $(findmnt -M /key) ]]; then
-              echo "Trying to mount USB key for LUKS decryption..."
-              sleep 3 # Waiting for USB to be ready
-              ${lib.strings.concatMapStringsSep " || " (
-                id: "mount -n -t vfat -o ro -U ${id} /key"
-              ) cfg.usbKeysIds}
-            fi
-          '';
         };
       in
       {
