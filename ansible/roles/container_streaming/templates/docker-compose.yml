@@ -1,6 +1,6 @@
 services:
   jellyfin:
-    image: ghcr.io/jellyfin/jellyfin:10.11.10@sha256:6497f0245de93fac642926c065b427362ca5e626e659f690516599c8c3817a38
+    image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
     restart: unless-stopped
     container_name: jellyfin
     networks:
@@ -104,7 +104,7 @@ services:
   #   restart: "unless-stopped"
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.0.3@sha256:e22385a11b74c70ef842a8bb72aa1b137d12c3488ccf2fede0d1ff58461e3eb7
+    image: lscr.io/linuxserver/sabnzbd:5.0.4@sha256:c2f1826a3d231b9506554a60447e763157fd8ba4f600a4a864d6d0ddae00a0aa
     container_name: usenet
     network_mode: service:vpn
     environment:
@@ -135,7 +135,7 @@ services:
       - vpn
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.1.1@sha256:c0a4335d4249b46102f64cf6fa27ffc3bddfd9138fac1e4ddf238afd37f02d1f
+    image: lscr.io/linuxserver/radarr:6.2.1@sha256:4c490ccd44d31feb49dc4cc542f2148a420fc1ae0c1ba94e59b39ba4bf112716
     container_name: radarr
     environment:
       - PUID=33
@@ -167,7 +167,7 @@ services:
       - vpn
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.3.5@sha256:2489c6dbaf11e3a6d71aeb2e6980d04193d4af611aa7064a974851222fd41722
+    image: lscr.io/linuxserver/prowlarr:2.4.0@sha256:a46d0ce0a8236bc4e065fe7c91a55d026c9d849620c5845250519b977d8857f3
     container_name: prowlarr
     environment:
       - PUID=33
@@ -213,7 +213,7 @@ services:
       - vpn
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.51@sha256:057c89fa90aa7fd82a8c516daca31798bbb6c19e218dd87fde2a7232e8bb7481
+    image: thewicklowwolf/lidatube:0.2.52@sha256:de3d721758165cdd818fa058417ce556878bad2b9a478c8284040aa9b05a88f8
     container_name: lidatube
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.1.2@sha256:fb99b12ec39e82a826ca7a167092bf8cd53d98f61c87cdd52c09ad68f978bc66
+    image: ghcr.io/neptunehub/audiomuse-ai:2.1.5@sha256:f02644ecc51b24f99beec819214308e280cb5f1309af66b0952e3f5788984741
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.1.2@sha256:fb99b12ec39e82a826ca7a167092bf8cd53d98f61c87cdd52c09ad68f978bc66
+    image: ghcr.io/neptunehub/audiomuse-ai:2.1.5@sha256:f02644ecc51b24f99beec819214308e280cb5f1309af66b0952e3f5788984741
     container_name: audiomuse_worker
     networks:
       - db
