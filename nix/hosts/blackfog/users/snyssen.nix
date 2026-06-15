@@ -33,6 +33,8 @@
   programs.btop.enable = true;
   programs.bat.enable = true;
 
+  programs.keepassxc.enable = true;
+
   home.packages = with pkgs; [
     librewolf
     onlyoffice-desktopeditors
