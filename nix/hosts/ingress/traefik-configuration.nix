@@ -45,6 +45,8 @@ let
   };
 in
 {
+  traefik.ping.enable = true;
+
   traefik.tcpEntrypoints = lib.mapAttrs (_: svc: {
     port = svc.port;
   }) proxiedTCPServices;
@@ -70,6 +72,11 @@ in
           rule = "Host(`ingress.snyssen.be`)";
           service = "api@internal";
           middlewares = [ "ip-allowlist" ];
+        };
+        ping = {
+          entryPoints = [ "websecure" ];
+          rule = "Host(`ingress.snyssen.be`) && Path(`/ping`)";
+          service = "ping@internal";
         };
         prometheus-node-exporter = {
           entryPoints = [ "websecure" ];

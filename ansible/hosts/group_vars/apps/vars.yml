@@ -475,7 +475,7 @@ monitoring__uptime_monitors:
   - name: technitium-secondary
     url: https://technitium-secondary.taild023c5.ts.net:53443/
   - name: Ingress
-    url: https://ingress.snyssen.be
+    url: https://ingress.snyssen.be/ping
 monitoring__umami_db_pass: "{{ vault_monitoring__umami_db_pass }}"
 monitoring__umami_app_secret: "{{ vault_monitoring__umami_app_secret }}"
 monitoring__healthchecks_project_uuid: "{{ vault_monitoring__healthchecks_project_uuid }}"

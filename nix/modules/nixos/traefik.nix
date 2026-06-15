@@ -4,6 +4,7 @@ let
 in
 {
   options.traefik = {
+    ping.enable = lib.mkEnableOption "the ping endpoint for health checks.";
     letsencrypt = {
       email = lib.mkOption {
         default = "admin@snyssen.be";
@@ -114,6 +115,9 @@ in
             })
           ];
           api.dashboard = true;
+          ping = lib.mkIf cfg.ping.enable {
+            entryPoint = "websecure";
+          };
           accesslog = {
             filePath = "/var/log/traefik/access.log";
             # format = "json";
