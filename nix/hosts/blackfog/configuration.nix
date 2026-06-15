@@ -162,6 +162,9 @@ in
         wallpaper = lib.mkForce wallpaper;
         schemeName = lib.mkForce scheme;
       };
+      environment.systemPackages = [
+        pkgs.flameshot
+      ];
     };
     gaming.configuration = {
       imports = [
