@@ -90,8 +90,8 @@ in
   };
 
   grub.timeout = 10;
-  gnome = {
-    enable = lib.mkDefault true;
+  cosmic = {
+    enable = lib.mkDefault false;
     autoLogin.enable = true;
   };
   shell.default = "fish";
@@ -155,16 +155,14 @@ in
   };
 
   specialisation = {
-    cosmic.configuration = with theming.dark; {
-      gnome.enable = false;
-      cosmic.enable = true;
+    gnome.configuration = with theming.dark; {
+      cosmic.enable = false;
+      gnome.enable = true;
+      gnome.autoLogin.enable = true;
       stylix = {
         wallpaper = lib.mkForce wallpaper;
         schemeName = lib.mkForce scheme;
       };
-      environment.systemPackages = [
-        pkgs.flameshot
-      ];
     };
     gaming.configuration = {
       imports = [
