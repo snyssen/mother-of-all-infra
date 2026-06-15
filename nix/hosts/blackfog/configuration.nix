@@ -91,7 +91,7 @@ in
 
   grub.timeout = 10;
   cosmic = {
-    enable = lib.mkDefault false;
+    enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
   shell.default = "fish";
