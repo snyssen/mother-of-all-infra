@@ -77,7 +77,7 @@ services:
       - "{{ docker_mounts_directory }}/audiobookshelf/metadata:/metadata"
 
   torrent:
-    image: lscr.io/linuxserver/transmission:4.1.2@sha256:ec464a74779392475c7243e7bad7d3d87db5c7bd332bf4dda7e091a84f16c3a9
+    image: lscr.io/linuxserver/transmission:4.1.2@sha256:9b229b05a4027a5548285f66b2ba4cbf12bdef83ddac97f726afa94fbae308c0
     container_name: torrent
     network_mode: service:vpn
     environment:
@@ -104,7 +104,7 @@ services:
   #   restart: "unless-stopped"
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.0.4@sha256:c2f1826a3d231b9506554a60447e763157fd8ba4f600a4a864d6d0ddae00a0aa
+    image: lscr.io/linuxserver/sabnzbd:5.0.4@sha256:3df6abbd61d82710f91997b66178405862939a4009e8db212fa4f0a7a65f2047
     container_name: usenet
     network_mode: service:vpn
     environment:
@@ -135,7 +135,7 @@ services:
       - vpn
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.2.1@sha256:4c490ccd44d31feb49dc4cc542f2148a420fc1ae0c1ba94e59b39ba4bf112716
+    image: lscr.io/linuxserver/radarr:6.2.1@sha256:1e95b5c13fe015361a9ae1c4d99fc2336816790aaea60fa74b2ffebe076a69e0
     container_name: radarr
     environment:
       - PUID=33
@@ -167,7 +167,7 @@ services:
       - vpn
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.4.0@sha256:a46d0ce0a8236bc4e065fe7c91a55d026c9d849620c5845250519b977d8857f3
+    image: lscr.io/linuxserver/prowlarr:2.4.0@sha256:3950b5e48cf4ba9dab78fe14038dd7f062e66b7b4ab368b02c94a13f6a3dae9f
     container_name: prowlarr
     environment:
       - PUID=33
@@ -182,7 +182,7 @@ services:
       - vpn
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.5.6@sha256:4b5e510042bf471c8bafab89cada9774fba2fb25f16ec64235151cacbe847c10
+    image: lscr.io/linuxserver/bazarr:1.5.6@sha256:aaaa087af75a73b7ac765dcc5d748874cfafdb93c23ec9f64fbb481dea291b23
     container_name: bazarr
     environment:
       - PUID=33
@@ -305,7 +305,7 @@ services:
       - peertube_redis
 
   peertube_redis:
-    image: redis:8-alpine@sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1
+    image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
     container_name: peertube_redis
     restart: unless-stopped
     networks:
@@ -314,7 +314,7 @@ services:
       - "{{ docker_mounts_directory }}/peertube/redis:/data"
 
   audiomuse_redis:
-    image: redis:8-alpine@sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1
+    image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
     container_name: audiomuse_redis
     restart: unless-stopped
     networks:
