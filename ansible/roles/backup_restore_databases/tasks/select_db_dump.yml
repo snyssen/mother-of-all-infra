@@ -8,6 +8,27 @@
     use_regex: true
   register: available_dump_files
 
+- name: "Ensuring at least one dump exists for {{ db.name }}"
+  ansible.builtin.assert:
+    that:
+      - available_dump_files.files | length > 0
+    fail_msg: >-
+      No local dump found in {{ dump_dir }} for {{ db.name }}.
+      Restore the dump files first (for example with
+      ansible/playbooks/backup-restore.ansible.yml), then re-run this playbook.
+
+- name: "Selecting latest dump for {{ db.name }}"
+  ansible.builtin.set_fact:
+    selected_dump: >-
+      {{
+        available_dump_files.files
+        | sort(attribute='mtime', reverse=true)
+        | map(attribute='path')
+        | first
+        | regex_replace('^' + dump_dir + '/', '')
+      }}
+  when: db_restore_select_latest | default(false)
+
 - ansible.builtin.pause:
     prompt: |-
 
@@ -17,9 +38,11 @@
 
       -> Please select a dump in the list above for restoring the {{ db.name }} database
   register: selected_input
+  when: not (db_restore_select_latest | default(false))
 
 - ansible.builtin.set_fact:
     selected_dump: "{{ selected_input.user_input }}"
+  when: not (db_restore_select_latest | default(false))
 
 - ansible.builtin.assert:
     that:

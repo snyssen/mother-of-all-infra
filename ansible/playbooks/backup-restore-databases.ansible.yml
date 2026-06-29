@@ -1,0 +1,12 @@
+- hosts: apps
+  vars:
+    db_restore_select_latest: true
+  tasks:
+    - name: Explain restore workflow
+      ansible.builtin.debug:
+        msg:
+          - Restoring postgres-related databases from local dumps.
+          - If dumps are missing, restore files first with backup-restore.ansible.yml.
+    - name: Restore databases
+      ansible.builtin.include_role:
+        name: backup_restore_databases
