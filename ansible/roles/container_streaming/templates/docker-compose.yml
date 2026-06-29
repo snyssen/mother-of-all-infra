@@ -120,7 +120,7 @@ services:
       - vpn
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:4.0.17@sha256:02bc962946fef994e67a38152446df25c10a52f8583aefeeb6467f9dd44cab99
+    image: lscr.io/linuxserver/sonarr:4.0.19@sha256:fbb15bb4fb14d1ffe017f6be0e3fed8f1b300e4687e329767da0b61f36ba1eed
     container_name: sonarr
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.2.0@sha256:ec1824ae02198756ce4bd84c1cc67f1eec074084d81d73f8fb4bd831449e3de1
+    image: ghcr.io/neptunehub/audiomuse-ai:2.3.2@sha256:c464156f2c97c7834fd00930bc4d018a2561d6365046f11e128736618f18461b
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.2.0@sha256:ec1824ae02198756ce4bd84c1cc67f1eec074084d81d73f8fb4bd831449e3de1
+    image: ghcr.io/neptunehub/audiomuse-ai:2.3.2@sha256:c464156f2c97c7834fd00930bc4d018a2561d6365046f11e128736618f18461b
     container_name: audiomuse_worker
     networks:
       - db
