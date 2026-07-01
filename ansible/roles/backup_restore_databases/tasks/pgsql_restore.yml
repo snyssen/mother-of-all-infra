@@ -4,6 +4,13 @@
     dump_dir: "/mnt/storage/backups/postgres"
     dump_pattern: "{{ db.name }}-.+\\.sql\\.gz$"
 
+- name: "Ensure database {{ db.name }} exists"
+  community.docker.docker_container_exec:
+    container: "postgres_backups"
+    command: >-
+      bash -c
+      "PGPASSWORD={{ db__pg_password }} createdb -h postgres -U postgres -O {{ db.name }} {{ db.name }} 2>/dev/null || true"
+
 - name: "Restoring database {{ db.name }}"
   community.docker.docker_container_exec:
     container: "postgres_backups"

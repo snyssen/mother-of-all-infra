@@ -14,7 +14,7 @@
     label: "{'name': '{{ db.name }}', 'password': '***'}"
   when:
     (db_restore_include is not defined and db_restore_exclude is not defined)
-    or (db.name in db_restore_include and db.name not in db_restore_exclude)
+    or (db.name in db_restore_include | default([])  and db.name not in db_restore_exclude | default([]) )
 
 - name: Restore Immich database
   ansible.builtin.include_tasks: immich_restore.yml

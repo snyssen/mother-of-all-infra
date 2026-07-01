@@ -30,6 +30,7 @@ All the necessary instructions, docker files, scripts, etc. necessary for buildi
       - [Backup - list](#backup---list)
       - [Backup - integrity check](#backup---integrity-check)
       - [Backup - restore](#backup---restore)
+      - [Backup - restore databases](#backup---restore-databases)
     - [(old) Backup playbooks](#old-backup-playbooks)
       - [(old) Backup - run](#old-backup---run)
       - [(old) Backup - restore](#old-backup---restore)
@@ -242,6 +243,19 @@ ansible-playbook playbooks/backup-restore.ansible.yml -e '{"backup_backend":"bac
 - `backup_location` Specify the [location](https://autorestic.vercel.app/location) to restore.
 - `backup_snapshot` (optional) Specify the snapshot ID to restore. Snapshot IDs can be found using the [Backup - list](#backup---list) command. If left unset, restores the latest.
 - `backup_restore_directory` (optional) Specify another root directory in which to restore the backup. if left unset, will restore using `/` as root, i.e. it will restore the files in their original location. When unset, it might be useful to enable `backup_replace` to ensure a proper restore.
+
+#### Backup - restore databases
+
+Restores all postgres-related databases from local dump files on the apps server.
+
+```bash
+ansible-playbook playbooks/backup-restore-databases.ansible.yml [-e '{"db_restore_include":["nextcloud"],"db_restore_exclude":["recipes"]}']
+```
+
+- Uses the latest dump per database by default.
+- If no local dumps are available, restore backup files first with [Backup - restore](#backup---restore), then run this playbook.
+- `db_restore_include` (optional): databases to restore. If set, only listed databases are restored.
+- `db_restore_exclude` (optional): databases to skip.
 
 ### (old) Backup playbooks
 
