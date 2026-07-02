@@ -9,13 +9,13 @@
     container: "postgres_backups"
     command: >-
       bash -c
-      "PGPASSWORD={{ db__pg_password }} createdb -h postgres -U postgres -O {{ db.name }} {{ db.name }} 2>/dev/null || true"
+      "PGPASSWORD='{{ db__pg_password }}' createdb -h postgres -U postgres -O {{ db.name }} {{ db.name }} 2>/dev/null || true"
 
 - name: "Restoring database {{ db.name }}"
   community.docker.docker_container_exec:
     container: "postgres_backups"
     command: >-
       bash -c
-      "PGPASSWORD={{ db.password }}
+      "PGPASSWORD='{{ db.password }}'
       pg_restore --no-privileges --no-owner -h postgres -U {{ db.name }} -d {{ db.name }} --clean --if-exists
       /backups/{{ selected_dump }}"
