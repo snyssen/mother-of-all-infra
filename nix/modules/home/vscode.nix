@@ -119,6 +119,17 @@ in
               "command" = "editor.action.copyLinesUpAction";
               "when" = "editorTextFocus && !editorReadonly";
             }
+            # Disable Ansible lightspeed hotkeys that conflict with VS Code defaults...
+            {
+              "key" = "tab";
+              "command" = "-ansible.lightspeed.inlineSuggest.accept";
+              "when" = "inlineSuggestionVisible && editorLangId == 'ansible'";
+            }
+            {
+              "key" = "escape";
+              "command" = "-ansible.lightspeed.inlineSuggest.hide";
+              "when" = "inlineSuggestionVisible && editorLangId == 'ansible'";
+            }
           ];
         in
         {
@@ -145,6 +156,14 @@ in
             userSettings = lib.mkMerge [
               {
                 "redhat.telemetry.enabled" = false;
+                "yaml.disableSchemaDetection" = [
+                  "**/.github/workflows/*.yml"
+                  "**/.github/workflows/*.yaml"
+                  "**/.gitea/workflows/*.yml"
+                  "**/.gitea/workflows/*.yaml"
+                  "**/.forgejo/workflows/*.yml"
+                  "**/.forgejo/workflows/*.yaml"
+                ];
               }
               defaultUserSettings
             ];

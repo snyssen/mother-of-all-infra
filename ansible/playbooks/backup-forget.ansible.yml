@@ -7,10 +7,13 @@
       when:
         - backup_locations is defined
         - backup_locations | length > 0
-    - name: run autorestic backup
+    - name: run autorestic forget
       become: true
-      ansible.builtin.shell: |-
-        /root/scripts/autorestic_log_wrapper.sh autorestic --ci backup {{ backup_locations_args if backup_locations_args is defined else '-a' }}
+      ansible.builtin.shell: >-
+        /root/scripts/autorestic_log_wrapper.sh autorestic --ci forget
+        {{ backup_locations_args if backup_locations_args is defined else '-a' }}
+        {{ '--dry-run' if (backup_dry_run | default(false)) }}
+        {{ '--prune' if (backup_prune | default(true)) }}
       register: returned_value
     - name: Showing stdoud
       ansible.builtin.debug:

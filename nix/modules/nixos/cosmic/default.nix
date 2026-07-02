@@ -34,6 +34,8 @@ in
     environment.systemPackages = with pkgs; [
       cosmic-ext-applet-caffeine
       cosmic-ext-applet-privacy-indicator
+
+      nautilus # Cosmic Files still has a few bugs, in particular when extracting archive or connecting to network storage, so I prefer Nautilus for those tasks.
     ];
   };
 }
