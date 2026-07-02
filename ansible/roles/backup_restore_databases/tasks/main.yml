@@ -6,6 +6,11 @@
     stacks_include:
       - databases
 
+- name: fill variables
+  ansible.builtin.set_fact:
+    # if db_restore_include is not defined, set it to all databases
+    db_restore_include: "{{ db_restore_include | default (db__pg_databases | map(attribute='name') | list) }}"
+
 - name: Selecting pgsql databases
   ansible.builtin.include_tasks: pgsql_restore.yml
   loop: "{{ db__pg_databases }}"
@@ -14,7 +19,7 @@
     label: "{'name': '{{ db.name }}', 'password': '***'}"
   when:
     (db_restore_include is not defined and db_restore_exclude is not defined)
-    or (db.name in db_restore_include | default([])  and db.name not in db_restore_exclude | default([]) )
+    or (db.name in db_restore_include  and db.name not in db_restore_exclude | default([]) )
 
 - name: Restore Immich database
   ansible.builtin.include_tasks: immich_restore.yml
@@ -26,7 +31,7 @@
     label: "{'name': '{{ db.name }}', 'password': '***'}"
   when:
     (db_restore_include is not defined and db_restore_exclude is not defined)
-    or (db.name in db_restore_include | default([]) and db.name not in db_restore_exclude | default([]))
+    or (db.name in db_restore_include and db.name not in db_restore_exclude | default([]))
 
 - name: Restore Dawarich database
   ansible.builtin.include_tasks: dawarich_restore.yml
@@ -38,4 +43,4 @@
     label: "{'name': '{{ db.name }}', 'password': '***'}"
   when:
     (db_restore_include is not defined and db_restore_exclude is not defined)
-    or (db.name in db_restore_include | default([]) and db.name not in db_restore_exclude | default([]))
+    or (db.name in db_restore_include and db.name not in db_restore_exclude | default([]))
