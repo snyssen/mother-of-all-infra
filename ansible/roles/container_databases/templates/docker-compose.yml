@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_PASSWORD: "{{ db__pg_password }}"
     volumes:
-      - "{{ docker_mounts_directory }}/databases/postgres/data:/var/lib/postgresql/data"
+      - "{{ docker_mounts_directory }}/databases/postgres/data:/var/lib/postgresql"
     # Expose port directly on host so ansible can connect to manage databases
     ports:
       - "127.0.0.1:5432:5432"
