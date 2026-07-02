@@ -1,12 +1,12 @@
 services:
   postgres:
-    image: postgres:16.14@sha256:fe03a7605299a34ddf5e4f285dff78c3d7190a576b3c6b46f2fcff69f4bffd54
+    image: postgres:18.4@sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20
     container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: "{{ db__pg_password }}"
     volumes:
-      - "{{ docker_mounts_directory }}/databases/postgres/data:/var/lib/postgresql/data"
+      - "{{ docker_mounts_directory }}/databases/postgres/data:/var/lib/postgresql"
     # Expose port directly on host so ansible can connect to manage databases
     ports:
       - "127.0.0.1:5432:5432"
