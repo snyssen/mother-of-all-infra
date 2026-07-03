@@ -468,12 +468,12 @@ monitoring__uptime_monitors:
     url: http://backup.snyssen.be:8000/metrics
   - name: home assisstant
     url: https://hass.snyssen.be
-  - name: router
-    url: http://192.168.1.1
+  # - name: router
+  #   url: http://192.168.1.1
   - name: technitium-primary
-    url: https://technitium-primary.taild023c5.ts.net:53443/
+    url: http://192.168.1.2:5380/
   - name: technitium-secondary
-    url: https://technitium-secondary.taild023c5.ts.net:53443/
+    url: http://192.168.1.3:5380/
   - name: Ingress
     url: https://ingress.snyssen.be/ping
 monitoring__umami_db_pass: "{{ vault_monitoring__umami_db_pass }}"
