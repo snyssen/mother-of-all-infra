@@ -43,7 +43,7 @@ services:
     mem_limit: 1g
 
   postgres_backups:
-    image: prodrigestivill/postgres-backup-local:16-alpine@sha256:08e7b70879af45a89305b91f4600cfbc88da2419a65948df870cddb082b8cf83
+    image: prodrigestivill/postgres-backup-local:18@sha256:f70742ebe42b2277689b028d1fd15aa80f77cffa01da163cc9f85a6ff1866e7f
     restart: unless-stopped
     container_name: postgres_backups
     networks:
