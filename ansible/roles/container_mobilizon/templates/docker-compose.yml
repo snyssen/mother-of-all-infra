@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
 
   mobilizon:
-    image: kaihuri/mobilizon:5.2.3@sha256:db0e208b1358d7bc5f64888febf0618ca4c7dbda07eb88d8160c3bc9da5e0446
+    image: kaihuri/mobilizon:5.2.4@sha256:005e52dfe71c62ec3b90ed5c97898b0f11cf91b1bc5319c0dfb6ce0853414223
     environment:
       MOBILIZON_INSTANCE_NAME: "events.{{ main_domain }}"
       MOBILIZON_INSTANCE_HOST: "events.{{ main_domain }}"
