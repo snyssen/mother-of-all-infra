@@ -36,3 +36,11 @@
   loop:
     - name: paperless
       url: "https://paperless.{{ main_domain }}"
+
+- name: Add document export cron job
+  ansible.builtin.cron:
+    name: "Paperless export"
+    minute: "43"
+    hour: "22"
+    job: >-
+      docker exec paperless document_exporter ../export
