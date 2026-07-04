@@ -14,8 +14,6 @@ apps:
           src: /dev/sdd
         - path: /mnt/parity1
           src: /dev/sdd
-      backbone__acme_dns_challenge__enabled: true
-      vault_backbone__acme_http_challenge__enabled: false
 
 backup:
   hosts:

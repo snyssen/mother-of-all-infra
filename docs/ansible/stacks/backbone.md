@@ -59,3 +59,29 @@ The Backbone stack is the entry point for nearly all web-based services in the i
 - Certificates are stored at `{{ docker_mounts_directory }}/traefik/certs/`
 - DNS API credentials are passed via environment variables
 - The Docker socket is mounted to enable service discovery
+
+## ACME Multi-Provider Configuration
+
+Traefik ACME is configured with multiple resolvers so each domain can use its own DNS challenge provider.
+
+- `backbone__acme_default_resolver`: resolver used as default on the `websecure` entrypoint
+- `backbone__acme_domains`: domains and wildcard SANs, each mapped to a resolver
+- `backbone__acme_resolvers`: resolver definitions (CA server, storage file, DNS provider, DNS resolver, propagation delay, environment variables)
+
+### Current Mapping
+
+- `main_domain` -> `le_main` (Dynu)
+- `team_domain` -> `le_team` (Porkbun)
+
+### Important Behavior
+
+- EntryPoint default resolver is only one resolver. Domains that use a different provider must use an explicit router-level resolver.
+- Mixed-domain router rules should be split into one router per domain so each router can set the right `tls.certresolver`.
+- Wildcard certificates are requested per domain (`*.domain`) through DNS challenge.
+
+### Adding A New Domain/Provider
+
+1. Add a resolver entry in `backbone__acme_resolvers`.
+2. Add provider credentials to the resolver `env` map.
+3. Add a domain entry in `backbone__acme_domains` mapped to that resolver.
+4. Ensure routers for that domain use the matching `tls.certresolver` when not using the entrypoint default.

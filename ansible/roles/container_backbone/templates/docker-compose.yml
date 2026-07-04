@@ -20,13 +20,13 @@ services:
       - "--entryPoints.websecure.address=:443"
       - "--entryPoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust Ingress tailnet IP
       - "--entrypoints.websecure.http.tls=true"
-      - "--entrypoints.websecure.http.tls.certResolver=le"
-      {% if backbone__acme_dns_challenge__enabled %}
-
-      - "--entrypoints.websecure.http.tls.domains[0].main={{ main_domain }}"
-      - "--entrypoints.websecure.http.tls.domains[0].sans=*.{{ main_domain }}"
-      {% endif %}
-
+      - "--entrypoints.websecure.http.tls.certResolver={{ backbone__acme_default_resolver }}"
+      {%- set default_tls_domain_index = namespace(value=0) +%}
+      {%- for acme_domain in backbone__acme_domains if acme_domain.resolver == backbone__acme_default_resolver +%}
+      - "--entrypoints.websecure.http.tls.domains[{{ default_tls_domain_index.value }}].main={{ acme_domain.main }}"
+      - "--entrypoints.websecure.http.tls.domains[{{ default_tls_domain_index.value }}].sans={{ acme_domain.sans | join(',') }}"
+      {%- set default_tls_domain_index.value = default_tls_domain_index.value + 1 +%}
+      {%- endfor +%}
 
       - "--entryPoints.unifi-stun.address=:3478/udp"
       - "--entryPoints.unifi-discovery.address=:10001/udp"
@@ -42,21 +42,28 @@ services:
       - "--entryPoints.syncthing-discovery.address=:21027/udp"
       - "--entryPoints.skyrim_together.address=:10578/udp"
 
-      - "--certificatesResolvers.le.acme.email={{ smtp__to }}"
-      - "--certificatesResolvers.le.acme.storage=/certs/acme.json"
-      - "--certificatesresolvers.le.acme.caserver={{ backbone__acme_ca_server }}"
-      - "--certificatesResolvers.le.acme.tlsChallenge=false"
-      - "--certificatesresolvers.le.acme.dnschallenge={{ backbone__acme_dns_challenge__enabled | to_json }}"
-      - "--certificatesresolvers.le.acme.dnschallenge.provider={{ backbone__acme_dns_challenge__provider }}"
-      - "--certificatesresolvers.le.acme.dnschallenge.resolvers=9.9.9.9"
-      - "--certificatesresolvers.le.acme.dnschallenge.delaybeforecheck=30"
-      - "--certificatesResolvers.le.acme.httpChallenge={{ backbone__acme_http_challenge__enabled | to_json }}"
-      - "--certificatesResolvers.le.acme.httpChallenge.entryPoint=web"
+      {%- for acme_resolver in backbone__acme_resolvers +%}
+      - "--certificatesResolvers.{{ acme_resolver.name }}.acme.email={{ smtp__to }}"
+      - "--certificatesResolvers.{{ acme_resolver.name }}.acme.storage={{ acme_resolver.storage }}"
+      - "--certificatesresolvers.{{ acme_resolver.name }}.acme.caserver={{ acme_resolver.ca_server }}"
+      - "--certificatesResolvers.{{ acme_resolver.name }}.acme.tlsChallenge=false"
+      - "--certificatesresolvers.{{ acme_resolver.name }}.acme.dnschallenge=true"
+      - "--certificatesresolvers.{{ acme_resolver.name }}.acme.dnschallenge.provider={{ acme_resolver.provider }}"
+      - "--certificatesresolvers.{{ acme_resolver.name }}.acme.dnschallenge.resolvers={{ acme_resolver.dns_resolvers | join(',') }}"
+      - "--certificatesresolvers.{{ acme_resolver.name }}.acme.dnschallenge.delaybeforecheck={{ acme_resolver.delay_before_check }}"
+      - "--certificatesResolvers.{{ acme_resolver.name }}.acme.httpChallenge=false"
+      - "--certificatesResolvers.{{ acme_resolver.name }}.acme.httpChallenge.entryPoint=web"
+      {%- endfor +%}
 
       # Do not check certificates from apps (some apps, such as unifi, do not provide a way to disable their own cert...)
       - "--serverstransport.insecureskipverify"
     environment:
-      - "{{ backbone__acme_dns_challenge__api_key_variable }}={{ backbone__acme_dns_challenge__api_key }}"
+      {%- for acme_resolver in backbone__acme_resolvers +%}
+      {%- for acme_env_name, acme_env_value in acme_resolver.env.items() +%}
+      - "{{ acme_env_name }}={{ acme_env_value }}"
+      {%- endfor +%}
+      {%- endfor +%}
+      - LEGO_DISABLE_CNAME_SUPPORT=true # Necessary because team_domain has wildcard as a cname of apex
     ports:
       - 80:80 # HTTP
       - 443:443 # HTTPS
@@ -137,11 +144,22 @@ services:
       - authelia_redis
     environment:
       TZ: "{{ iana_timezone }}"
+    {%- set main_domain_resolver = (backbone__acme_domains | selectattr("main", "equalto", main_domain) | map(attribute="resolver") | first) %}
+    {%- set team_domain_resolver = (backbone__acme_domains | selectattr("main", "equalto", team_domain) | map(attribute="resolver") | first) +%}
     labels:
       - traefik.enable=true
       - traefik.docker.network=web
-      - traefik.http.routers.authelia.rule=Host(`auth.{{ main_domain }}`)||Host(`auth.{{ team_domain }}`)
-      - traefik.http.routers.authelia.entryPoints=websecure
+      - traefik.http.services.authelia.loadBalancer.server.port=80
+      - traefik.http.routers.authelia-main.rule=Host(`auth.{{ main_domain }}`)
+      - traefik.http.routers.authelia-main.entryPoints=websecure
+      - traefik.http.routers.authelia-main.service=authelia
+      - traefik.http.routers.authelia-main.tls.certresolver={{ main_domain_resolver }}
+      - traefik.http.routers.authelia-team.rule=Host(`auth.{{ team_domain }}`)
+      - traefik.http.routers.authelia-team.entryPoints=websecure
+      - traefik.http.routers.authelia-team.service=authelia
+      - traefik.http.routers.authelia-team.tls.certresolver={{ team_domain_resolver }}
+      - traefik.http.routers.authelia-team.tls.domains[0].main={{ team_domain }}
+      - traefik.http.routers.authelia-team.tls.domains[0].sans=*.{{ team_domain }}
     volumes:
       - '{{ docker_mounts_directory }}/authelia/config:/config'
 

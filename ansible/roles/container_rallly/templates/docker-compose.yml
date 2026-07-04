@@ -32,6 +32,7 @@ services:
       - traefik.http.routers.rallly.entryPoints=websecure
       # Prevent registration by not routing on /register
       - traefik.http.routers.rallly.rule=Host(`{{ rallly__subdomain }}.{{ team_domain }}`) && !PathPrefix(`/register`)
+      - traefik.http.routers.rallly.tls.certresolver={{ (backbone__acme_domains | selectattr("main", "equalto", team_domain) | map(attribute="resolver") | first) }}
       - traefik.http.routers.rallly.service=rallly
       - traefik.http.services.rallly.loadBalancer.server.port=3000
 

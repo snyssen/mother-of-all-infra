@@ -70,12 +70,36 @@ ntfy__users:
     token: "{{ vault_ntfy__users__streaming_token }}"
 ntfy__topics__monitoring: "{{ vault_ntfy__topics__monitoring }}"
 
-backbone__acme_ca_server: "{{ vault_backbone__acme_ca_server }}"
-backbone__acme_dns_challenge__enabled: "{{ vault_backbone__acme_dns_challenge__enabled }}"
-backbone__acme_dns_challenge__provider: "{{ vault_backbone__acme_dns_challenge__provider }}"
-backbone__acme_dns_challenge__api_key: "{{ vault_backbone__acme_dns_challenge__api_key }}"
-backbone__acme_dns_challenge__api_key_variable: "{{ vault_backbone__acme_dns_challenge__api_key_variable }}"
-backbone__acme_http_challenge__enabled: "{{ vault_backbone__acme_http_challenge__enabled }}"
+backbone__acme_default_resolver: le_main
+backbone__acme_domains:
+  - main: "{{ main_domain }}"
+    sans:
+      - "*.{{ main_domain }}"
+    resolver: le_main
+  - main: "{{ team_domain }}"
+    sans:
+      - "*.{{ team_domain }}"
+    resolver: le_team
+backbone__acme_resolvers:
+  - name: le_main
+    ca_server: "{{ vault_backbone__acme_ca_server }}"
+    storage: /certs/acme-main.json
+    provider: dynu
+    dns_resolvers:
+      - 9.9.9.9
+    delay_before_check: 30
+    env:
+      DYNU_API_KEY: "{{ vault_backbone__acme_dynu_api_key }}"
+  - name: le_team
+    ca_server: "{{ vault_backbone__acme_ca_server }}"
+    storage: /certs/acme-team.json
+    provider: porkbun
+    dns_resolvers:
+      - 9.9.9.9
+    delay_before_check: 30
+    env:
+      PORKBUN_API_KEY: "{{ vault_backbone__acme_porkbun_api_key }}"
+      PORKBUN_SECRET_API_KEY: "{{ vault_backbone__acme_porkbun_secret_api_key }}"
 vpn__service_provider: protonvpn
 vpn__wireguard_pk: "{{ vault_vpn__wireguard_pk }}"
 vpn__control_server_api_key: "{{ vault_vpn__control_server_api_key }}"

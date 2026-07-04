@@ -19,6 +19,7 @@ services:
       - traefik.docker.network=web
       - traefik.http.routers.team_wiki.entryPoints=websecure
       - traefik.http.routers.team_wiki.rule=Host(`{{ team_domain }}`)
+      - traefik.http.routers.team_wiki.tls.certresolver={{ (backbone__acme_domains | selectattr("main", "equalto", team_domain) | map(attribute="resolver") | first) }}
       - traefik.http.routers.team_wiki.service=team_wiki
       - traefik.http.services.team_wiki.loadBalancer.server.port=3000
 
