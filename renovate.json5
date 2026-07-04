@@ -23,6 +23,12 @@
     {
       "matchPackageNames": "freikin/dawarich",
       "allowedVersions": "!/0.36.3/"
+    },
+    // Lidarr: version history is a mess... Ignore higher semver that are oddly very old versions actually?
+    {
+      "matchPackageNames": "lscr.io/linuxserver/lidarr",
+      // Only allow upgrading one major version up
+      "allowedVersions": "<={{add major 1}}"
     }
   ],
   "nix": {
