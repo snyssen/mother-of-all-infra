@@ -39,3 +39,7 @@ sops-update file:
 # Rotate SOPS keys for given file, based on rules from `.sops.yaml`
 sops-update-keys file:
   sops updatekeys {{file}}
+
+# Run mkdocs website locally
+run-docs:
+  nix run .#docs

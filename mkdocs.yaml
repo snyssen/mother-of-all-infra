@@ -1,4 +1,5 @@
 site_name: Mother of All Infra Documentation
+use_directory_urls: false
 theme:
   name: material
   palette:
@@ -18,8 +19,14 @@ theme:
       media: "(prefers-color-scheme: dark)"
 
 markdown_extensions:
+  - admonition
+  - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+  - callouts

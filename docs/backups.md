@@ -125,3 +125,15 @@ b2 key create --bucket [bucket-name] [key-name] listBuckets,listFiles,readFiles,
 5. Take note of the key ID and its value that are outputted after running the previous command, you will need them to configure autorestic
 
 In case of ransomware, lost data on the bucket can be restored using [this software](https://github.com/viltgroup/bucket-restore).
+
+## Disaster Recovery - what to do if the house burn and we need some files
+
+There could be a situation where the entire infrastructure is lost, and rebuilding is not an option (lack of time, hardware, energy, money, etc.). In such case, we would have to do without any of the services provided by this infra, but should still be able to access raw files such as important documents.
+
+For such [Restic Browser](https://github.com/emuell/restic-browser) should be our go to solution. The preferred way of using it is on a NixOS machine, which can use the `restic-dr` home-manager module provided in this repository to install both Restic and Restic Browser. Otherwise, Restic Browser being cross-platform, it should be installable on pretty much any machine, and could thus be used anywhere to connect to our Restic repositories.
+
+Restic repositories information can currently be found by decrypting the ansible-vault managed `ansible/hosts/group_vars/apps/vault.yml` file, but note that **this might change in the future and should be kept up to date**. Once connected to the repository, select the esired snapshot and you should be able to browse and download files and directories directly.
+
+> [!IMPORTANT]
+> Browsing and especially downloading files can be really slow, especially on remote repositories and using a slow Internet connection. Aggravating the issue, Restic Browser is not always explicit about running operations, as it only shows a small, easy to miss, status message at the bottom of the window (see screenshot), and not blocking the UI while the operation is running. **Please be patient!**
+> ![Screenshot of Restic Browser, showing its two-pane interface with snapshots on top and files of the selected snapshot below. At the very bottom of the window, a small message can be seen stating "Restoring 'documents'. Please wait..."](_assets/restic-browser.png)

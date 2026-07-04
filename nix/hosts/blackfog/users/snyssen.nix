@@ -22,6 +22,8 @@
     flake.modules.home.obsidian
     flake.modules.home.rclone
     flake.modules.home.vesktop
+
+    flake.modules.home.restic-dr
   ];
 
   git.signingKeyFilename = "id_ed25519.pub";
