@@ -18,7 +18,7 @@ roles:
     version: v1.0.1
   - name: snyssen.compose_deploy
     src: snyssen.compose_deploy
-    version: v2.0.3
+    version: v2.1.0
   - name: undergreen.prometheus-node-exporter
     src: undergreen.prometheus-node-exporter
     version: v1.5.1
