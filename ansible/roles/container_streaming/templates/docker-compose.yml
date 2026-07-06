@@ -182,7 +182,7 @@ services:
       - vpn
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.5.6@sha256:047222423d6d8556a88581b189175bec57f286f120b52ba29c0390fe6babaa5a
+    image: lscr.io/linuxserver/bazarr:1.6.0@sha256:5d916d07404296ec35ee726e13e0e558f05952724cf494a7f009d913fb2b12f3
     container_name: bazarr
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.3.4@sha256:c0da8fdd37921ae3e08d6745c3771439777166f485202e4b94264f4e3f8167a1
+    image: ghcr.io/neptunehub/audiomuse-ai:2.5.0@sha256:f7f9f96d5ef71a6e0a87c5beaafa66c0cb07319af7a13fad384caccaff133236
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.3.4@sha256:c0da8fdd37921ae3e08d6745c3771439777166f485202e4b94264f4e3f8167a1
+    image: ghcr.io/neptunehub/audiomuse-ai:2.5.0@sha256:f7f9f96d5ef71a6e0a87c5beaafa66c0cb07319af7a13fad384caccaff133236
     container_name: audiomuse_worker
     networks:
       - db
