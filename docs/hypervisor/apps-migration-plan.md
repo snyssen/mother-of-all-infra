@@ -44,7 +44,8 @@ The migration is therefore **two-phased**:
 ## Current Stack Inventory
 
 All stacks currently deployed by the `stacks_deploy` Ansible role (in deployment order).
-Disposition column indicates what happens to each in this migration.
+Disposition column indicates what happens to each in this migration (`migrate` / `exclude` / `defer`).
+No stacks are currently marked as deferred in Phase 0.
 
 | Stack | Description | Disposition |
 |-------|-------------|-------------|
@@ -52,7 +53,6 @@ Disposition column indicates what happens to each in this migration.
 | `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate |
 | `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate |
 | `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM |
-| `ddns` | Dynamic DNS updater | ✅ Migrate |
 | `crowdsec` | CrowdSec security engine | ✅ Migrate |
 | `ntfy` | Push notification server | ✅ Migrate |
 | `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate |
