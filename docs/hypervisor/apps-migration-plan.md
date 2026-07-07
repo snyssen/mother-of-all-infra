@@ -86,6 +86,114 @@ No stacks are currently marked as deferred in Phase 0.
 
 ---
 
+## Phase 0 Inventory Worksheet (to fill from live server)
+
+This section is a **structured placeholder** for issue #161.
+It is intentionally pre-filled with `TBD` fields so live values from the current apps server can be added without changing the migration structure.
+
+### Per-stack inventory
+
+| Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps/data/secrets.yaml`) | Target (`apps` / dedicated VM / retire) |
+|---|---|---|---|---|---|
+| `databases` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `monitoring` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `backbone` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `unifi` | `TBD` | `TBD` | `TBD` | `TBD` | `dedicated VM` |
+| `crowdsec` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `ntfy` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `streaming` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `immich` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `paperless` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `nextcloud` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `actual-budget` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `recipes` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `speedtest` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `dashboard` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `personal_website` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `quartz` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `s-pdf` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `foundryvtt` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `minecraft` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `syncthing` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `team_wiki` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `rallly` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `speedtest-tracker` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `sharkey` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `dawarich` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `semaphore` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `backrest` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `skyrim_together` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `matrix` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `attic` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `mobilizon` | `TBD` | `TBD` | `TBD` | `TBD` | `apps` |
+| `scrypted` | `TBD` | `TBD` | `TBD` | `TBD` | `dedicated VM` |
+
+### Stacks not migrating to `apps` VM
+
+| Stack | Current rationale | Final decision (confirm) | Notes |
+|---|---|---|---|
+| `unifi` | Already targeted for dedicated Unifi OS VM | `dedicated VM` | `TBD` |
+| `scrypted` | Already on its own NixOS VM | `dedicated VM` | `TBD` |
+| Other candidates | `TBD` | `TBD` | Identify retirement/split candidates from live usage |
+
+### VM capacity sizing worksheet
+
+Collect live metrics from current apps host and fill:
+
+| Metric | Observed current usage | Headroom policy | Proposed `apps` VM |
+|---|---|---|---|
+| vCPU | `TBD` | `TBD` | `TBD` |
+| RAM | `TBD` | `TBD` | `TBD` |
+| OS/data disk (`/var/lib/app-data`) | `TBD` | `TBD` | `TBD` |
+| Bulk disk (`/mnt/bulk` via NFS) | `TBD` | `TBD` | `TBD` |
+
+### DHCP reservation / MAC decision
+
+- Chosen MAC address for `apps`: `TBD` (QEMU OUI format `52:54:00:xx:xx:xx`)
+- Reservation target: `TBD` (DHCP server / static lease reference)
+- Collision check done: `TBD`
+
+### Secrets migration index (`nix/hosts/apps/data/secrets.yaml`)
+
+Track every secret key/value that must move to SOPS:
+
+| Stack | Secret names / purpose | Source today (vault/env/file) | Destination key path in `secrets.yaml` | Rotated during migration? |
+|---|---|---|---|---|
+| `databases` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `monitoring` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `backbone` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `unifi` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `crowdsec` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `ntfy` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `streaming` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `immich` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `paperless` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `nextcloud` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `actual-budget` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `recipes` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `speedtest` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `dashboard` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `personal_website` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `quartz` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `s-pdf` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `foundryvtt` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `minecraft` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `syncthing` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `team_wiki` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `rallly` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `speedtest-tracker` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `sharkey` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `dawarich` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `semaphore` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `backrest` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `skyrim_together` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `matrix` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `attic` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `mobilizon` | `TBD` | `TBD` | `TBD` | `TBD` |
+| `scrypted` | `TBD` | `TBD` | `TBD` | `TBD` |
+
+---
+
 ## Data Mapping
 
 | Current path | New path | Notes |
