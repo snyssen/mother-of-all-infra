@@ -206,7 +206,7 @@ access_control:
         - "ddns.{{ main_domain }}"
         - "speedtest-tracker.{{ main_domain }}"
         - "backrest.{{ main_domain }}"
-        - "dash.crowdsec.{{ main_domain }}"
+        - "crowdsec-ui.{{ main_domain }}"
       policy: two_factor
       subject:
         - ["group:sysadmin"]
