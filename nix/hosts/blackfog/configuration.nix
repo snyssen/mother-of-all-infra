@@ -49,6 +49,7 @@ in
     flake.modules.nixos.nh
     flake.modules.nixos.syncthing
     flake.modules.nixos.docker
+    flake.modules.nixos.libvirtd
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
     flake.modules.nixos.prometheus-node-exporter
@@ -147,6 +148,12 @@ in
   services.open-webui = {
     enable = true;
     port = 8888;
+  };
+
+  libvirtd = {
+    enable = true;
+    windowsGuestSupport = true;
+    desktopClientSupport = true;
   };
 
   stylix = with theming.dark; {

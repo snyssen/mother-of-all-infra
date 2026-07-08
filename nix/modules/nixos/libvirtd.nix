@@ -19,6 +19,10 @@ in
 
     # TODO: make this more fine-grained, e.g. allow VNC from specific IP ranges instead of entire LAN
     vncLanAccess = lib.mkEnableOption "VNC access from LAN (opens firewall ports 5900-5910; default: SSH tunnel only)";
+
+    windowsGuestSupport = lib.mkEnableOption "Windows-friendly guest support (TPM and virtio driver ISO package)";
+
+    desktopClientSupport = lib.mkEnableOption "desktop-oriented client support (SPICE USB redirection and virt-viewer)";
   };
 
   config = lib.mkIf cfg.enable {
@@ -33,16 +37,28 @@ in
       allowedBridges = [ "br0" ];
       qemu = {
         runAsRoot = true;
+        swtpm.enable = cfg.windowsGuestSupport;
         vhostUserPackages = with pkgs; [
           virtiofsd
         ];
       };
     };
 
+    virtualisation.spiceUSBRedirection.enable = cfg.desktopClientSupport;
+
     # Ensure Python3 is available for Ansible
-    environment.systemPackages = with pkgs; [
-      python3
-    ];
+    environment.systemPackages =
+      with pkgs;
+      [
+        python3
+      ]
+      ++ lib.optionals cfg.desktopClientSupport [
+        virt-viewer
+        quickemu
+      ]
+      ++ lib.optionals cfg.windowsGuestSupport [
+        virtio-win
+      ];
 
     # Drivers
     hardware.graphics.enable = true;
