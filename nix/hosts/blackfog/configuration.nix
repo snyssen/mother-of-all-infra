@@ -156,6 +156,10 @@ in
     desktopClientSupport = true;
   };
 
+  environment.systemPackages = [
+    pkgs.ripgrep
+  ];
+
   stylix = with theming.dark; {
     wallpaper = lib.mkDefault wallpaper;
     schemeName = lib.mkDefault scheme;
