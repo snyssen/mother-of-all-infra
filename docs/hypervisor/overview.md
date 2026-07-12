@@ -116,7 +116,78 @@ All VM definitions live in `ansible/hosts/host_vars/hypervisor/vars.yml`.  The `
          checksum: "sha256:..."
    ```
 
-2. Run the playbook:
+### USB passthrough for Zigbee/Thread dongles
+
+To pass a USB adapter through to Home Assistant, add `usb_devices` to the `haos` VM definition in `ansible/hosts/host_vars/hypervisor/vars.yml`.
+
+Example:
+
+```yaml
+- name: haos
+  # ...
+  usb_devices:
+    - vendor_id: "0x1a86"
+      product_id: "0x7523"
+```
+
+#### How to find `vendor_id` and `product_id`
+
+On the machine where the dongle is currently plugged in:
+
+```sh
+# List USB devices
+lsusb
+```
+
+If `lsusb` is unavailable, install `usbutils` (or run it ad-hoc with Nix):
+
+```sh
+nix shell nixpkgs#usbutils -c lsusb
+```
+
+Find the dongle line, for example:
+
+```text
+Bus 001 Device 008: ID 1a86:7523 QinHeng Electronics CH340 serial converter
+```
+
+In this example:
+
+- `vendor_id` = `0x1a86`
+- `product_id` = `0x7523`
+
+You can also query one exact device:
+
+```sh
+lsusb -d 1a86:7523
+```
+
+Or use `udevadm` (useful for scripted checks):
+
+```sh
+udevadm info --name=/dev/ttyUSB0 | grep -E 'ID_VENDOR_ID|ID_MODEL_ID'
+```
+
+You can also read IDs directly from sysfs for a USB serial adapter:
+
+```sh
+readlink -f /sys/class/tty/ttyUSB0/device/../idVendor
+cat /sys/class/tty/ttyUSB0/device/../idVendor
+cat /sys/class/tty/ttyUSB0/device/../idProduct
+```
+
+Expected output:
+
+```text
+E: ID_VENDOR_ID=1a86
+E: ID_MODEL_ID=7523
+```
+
+Use those values in `vars.yml` with the `0x` prefix.
+
+> Important: passthrough happens on the hypervisor host.  If you discovered IDs on your workstation, move the dongle to the hypervisor and verify with `lsusb` there as well (`just hypervisor-ssh`, then `lsusb`) before running provisioning.
+
+1. Run the playbook:
 
    ```sh
    just hypervisor-provision-vms
