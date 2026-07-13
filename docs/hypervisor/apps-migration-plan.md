@@ -68,7 +68,7 @@ No stacks are currently marked as deferred in Phase 0.
 | `s-pdf` | Stirling PDF tools | ✅ Migrate |
 | `foundryvtt` | FoundryVTT TTRPG platform | ✅ Migrate |
 | `minecraft` | Minecraft server | ✅ Migrate |
-| `syncthing` | File sync | ⛔ Exclude - Will move to syncthing Nix module |
+| `syncthing` | File sync | ✅ Migrate (as NixOS module; not as Compose stack) |
 | `team_wiki` | Wiki.js team wiki | ✅ Migrate |
 | `rallly` | Meeting scheduler | ✅ Migrate |
 | `speedtest-tracker` | Speedtest tracker | ✅ Migrate |
@@ -102,9 +102,9 @@ No stacks are currently marked as deferred in Phase 0.
 | `nextcloud` | none in compose (state is mounted from `/mnt/storage`) | `/mnt/storage/nextcloud` (Nextcloud data/code), `/mnt/storage/nextcloud_logs`, `/mnt/storage/paperless`, `/mnt/storage/streaming/media` | Uses `web`, `monitoring`, `db`, `lan`; depends on internal `nextcloud_redis`; app DB host is shared `postgres` | `nextcloud__postgres_password`, `nextcloud__nextcloud_password`, `nextcloud__nextcloud_admin` | `apps` |
 | `actual-budget` | `/home/snyssen/data/actual-budget` (app data) | none in compose | Uses `web`; OIDC against Authelia (`auth.<domain>`) | `backbone__authelia__oidc_actual_budget_clientsecret` | `apps` |
 | `recipes` | none in compose | `/mnt/storage/recipes/{staticfiles,mediafiles}` | Uses `web` + `db`; app DB host is shared `postgres`; OIDC via Authelia | `recipes__secret_key`, `recipes__db_password`, `backbone__authelia__oidc_recipes_clientsecret` | `apps` |
-| `speedtest` | none in compose | none in compose | Uses `web` only | none in compose | `apps` |
+| `speedtest` | none in compose | none in compose | Uses `web` only | none | `apps` |
 | `dashboard` | none in compose (container uses `.env`) | none in compose | Uses `web`; operationally depends on URLs/services from many other stacks | `dashboard__open_weather_key` (from role `.env` template) | `apps` |
-| `personal_website` | none in compose | none in compose | Uses `web` only | none in compose | `apps` |
+| `personal_website` | none in compose | none in compose | Uses `web` only | none | `apps` |
 | `quartz` | dynamic bind mount from `vault.path` (size: live measure; vault content), not fixed to one base dir in compose | depends on configured `vault.path` value (currently points into `/mnt/storage/syncthing/...` in vars) | Uses `web`; protected with `authelia@docker` middleware | no intrinsic app secret in compose; uses `vault.name`/`vault.path` metadata | `retire` |
 | `s-pdf` | `/home/snyssen/data/s-pdf/ocr` (OCR language data), `/home/snyssen/data/s-pdf/config` (app config) | none in compose | Uses `web`; behind Authelia middleware | none in compose | `apps` |
 | `foundryvtt` | `/home/snyssen/data/foundryvtt` (worlds/modules/data) | none in compose | Uses `web`; Authelia-protected route | `foundryvtt__password`, `foundryvtt__admin_key` (and username for bootstrap) | `apps` |
@@ -123,7 +123,7 @@ No stacks are currently marked as deferred in Phase 0.
 | `mobilizon` | `/home/snyssen/data/mobilizon/postgres` (DB data) | `/mnt/storage/backups/mobilizon` (DB dumps), `/mnt/storage/mobilizon/uploads`, `/mnt/storage/mobilizon/config.exs` | Uses `web` + `db`; app depends on `mobilizon_db`; DB backup sidecar | `mobilizon__db_pass`, `mobilizon__secret_key_base`, `mobilizon__secret_key`, `smtp__pass` | `apps` |
 | `scrypted` | `/home/snyssen/data/scrypted` (server volume) | `/mnt/storage/scrypted/nvr` | Uses `web`; LAN/hardware-oriented workload already split to own VM | no Jinja secrets in compose | `dedicated VM` |
 
-### Stacks not migrating to `apps` VM
+### Stacks not migrating as Compose stacks to `apps` VM
 
 | Stack | Current rationale | Final decision (confirm) | Notes |
 |---|---|---|---|
