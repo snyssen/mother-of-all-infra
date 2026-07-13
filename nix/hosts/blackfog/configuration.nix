@@ -85,6 +85,7 @@ in
       extraGroups = [
         "wheel"
         "networkmanager"
+        "dialout"
       ];
       hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
     };
@@ -158,6 +159,7 @@ in
 
   environment.systemPackages = [
     pkgs.ripgrep
+    pkgs.chromium
   ];
 
   stylix = with theming.dark; {
