@@ -127,8 +127,8 @@ No stacks are currently marked as deferred in Phase 0.
 
 | Stack | Current rationale | Final decision (confirm) | Notes |
 |---|---|---|---|
-| `unifi` | Already targeted for dedicated Unifi OS VM | `dedicated VM` | `TBD` |
-| `scrypted` | Already on its own NixOS VM | `dedicated VM` | `TBD` |
+| `unifi` | Already targeted for dedicated Unifi OS VM | `dedicated VM` | N/A |
+| `scrypted` | Already on its own NixOS VM | `dedicated VM` | N/A |
 | `quartz` | Marked excluded in current inventory (`Outdated stack`) | `retire` | Keep data source available; stop compose deployment |
 | `syncthing` | Marked excluded from compose migration | `apps` | Recreate as NixOS module, not as compose stack |
 | `attic` | Marked excluded from compose migration (`nix module` path) | `dedicated VM` | Decide final host/module placement in follow-up |
@@ -139,16 +139,16 @@ Collect live metrics from current apps host and fill:
 
 | Metric | Observed current usage | Headroom policy | Proposed `apps` VM |
 |---|---|---|---|
-| vCPU | `TBD` | `TBD` | `TBD` |
-| RAM | `TBD` | `TBD` | `TBD` |
-| OS/data disk (`/var/lib/app-data`) | `TBD` | `TBD` | `TBD` |
-| Bulk disk (`/mnt/bulk` via NFS) | `TBD` | `TBD` | `TBD` |
+| vCPU | `2` | `2` | `4` (test hardware), `6` (prod hardware) |
+| RAM | `26GiB` | `8GiB` | `8GiB` (test hardware), `48GiB` (prod hardware) |
+| OS/data disk (`/var/lib/app-data`) | `600GiB` | `500GiB` | `300GiB` (test hardware), `2TiB` (prod hardware) |
+| Bulk disk (`/mnt/bulk` via NFS) | `11TiB` | `2TiB` | `1TiB` (test hardware), `20TiB` (prod hardware) |
 
 ### DHCP reservation / MAC decision
 
-- Chosen MAC address for `apps`: `TBD` (QEMU OUI format `52:54:00:xx:xx:xx`)
-- Reservation target: `TBD` (DHCP server / static lease reference)
-- Collision check done: `TBD`
+- Chosen MAC address for `apps`: `52:54:00:00:00:01` (QEMU OUI format `52:54:00:xx:xx:xx`)
+- Reservation target: `192.168.1.10` (DHCP server / static lease reference)
+- Collision check done: ✅
 
 ### Secrets migration index (`nix/hosts/apps/data/secrets.yaml`)
 
