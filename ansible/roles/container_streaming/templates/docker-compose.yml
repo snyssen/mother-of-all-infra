@@ -135,7 +135,7 @@ services:
       - vpn
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.2.1@sha256:549c4a075496cf7584593bdc041407ddb38ee8958df8cf99938f8821467ea6f8
+    image: lscr.io/linuxserver/radarr:6.3.0@sha256:2b2c1c05eb3f648d2c80dfab9486147dd7bb0ad4d77fa972fc1c5de8f1da3738
     container_name: radarr
     environment:
       - PUID=33
@@ -213,7 +213,7 @@ services:
       - vpn
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.52@sha256:de3d721758165cdd818fa058417ce556878bad2b9a478c8284040aa9b05a88f8
+    image: thewicklowwolf/lidatube:0.2.53@sha256:461f78684388e8992dd0d5bb5769dbcfa29ca542bdb2e39f056753a1bf9663c7
     container_name: lidatube
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.5.0@sha256:f7f9f96d5ef71a6e0a87c5beaafa66c0cb07319af7a13fad384caccaff133236
+    image: ghcr.io/neptunehub/audiomuse-ai:2.6.2@sha256:f9c4df0ce93a7a4bcd69d5bcd15a5cc4fdb13b37a47f84773d8a24fcd0ec2a0e
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:2.5.0@sha256:f7f9f96d5ef71a6e0a87c5beaafa66c0cb07319af7a13fad384caccaff133236
+    image: ghcr.io/neptunehub/audiomuse-ai:2.6.2@sha256:f9c4df0ce93a7a4bcd69d5bcd15a5cc4fdb13b37a47f84773d8a24fcd0ec2a0e
     container_name: audiomuse_worker
     networks:
       - db

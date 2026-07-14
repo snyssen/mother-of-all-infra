@@ -22,7 +22,7 @@ services:
       COLLECTIONS: "LePresidente/authelia crowdsecurity/traefik"
 
   crowdsec-web-ui:
-    image: ghcr.io/theduffman85/crowdsec-web-ui:2026.7.5@sha256:1ef86651fbdcbef7d53a10d443f16371e6781de5679b46660b7efd3f0ef8a0e2
+    image: ghcr.io/theduffman85/crowdsec-web-ui:2026.7.10@sha256:07586f1710ddce2431f94980345dda13e175bda37e423ae70d78c6e4cfc42e18
     container_name: crowdsec-web-ui
     restart: unless-stopped
     networks:
