@@ -1,6 +1,6 @@
 services:
   nextcloud_redis:
-    image: redis:8.8.0@sha256:2838d5524559494f6f1cd66e97e76b200d64a633a8614200620755ed395daf32
+    image: redis:8.8.0@sha256:0b13f549ab871acafaa84b673c4e29bd7dce8d12526aaafe3b4ea3366c322daf
     container_name: nextcloud_redis
     restart: unless-stopped
     networks:
@@ -8,7 +8,7 @@ services:
     mem_limit: 32m
 
   nextcloud:
-    image: nextcloud:34.0.1@sha256:6444fc5450302534e850b4d23c05b5f06c7b0d25bd5ece716452061454699c58
+    image: nextcloud:34.0.1@sha256:ebf0028a64097bc77531bdca1305f8258a231413cf13494b5689dae65ee806df
     container_name: nextcloud
     restart: unless-stopped
     networks:
