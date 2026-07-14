@@ -9,6 +9,7 @@
   config = {
     programs.nixcord = {
       enable = true;
+      discord.equicord.enable = true;
       vesktop.enable = true;
       config = {
         plugins = {

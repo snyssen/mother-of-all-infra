@@ -90,6 +90,7 @@ in
         search.default = "Kagi";
         search.force = true; # https://github.com/nix-community/home-manager/issues/3698
       };
+      configPath = "${config.xdg.configHome}/mozilla/firefox";
     };
     stylix.targets.firefox.profileNames = [ "${cfg.user}" ];
   };
