@@ -99,7 +99,8 @@ in
       ];
     }
     (lib.mkIf cfg.autoconnect.enable {
-      systemd.services.tailscale-autoconnect = {
+      # There are often DNS issue on first boot, so this helps a lot
+      systemd.services.tailscaled-autoconnect = {
         serviceConfig = {
           Restart = "on-failure";
           RestartSec = "5s";
