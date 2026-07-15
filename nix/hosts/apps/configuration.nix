@@ -27,7 +27,16 @@
     flake.modules.nixos.compose-stacks
   ];
 
-  disko.layout = "single-btrfs-luks-virtiofs-key";
+  disko =
+    let
+      ly = "single-btrfs-luks-virtiofs-key";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        autoResizeOnBoot.enable = true;
+      };
+    };
 
   sops.secrets = {
     "tailscale/authKey" = {

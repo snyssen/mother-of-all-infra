@@ -1,6 +1,11 @@
 # This layout is intended to be used by VMs running on KVM/QEMU
 # with a single virtio disk and virtiofs for passing the LUKS key file from the host into the initrd.
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   layoutName = "single-btrfs-luks-virtiofs-key";
   cfg = config.disko."${layoutName}";
@@ -43,6 +48,9 @@ in
         default = "8G";
         description = "Size of the swap file (e.g. '4G', '8G')";
       };
+    };
+    autoResizeOnBoot = {
+      enable = lib.mkEnableOption "grow root partition/LUKS/Btrfs to fill disk on boot";
     };
   };
 
@@ -90,6 +98,92 @@ in
       "virtio_blk"
       "virtiofs"
     ];
+
+    systemd.services.disko-grow-root-on-boot = lib.mkIf cfg.autoResizeOnBoot.enable {
+      description = "Grow partition 2, cryptroot and Btrfs root to match disk size";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "local-fs.target"
+        "systemd-cryptsetup@cryptroot.service"
+      ];
+      wants = [ "systemd-cryptsetup@cryptroot.service" ];
+      path = with pkgs; [
+        btrfs-progs
+        cloud-utils
+        cryptsetup
+        gnugrep
+        systemd
+        util-linux
+      ];
+      serviceConfig = {
+        Type = "oneshot";
+      };
+      script = ''
+        set -euo pipefail
+
+        disk="${cfg.mainDiskPath}"
+        if [ ! -b "$disk" ]; then
+          echo "Disk $disk not present, skipping resize."
+          exit 0
+        fi
+
+        case "$disk" in
+          *[0-9]) part="''${disk}p2" ;;
+          *) part="''${disk}2" ;;
+        esac
+
+        if [ ! -b "$part" ]; then
+          echo "Partition $part not present, skipping resize."
+          exit 0
+        fi
+
+        growpart "$disk" 2 || {
+          rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "growpart failed with exit code $rc"
+            exit "$rc"
+          fi
+          echo "growpart reported no change required."
+        }
+
+        blockdev --rereadpt "$disk" 2>/dev/null || true
+        udevadm settle || true
+
+        if [ -e /dev/mapper/cryptroot ]; then
+          mounted_here=0
+          if ! mountpoint -q ${cfg.mountPoint}; then
+            mkdir -m 0700 -p ${cfg.mountPoint}
+            if mount -n -o ro -t virtiofs ${cfg.virtiofsTag} ${cfg.mountPoint}; then
+              mounted_here=1
+            else
+              echo "Could not mount virtiofs key share at ${cfg.mountPoint}, continuing without key mount."
+            fi
+          fi
+
+          key_file="${cfg.mountPoint}/${cfg.keyFileName}"
+          if [ -r "$key_file" ]; then
+            if ! cryptsetup resize cryptroot --batch-mode --key-file "$key_file"; then
+              echo "cryptsetup resize failed, continuing to Btrfs resize step."
+            fi
+          else
+            echo "LUKS key file $key_file is not readable, skipping cryptsetup resize."
+          fi
+
+          if [ "$mounted_here" -eq 1 ]; then
+            umount ${cfg.mountPoint}
+          fi
+        else
+          echo "cryptroot mapper not found, skipping cryptsetup resize."
+          exit 0
+        fi
+
+        if findmnt -n -o FSTYPE / | grep -q '^btrfs$'; then
+          btrfs filesystem resize max /
+        else
+          echo "Root filesystem is not Btrfs, skipping filesystem resize."
+        fi
+      '';
+    };
 
     disko.imageBuilder.imageFormat = "qcow2";
     disko.devices = {

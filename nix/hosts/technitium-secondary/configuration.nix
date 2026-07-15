@@ -31,7 +31,16 @@
     flake.modules.nixos.grafana-alloy
   ];
 
-  disko.layout = "single-btrfs-luks-virtiofs-key";
+  disko =
+    let
+      ly = "single-btrfs-luks-virtiofs-key";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        autoResizeOnBoot.enable = true;
+      };
+    };
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets = {
