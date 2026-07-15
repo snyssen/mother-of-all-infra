@@ -30,8 +30,8 @@ in
     qcowOptions = {
       diskImageSize = lib.mkOption {
         type = lib.types.str;
-        default = "20G";
-        description = "Size of the qcow2 disk image to create (e.g. '20G')";
+        default = "32G";
+        description = "Size of the qcow2 disk image to create (e.g. '64G')";
       };
     };
     swap = {
