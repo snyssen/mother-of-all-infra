@@ -98,10 +98,14 @@
           ansible.builtin.debug:
             msg: |-
               Manual step required before continuing:
-              1. Update .sops.yaml with the derived age keys shown above.
+              1. Update .sops.yaml with the derived age keys shown above (only for new VMs being deployed).
               2. Review .sops.yaml changes with git diff.
               3. Return here and type CONTINUE.
               4. This playbook will then rotate keys for secrets files automatically.
+              5. Commit the .sops.yaml changes to git once the playbook completes successfully.
+
+              NOTE: this playbook selectively builds image for `libvirt_vms` entries with `disk_image.build: true`.
+              If the updated keys are unexpected (more or less than expected), review the VM definitions in the hypervisor inventory.
 
         - name: Wait for explicit confirmation to proceed
           ansible.builtin.pause:

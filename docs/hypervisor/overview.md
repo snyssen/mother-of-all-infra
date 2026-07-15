@@ -99,6 +99,8 @@ VNC access is also enabled on the LAN (`libvirtd.vncLanAccess = true`).  Use `vi
 
 All VM definitions live in `ansible/hosts/host_vars/hypervisor/vars.yml`.  The `libvirt_provision` role is idempotent — re-running the playbook is safe.
 
+> **For NixOS-based VMs:** See [nixos-vm-deployment.md](nixos-vm-deployment.md) for the complete two-playbook workflow (image build + provisioning) with SOPS key authorization and LUKS encryption.
+
 ### Adding a new VM
 
 1. Append an entry to `libvirt_vms` in `ansible/hosts/host_vars/hypervisor/vars.yml`.  See [plan.md — VM definitions](plan.md#vm-definitions) for the full schema.
