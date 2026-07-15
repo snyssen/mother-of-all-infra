@@ -12,6 +12,7 @@ keys: &all_keys
   - &root_scrypted age1zxzqqaa29ekzf8s27a46xp2gn2hqsstdvp959lq8cjlw9njv5scssywq88
   - &root_technitium_primary age1flln5jgw557ft9zff073ccer3hjcv344zaypm7gvrx9zlcnzsgws6ssrxg
   - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
+  - &root_apps age1un9lm7u4whghrydmeyxhv9mmkt7tyhjejn0mhesfc6g3x60atflqna7lg7
 creation_rules:
   # global secrets
   - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
@@ -80,5 +81,12 @@ creation_rules:
       - pgp:
         age:
           - *root_technitium_secondary
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
+  - path_regex: nix/hosts/apps/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *root_apps
           - *snyssen_purplehaze
           - *snyssen_blackfog

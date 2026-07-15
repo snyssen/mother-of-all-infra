@@ -1,3 +1,5 @@
+# TODO: add support for docker networks
+# TODO: add support for cadvisor
 {
   lib,
   config,

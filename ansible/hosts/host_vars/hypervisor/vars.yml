@@ -59,4 +59,14 @@ libvirt_vms:
       enable: true
     disk_image:
       dest: "/mnt/vmstore/technitium-secondary/disk.qcow2"
-      build: true
+      build: false
+  - name: apps
+    vcpu: 4
+    ram_mb: 8192
+    mac_address: "52:54:00:00:00:01"
+    disk_gb: 300
+    virtiofs_luks_key:
+      enable: true
+    disk_image:
+      dest: "/mnt/vmstore/apps/disk.qcow2"
+      build: false
