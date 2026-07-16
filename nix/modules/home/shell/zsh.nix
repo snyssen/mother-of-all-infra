@@ -72,6 +72,20 @@ in
         let
           envVars = lib.mkOrder 1000 ''
             EDITOR="code --wait"
+
+            # Make word motions split on path/dash/dot separators.
+            WORDCHARS="''${WORDCHARS//[-\/.]/}"
+          '';
+          keybindings = lib.mkOrder 1100 ''
+            # zsh-autosuggestions maps forward-word as partial-accept.
+            bindkey '^[[1;5C' forward-word
+            bindkey '^[[1;5D' backward-word
+            bindkey '^[[5C'   forward-word
+            bindkey '^[[5D'   backward-word
+            bindkey '^[[1;3C' forward-word
+            bindkey '^[[1;3D' backward-word
+            bindkey "$terminfo[kRIT]" forward-word
+            bindkey "$terminfo[kLFT]" backward-word
           '';
           atuin = lib.mkOrder 1500 ''
             eval "$(atuin init zsh)"
@@ -79,6 +93,7 @@ in
         in
         lib.mkMerge [
           envVars
+          keybindings
           (lib.mkIf cfg.atuin.enable atuin)
         ];
     };
