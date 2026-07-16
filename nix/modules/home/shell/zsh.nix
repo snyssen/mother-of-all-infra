@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  osConfig,
   pkgs,
   ...
 }:
@@ -14,6 +15,7 @@ in
     fzf.enable = lib.mkEnableOption "fzf history manager";
     intelli-shell.enable = lib.mkEnableOption "intelli-shell";
     direnv.enable = lib.mkEnableOption "direnv integration";
+    starship.enable = lib.mkEnableOption "starship prompt";
     dua.enable = lib.mkEnableOption "dua-cli integration";
   };
 
@@ -39,34 +41,31 @@ in
       nix-direnv.enable = true;
     };
 
+    programs.starship = lib.mkIf cfg.starship.enable {
+      enable = true;
+      enableZshIntegration = true;
+    };
+
     programs.zsh = {
       enable = true;
       autosuggestion.enable = true;
       enableCompletion = true;
       syntaxHighlighting.enable = true;
-      oh-my-zsh = {
+      zsh-abbr = {
         enable = true;
-        plugins = [
-          "colored-man-pages"
-          "colorize"
-          "docker-compose"
-          "docker"
-          "dotenv"
-          "dotnet"
-          "git"
-          "npm"
-          "screen"
-          "vscode"
-        ];
+        abbreviations = {
+          cat = lib.mkIf config.programs.bat.enable "bat";
+          vsc = lib.mkIf config.programs.vscode.enable "code";
+          vscd = lib.mkIf config.programs.vscode.enable "code --diff";
+          ts = lib.mkIf osConfig.services.tailscale.enable "tailscale";
+          tsst = lib.mkIf osConfig.services.tailscale.enable "tailscale status";
+          tssh = lib.mkIf osConfig.services.tailscale.enable "tailscale ssh";
+        };
       };
 
       # orders from https://nix-community.github.io/home-manager/options.xhtml#opt-programs.zsh.initContent
       initContent =
         let
-          p10kConfig = lib.mkOrder 500 ''
-            # p10k config
-            source ~/.p10k.zsh
-          '';
           envVars = lib.mkOrder 1000 ''
             EDITOR="code --wait"
           '';
@@ -75,21 +74,9 @@ in
           '';
         in
         lib.mkMerge [
-          p10kConfig
           envVars
           (lib.mkIf cfg.atuin.enable atuin)
         ];
-
-      plugins = [
-        {
-          name = "powerlevel10k";
-          src = pkgs.zsh-powerlevel10k;
-          file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-        }
-      ];
     };
-
-    # Place p10k config file
-    home.file.".p10k.zsh".source = ../../../files/home/p10k-config;
   };
 }

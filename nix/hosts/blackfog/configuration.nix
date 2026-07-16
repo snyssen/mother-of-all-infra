@@ -96,7 +96,6 @@ in
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
-  shell.default = "fish";
 
   syncthing = {
     username = "snyssen";

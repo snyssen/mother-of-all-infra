@@ -92,7 +92,6 @@ in
     autoLogin.enable = true;
     touchScreen.enable = true;
   };
-  shell.default = "fish";
 
   syncthing = {
     username = "snyssen";

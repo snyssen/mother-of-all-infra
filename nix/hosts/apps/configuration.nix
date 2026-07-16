@@ -66,8 +66,6 @@
     settings.PermitRootLogin = "no";
   };
 
-  shell.default = "fish";
-
   users = {
     mutableUsers = false;
     users = {

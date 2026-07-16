@@ -104,8 +104,6 @@
       };
     };
 
-  shell.default = "fish";
-
   users = {
     mutableUsers = false;
     users = {
