@@ -16,12 +16,16 @@ in
     intelli-shell.enable = lib.mkEnableOption "intelli-shell";
     direnv.enable = lib.mkEnableOption "direnv integration";
     starship.enable = lib.mkEnableOption "starship prompt";
+    just.enable = lib.mkEnableOption "just command runner and completions";
     dua.enable = lib.mkEnableOption "dua-cli integration";
   };
 
   config = lib.mkIf cfg.enable {
     home.packages =
-      [ ] ++ lib.lists.optional cfg.atuin.enable pkgs.atuin ++ lib.lists.optional cfg.dua.enable pkgs.dua;
+      [ ]
+      ++ lib.lists.optional cfg.atuin.enable pkgs.atuin
+      ++ lib.lists.optional cfg.just.enable pkgs.just
+      ++ lib.lists.optional cfg.dua.enable pkgs.dua;
 
     programs.fzf = lib.mkIf cfg.fzf.enable {
       enable = true;
