@@ -49,6 +49,10 @@ in
     programs.zsh = {
       enable = true;
       autosuggestion.enable = true;
+      autosuggestion.strategy = [
+        "history"
+        "completion"
+      ];
       enableCompletion = true;
       syntaxHighlighting.enable = true;
       zsh-abbr = {
