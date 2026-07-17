@@ -40,6 +40,7 @@
   home.packages = with pkgs; [
     librewolf
     onlyoffice-desktopeditors
+    libreoffice
     protonmail-desktop
     vlc
     annotator
