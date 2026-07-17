@@ -90,6 +90,10 @@ in
             bindkey '^[[1;3D' backward-word
             bindkey "$terminfo[kRIT]" forward-word
             bindkey "$terminfo[kLFT]" backward-word
+
+            # Ctrl+Delete should delete the next word.
+            bindkey '^[[3;5~' kill-word
+            bindkey "$terminfo[kDC5]" kill-word
           '';
           atuin = lib.mkOrder 1500 ''
             eval "$(atuin init zsh)"
