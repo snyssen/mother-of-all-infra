@@ -11,29 +11,32 @@
   #########################
 
   imports = [
-    flake.modules.home.dconf
     flake.modules.home.shell
     flake.modules.home.ghostty
     flake.modules.home.git
     flake.modules.home.vscode
     flake.modules.home.firefox
+    flake.modules.home.obsidian
+    flake.modules.home.vesktop
+
+    flake.modules.home.restic-dr
   ];
 
   git.signingKeyFilename = "id_ed25519.pub";
 
   vscode.useUnstable = true;
 
+  programs.btop.enable = true;
+  programs.bat.enable = true;
+
   home.packages = with pkgs; [
     sweethome3d.application
-    obsidian
     librewolf
-    vesktop
     onlyoffice-desktopeditors
     protonmail-desktop
-    caligula
-    zenity
+    # caligula
+    # zenity
     p7zip
-    fluffychat
   ];
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion

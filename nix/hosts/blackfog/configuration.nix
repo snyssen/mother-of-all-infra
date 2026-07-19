@@ -91,7 +91,6 @@ in
     };
   };
 
-  grub.timeout = 10;
   cosmic = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;

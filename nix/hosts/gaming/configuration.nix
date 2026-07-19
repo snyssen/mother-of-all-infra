@@ -9,6 +9,12 @@
 }:
 let
   syncthingData = import ../../data/syncthing.nix;
+  theming = {
+    dark = {
+      wallpaper = ../../files/wallpapers/Elite_wallpaper_4k_8.jpg;
+      scheme = "horizon-dark";
+    };
+  };
 in
 {
 
@@ -25,60 +31,67 @@ in
   imports = [
     flake.modules.nixos.disko
     ./hardware-configuration.nix
-    inputs.stylix.nixosModules.stylix
 
     flake.modules.nixos.sops
     flake.modules.nixos.cache
     flake.modules.nixos.grub
+    flake.modules.nixos.nvidia
     flake.modules.nixos.kbd-layout
+    flake.modules.nixos.logitech
+    flake.modules.nixos.stylix
     flake.modules.nixos.cosmic
-    flake.modules.nixos.gnome
-    flake.modules.nixos.user
+    flake.modules.nixos.gaming
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.gaming
-    flake.modules.nixos.nvidia
     flake.modules.nixos.syncthing
-    flake.modules.nixos.logitech
-    flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.docker
+    flake.modules.nixos.libvirtd
     flake.modules.nixos.tailscale
+    flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.sunshine
   ];
 
-  specialisation = {
-    cosmic.configuration = {
-      gnome.enable = false;
-      cosmic.enable = true;
+  disko =
+    let
+      ly = "single-btrfs-luks";
+    in
+    {
+      layout = ly;
+      "${ly}" = {
+        mainDiskPath = "/dev/nvme0n1";
+        usbKeysIds = [
+          "8B34-7D3C" # Philips 8GB
+          "75E6-4B88" # Kingston Data Traveller
+        ];
+        swap.enable = true;
+      };
+    };
+
+  sops.defaultSshKeys.mode = "user";
+  sops.secrets = {
+    "users/snyssen/passwordHash" = {
+      neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
     };
   };
 
-  disko.layout = "legacy-gaming";
-  disko."legacy-gaming".usbKeysIds = [
-    "9FBA-884A" # Generic Flash Disk (no casing)
-    "75E6-4B88" # Kingston Data Traveller
-    "8B34-7D3C" # Philips 8GB
-  ];
+  users = {
+    mutableUsers = false;
+    users.snyssen = {
+      isNormalUser = true;
+      extraGroups = [
+        "wheel"
+        "networkmanager"
+      ];
+      hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
+    };
+  };
 
-  grub.timeout = 10;
   nvidia.open = true;
-  gnome = {
+  cosmic = {
     enable = lib.mkDefault true;
     autoLogin.enable = true;
   };
-
-  prometheus-node-exporter.openFirewall = true;
-
-  gaming.extraPkgs = with pkgs; [ ckan ];
-
-  environment.systemPackages = with pkgs; [
-    lutris
-    # nexusmods-app-unfree
-    smartmontools
-    tmux
-    htop
-  ];
 
   syncthing = {
     username = "snyssen";
@@ -118,21 +131,20 @@ in
     };
   };
 
-  # Fix for time changing between boot of Windows and Linux
-  time.hardwareClockInLocalTime = true;
-
-  stylix = {
+  libvirtd = {
     enable = true;
-    image = ../../files/wallpapers/Elite_wallpaper_4k_8.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/horizon-dark.yaml";
-    polarity = "dark";
+    windowsGuestSupport = true;
+    desktopClientSupport = true;
+  };
 
-    fonts = {
-      monospace = {
-        package = pkgs.nerd-fonts.fira-mono;
-        name = "FiraMono Nerd Font Mono";
-      };
-    };
+  gaming.extraPkgs = with pkgs; [
+    ckan
+    lutris
+  ];
+
+  stylix = with theming.dark; {
+    wallpaper = lib.mkDefault wallpaper;
+    schemeName = lib.mkDefault scheme;
   };
 
   # TODO: make this part automatically defined
