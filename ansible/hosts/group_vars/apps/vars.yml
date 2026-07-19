@@ -479,7 +479,7 @@ foundryvtt__admin_key: "{{ vault_foundryvtt__admin_key }}"
 
 monitoring__extra_monitored_hosts:
   - vi-s-tower.lan:9100
-  - gaming.lan:9100
+  - 100.98.130.79:9100 # Gaming
   - pne.ingress.snyssen.be
   - 100.96.180.95:9100 # blackfog
   - 100.90.124.28:9100 # hypervisor
