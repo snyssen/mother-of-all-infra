@@ -50,6 +50,8 @@ in
     flake.modules.nixos.tailscale
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.sunshine
+
+    ./network.nix
   ];
 
   disko =
