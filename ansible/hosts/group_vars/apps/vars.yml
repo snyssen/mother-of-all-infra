@@ -321,6 +321,8 @@ dashboard__shortcuts:
             url: https://app.cinny.in
           - name: Rallly
             url: https://events.bigdouf.team
+          - name: Sharkey
+            url: https://social.snyssen.be
   - name: Documents
     icon_classes: las la-folder-open
     children:
@@ -361,8 +363,6 @@ dashboard__shortcuts:
         url: https://audiobooks.snyssen.be
       - name: Immich
         url: https://photos.snyssen.be
-      - name: Sharkey
-        url: https://social.snyssen.be
       - name: Management
         children:
           - name: Prowlarr
