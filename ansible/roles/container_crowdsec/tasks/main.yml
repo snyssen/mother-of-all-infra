@@ -16,7 +16,7 @@
       owner: "{{ ansible_user_uid }}"
       group: "{{ ansible_user_gid }}"
 
-- name: Deploy config files
+- name: Deploy Crowdsec config files
   become: true
   ansible.builtin.template:
     src: "crowdsec/{{ item }}"
@@ -32,6 +32,15 @@
     - acquis.d/traefik.yaml
     - acquis.d/traefik-varlogs.yaml
     - parsers/s02-enrich/00-whitelist-attic.yaml
+
+- name: Deploy Crowdsec WebUI config file
+  become: true
+  ansible.builtin.template:
+    src: "crowdsec-web-ui/config.yaml"
+    dest: "{{ docker_mounts_directory }}/crowdsec-web-ui/data/config.yaml"
+    mode: "600"
+    owner: "{{ ansible_user_uid }}"
+    group: "{{ ansible_user_gid }}"
 
 - ansible.builtin.include_role:
     name: snyssen.compose_deploy

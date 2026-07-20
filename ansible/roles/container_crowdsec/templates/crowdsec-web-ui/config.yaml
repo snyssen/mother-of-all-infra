@@ -1,0 +1,58 @@
+server:
+  port: 3000
+  basePath: ""
+storage:
+  dataDir: /app/data
+  geonamesDir: /app/geonames
+ui:
+  timeZone: browser
+  timeFormat: browser
+  readOnly: false
+# TODO: use OIDC
+auth:
+  enabled: auto
+  oidc:
+    scope: openid profile email
+    groupsClaim: groups
+    adminGroups: []
+    readOnlyGroups: []
+    unmatchedRole: deny
+notifications:
+  allowPrivateAddresses: true
+  debugPayloads: false
+updates:
+  enabled: true
+crowdsec:
+  simulationsEnabled: false
+  alertFilters: {}
+  sync:
+    lookback: 5d
+    refreshInterval: 30s
+    manualRefreshEnabled: false
+    idleRefreshInterval: 5m
+    idleThreshold: 2m
+    requestTimeout: 30s
+    bouncerPropagationDelay: 15s
+    metricsRequestTimeout: 5s
+    heartbeatInterval: 30s
+    alertSyncChunk: 12h
+    alertSyncMinChunk: 15m
+    reconcileWindow: 1h
+    reconcileRecentAge: 1d
+    reconcileRecentInterval: 15m
+    reconcileActiveInterval: 5m
+    reconcileOldInterval: 3h
+    reconcileWindowsPerRefresh: 2
+    bootstrapRetryDelay: 30s
+    bootstrapRetryEnabled: true
+instances:
+  - id: default
+    name: CrowdSec
+    lapi:
+      url: http://crowdsec:8080
+      auth:
+        type: password
+        username: "{{ crowdsec__webui_user }}"
+        password:
+          env: CROWDSEC_PASSWORD
+    metrics: []
