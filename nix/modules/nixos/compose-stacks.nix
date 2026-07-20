@@ -1,11 +1,17 @@
 {
   lib,
   config,
+  options,
   pkgs,
   ...
 }:
 let
   cfg = config.compose-stacks;
+  dockerNetworkUnits =
+    if options ? docker then
+      map (network: "docker-network-${network}.service") config.docker.networks
+    else
+      [ ];
 in
 {
   options.compose-stacks = {
@@ -44,11 +50,12 @@ in
           "docker.service"
           "network-online.target"
         ]
+        ++ dockerNetworkUnits
         ++ stack.extraAfter;
         requires = [
           "docker.service"
           "network-online.target"
-        ];
+        ] ++ dockerNetworkUnits;
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           Type = "oneshot";
