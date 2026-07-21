@@ -91,6 +91,13 @@
     dependsOn.tailscale = true;
   };
 
+  docker.networks = [
+    "web"
+    "db"
+    "ldap"
+    "monitoring"
+  ];
+
   # TODO: make this part automatically defined
   nix.settings = {
     experimental-features = [
