@@ -1,17 +1,11 @@
 {
   lib,
   config,
-  options,
   pkgs,
   ...
 }:
 let
   cfg = config.compose-stacks;
-  dockerNetworkUnits =
-    if options ? docker then
-      map (network: "docker-network-${network}.service") config.docker.networks
-    else
-      [ ];
 in
 {
   options.compose-stacks = {
@@ -35,6 +29,11 @@ in
               default = [ ];
               description = "Extra systemd units this service must start after (e.g. NFS mount units such as mnt-data.mount).";
             };
+            dockerNetworks = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              description = "Docker network names this stack depends on (e.g. web, db, ldap).";
+            };
           };
         }
       );
@@ -44,6 +43,9 @@ in
   config = lib.mkIf (cfg.stacks != { }) {
     systemd.services = lib.mapAttrs' (
       name: stack:
+      let
+        dockerNetworkUnits = map (network: "docker-network-${network}.service") stack.dockerNetworks;
+      in
       lib.nameValuePair "compose-${name}" {
         description = "Docker Compose stack: ${name}";
         after = [

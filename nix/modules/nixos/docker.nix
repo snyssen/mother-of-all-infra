@@ -2,17 +2,11 @@
 {
   lib,
   config,
-  options,
   pkgs,
   ...
 }:
 let
   cfg = config.docker;
-  composeStackServiceUnits =
-    if options ? compose-stacks then
-      map (name: "compose-${name}.service") (lib.attrNames config.compose-stacks.stacks)
-    else
-      [ ];
 in
 {
   options.docker = {
@@ -42,7 +36,6 @@ in
           description = "Ensure docker network '${network}' exists";
           after = [ "docker.service" ];
           requires = [ "docker.service" ];
-          before = composeStackServiceUnits;
           wantedBy = [ "multi-user.target" ];
           script = ''
             ${pkgs.docker}/bin/docker network create --driver bridge ${lib.escapeShellArg network} || true
