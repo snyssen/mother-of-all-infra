@@ -29,9 +29,9 @@ The migration is therefore **two-phased**:
 | Local app data (fast, OS disk) | `/var/lib/app-data` (btrfs root backed by vmstore SSD RAID-1 on hypervisor) |
 | Bulk app data (large, HDD) | `/mnt/bulk` — NFS mount of `/mnt/bulk/apps` exported by the hypervisor |
 | Compose file convention | `nix/hosts/apps/compose/${stack_name}/docker-compose.yaml` |
-| Docker networks | `web`, `db`, `ldap`, `monitoring` bridge networks pre-created by a new `docker-networks` NixOS module |
+| Docker networks | `web`, `db`, `ldap`, `monitoring` bridge networks pre-created by the existing `docker` NixOS module |
 | `lan` ipvlan network | **Not recreated.** Unifi moves to its own VM (Unifi OS Server); Syncthing drops LAN discovery (relies on Tailscale/global relay instead) |
-| Monitoring | `prometheus-node-exporter` (NixOS module) + `grafana-alloy` (NixOS module) + `cAdvisor` (new NixOS module wrapping a container) |
+| Monitoring | `prometheus-node-exporter` (NixOS module) + `grafana-alloy` (NixOS module) + `cAdvisor` (enabled through the `docker` module) |
 | Backups | `services.restic.backups` (NixOS native); restores via `restic` CLI; optional read-only GUI (`backrest` container) as a separate concern |
 | Secrets | SOPS-encrypted `nix/hosts/apps/data/secrets.yaml`; injected into compose stacks via `environmentFile` |
 | VM provisioning | `libvirt_provision` Ansible role (existing pattern) |
@@ -209,14 +209,12 @@ Compose files: Jinja2 variable `{{ docker_mounts_directory }}` → `/var/lib/app
 | `disko/layouts/single-btrfs-luks-virtiofs-key` | ✅ Exists | Reuse as-is |
 | `compose-stacks` | ✅ Exists | Reuse as-is |
 | `nfs-mounts` | ✅ Exists | Reuse as-is for `/mnt/bulk` |
-| `docker` | ✅ Exists | Reuse as-is |
+| `docker` | ✅ Exists | Reuse and enable `cadvisor` integration plus bridge networks |
 | `sops` | ✅ Exists | Reuse as-is |
 | `tailscale` | ✅ Exists | Reuse as-is |
 | `grafana-alloy` | ✅ Exists | Reuse as-is |
 | `prometheus-node-exporter` | ✅ Exists | Reuse as-is |
 | `crowdsec-firewall-bouncer` | ✅ Exists | Reuse as-is |
-| `docker-networks` | 🆕 Create | Pre-create named bridge networks (`web`, `db`, `ldap`, `monitoring`) as systemd oneshot units, so they exist before any compose stack starts |
-| `cadvisor` | 🆕 Create | Run cAdvisor as a native NixOS service (or `virtualisation.oci-containers` entry) to expose Prometheus container metrics |
 
 ---
 
@@ -276,15 +274,14 @@ imports = [
   flake.modules.nixos.prometheus-node-exporter
   flake.modules.nixos.grafana-alloy
   flake.modules.nixos.docker
-  flake.modules.nixos.docker-networks   # new module
-  flake.modules.nixos.cadvisor          # new module
   flake.modules.nixos.nfs-mounts
   flake.modules.nixos.compose-stacks
 ];
 
 disko.layout = "single-btrfs-luks-virtiofs-key";
 
-dockerNetworks.networks = [ "web" "db" "ldap" "monitoring" ];
+docker.networks = [ "web" "db" "ldap" "monitoring" ];
+cadvisor.enable = true;
 
 nfsMounts.enable = true;
 nfsMounts.mounts.bulk = {
