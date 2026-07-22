@@ -9,7 +9,7 @@
     - setup_storage
 
 - name: Setup monitored clients
-  hosts: monitored
+  hosts: monitored:!apps.taild023c5.ts.net
   roles:
     - name: undergreen.prometheus-node-exporter
       become: true

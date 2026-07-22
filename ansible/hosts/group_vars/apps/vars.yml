@@ -1,8 +1,5 @@
 main_domain: "{{ vault_main_domain }}"
 team_domain: "{{ vault_team_domain }}"
-docker_daemon_extra_options:
-  dns:
-    - "192.168.1.3" # TODO: should be set through DHCP instead. I'll leave it for now
 
 snapraid_runner_path: /opt/snapraid-runner/snapraid-runner
 snapraid_runner_conf: "{{ snapraid_runner_path }}.conf"
@@ -485,7 +482,7 @@ monitoring__extra_monitored_hosts:
   - 100.90.124.28:9100 # hypervisor
   - 100.117.7.65:9100 # technitium-primary
   - 100.64.88.28:9100 # technitium-secondary
-  - 100.86.224.95:9100 # apps
+  # - 100.86.224.95:9100 # apps - already part of "monitored" group
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:

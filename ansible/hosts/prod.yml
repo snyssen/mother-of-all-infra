@@ -1,9 +1,9 @@
 technitium:
   hosts:
     technitium-primary:
-      ansible_host: "technitium-primary"
+      ansible_host: "technitium-primary.taild023c5.ts.net"
     technitium-secondary:
-      ansible_host: "technitium-secondary"
+      ansible_host: "technitium-secondary.taild023c5.ts.net"
 
 apps:
   hosts:
@@ -19,6 +19,7 @@ monitored:
   hosts:
     snyssen.be:
     backup.snyssen.be:
+    apps.taild023c5.ts.net:
 
 livecams:
   hosts:
@@ -27,4 +28,4 @@ livecams:
 hypervisor:
   hosts:
     hypervisor:
-      ansible_host: "hypervisor"
+      ansible_host: "hypervisor.taild023c5.ts.net"
