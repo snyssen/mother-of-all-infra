@@ -1,4 +1,3 @@
-# TODO: add support for cadvisor
 {
   lib,
   config,
@@ -18,6 +17,24 @@ in
       type = lib.types.listOf lib.types.str;
       default = [ ];
       description = "Docker bridge networks to pre-create before compose stacks start.";
+    };
+    cadvisor = {
+      enable = lib.mkEnableOption "cAdvisor service for Docker monitoring.";
+      listenAddress = lib.mkOption {
+        type = lib.types.str;
+        default = "0.0.0.0";
+        description = "Address to listen on for cAdvisor.";
+      };
+      port = lib.mkOption {
+        type = lib.types.int;
+        default = 9200;
+        description = "Port to expose cAdvisor on.";
+      };
+      openFirewall = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether to open the firewall for cAdvisor.";
+      };
     };
   };
 
@@ -47,5 +64,14 @@ in
         };
       }) cfg.networks
     );
+
+    services.cadvisor = {
+      enable = cfg.cadvisor.enable;
+      listenAddress = cfg.cadvisor.listenAddress;
+      port = cfg.cadvisor.port;
+    };
+    networking.firewall.allowedTCPPorts = lib.optionals (
+      cfg.cadvisor.enable && cfg.cadvisor.openFirewall
+    ) [ cfg.cadvisor.port ];
   };
 }
