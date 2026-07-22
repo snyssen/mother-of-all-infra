@@ -281,7 +281,7 @@ imports = [
 disko.layout = "single-btrfs-luks-virtiofs-key";
 
 docker.networks = [ "web" "db" "ldap" "monitoring" ];
-cadvisor.enable = true;
+docker.cadvisor.enable = true;
 
 nfsMounts.enable = true;
 nfsMounts.mounts.bulk = {

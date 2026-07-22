@@ -97,7 +97,7 @@
     "ldap"
     "monitoring"
   ];
-  cadvisor.enable = true;
+  docker.cadvisor.enable = true;
 
   # TODO: make this part automatically defined
   nix.settings = {

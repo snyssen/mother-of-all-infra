@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.docker;
-  cadvisorCfg = config.cadvisor;
+  cadvisorCfg = cfg.cadvisor;
 in
 {
   options.docker = {
@@ -19,19 +19,18 @@ in
       default = [ ];
       description = "Docker bridge networks to pre-create before compose stacks start.";
     };
-  };
-
-  options.cadvisor = {
-    enable = lib.mkEnableOption "cAdvisor container metrics exporter";
-    port = lib.mkOption {
-      type = lib.types.port;
-      default = 8080;
-      description = "Host port to expose cAdvisor metrics on.";
-    };
-    openFirewall = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Whether to open the cAdvisor metrics port in the firewall.";
+    cadvisor = {
+      enable = lib.mkEnableOption "cAdvisor container metrics exporter";
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8080;
+        description = "Host port to expose cAdvisor metrics on.";
+      };
+      openFirewall = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether to open the cAdvisor metrics port in the firewall.";
+      };
     };
   };
 
