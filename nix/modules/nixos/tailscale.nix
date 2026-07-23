@@ -70,6 +70,20 @@ in
         description = "Systemd units to restart after certificate refresh (e.g. technitium-dns-server.service).";
       };
     };
+
+    serve = {
+      enable = lib.mkEnableOption "configure tailscale serve for a local HTTP backend";
+      httpsPort = lib.mkOption {
+        type = lib.types.port;
+        default = 443;
+        description = "HTTPS port exposed over the tailnet via tailscale serve.";
+      };
+      target = lib.mkOption {
+        type = lib.types.str;
+        default = "http://127.0.0.1:8080";
+        description = "Backend URL proxied by tailscale serve.";
+      };
+    };
   };
 
   config = lib.mkMerge [
@@ -165,6 +179,30 @@ in
           Persistent = true;
           RandomizedDelaySec = cfg.certificate.randomizedDelaySec;
         };
+      };
+    })
+    (lib.mkIf cfg.serve.enable {
+      assertions = [
+        {
+          assertion = cfg.serve.target != "";
+          message = "tailscale.serve.target must be set when tailscale.serve.enable is true.";
+        }
+      ];
+
+      systemd.services.tailscale-serve = {
+        description = "Configure tailscale serve";
+        wants = [ "tailscaled.service" ];
+        after = [ "tailscaled.service" ];
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          set -euo pipefail
+
+          ${pkgs.tailscale}/bin/tailscale serve --https=${toString cfg.serve.httpsPort} ${cfg.serve.target}
+        '';
       };
     })
   ];

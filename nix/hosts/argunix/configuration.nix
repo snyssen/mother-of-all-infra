@@ -23,6 +23,8 @@
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
     flake.modules.nixos.nfs-mounts
+
+    flake.inputs.argunix.nixosModules.default
   ];
 
   disko =
@@ -44,12 +46,24 @@
       sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
     };
+    "argunix/github-token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
   };
 
   tailscale.autoconnect = {
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
+  };
+
+  tailscale.serve = {
+    enable = true;
+    httpsPort = 443;
+    target = "http://127.0.0.1:8080";
   };
 
   grafana-alloy = {
@@ -87,6 +101,23 @@
     host = "hypervisor";
     remotePath = "/mnt/bulk/argunix";
     dependsOn.tailscale = true;
+  };
+
+  services.argunix = {
+    enable = true;
+    listen = "127.0.0.1:8080";
+    settings = {
+      external_url = "https://argunix.taild023c5.ts.net";
+      forges.github = {
+        kind = "github";
+        web_url = "https://github.com";
+        token_path = config.sops.secrets."argunix/github-token".path;
+        repos = {
+          "snyssen/mother-of-all-infra" = { }; # default: build main + all PRs
+          # "you/your-flake".watched_branches = [ "main" "release/*" ];
+        };
+      };
+    };
   };
 
   # TODO: make this part automatically defined

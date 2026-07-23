@@ -32,6 +32,8 @@
 
     nixcord.url = "github:FlameFlag/nixcord";
     nixcord.inputs.nixpkgs.follows = "nixpkgs";
+
+    argunix.url = "git+https://codeberg.org/tfc/argunix";
   };
 
   # Load the blueprint
@@ -43,6 +45,7 @@
       nixpkgs.config.allowUnfree = true;
       nixpkgs.overlays = [
         inputs.nix-vscode-extensions.overlays.default
+        inputs.argunix.overlays.default
         (final: _: {
           # this allows you to access `pkgs.unstable` anywhere in your config
           unstable = import inputs.nixpkgs-unstable {
