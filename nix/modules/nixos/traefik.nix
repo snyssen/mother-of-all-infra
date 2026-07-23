@@ -16,13 +16,19 @@ in
         ];
         default = "http";
       };
-      dnsChallenge.apiKeyPath = lib.mkOption {
-        description = ''
-          Path to API key file for DNS challenge, REQUIRED if challengeType is "dns". Should be provided using a SOPS secret.
-        '';
-      };
-      dnsChallenge.domains = lib.mkOption {
-        default = [ "snyssen.be" ];
+      dnsChallenge = {
+        resolvers = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ "9.9.9.9" ];
+        };
+        apiKeyPath = lib.mkOption {
+          description = ''
+            Path to API key file for DNS challenge, REQUIRED if challengeType is "dns". Should be provided using a SOPS secret.
+          '';
+        };
+        domains = lib.mkOption {
+          default = [ "snyssen.be" ];
+        };
       };
     };
     tcpEntrypoints = lib.mkOption {
@@ -68,6 +74,11 @@ in
       systemd.services.traefik.environment = lib.mkIf (cfg.letsencrypt.challengeType == "dns") {
         DYNU_API_KEY_FILE = cfg.letsencrypt.dnsChallenge.apiKeyPath;
       };
+      # Ensures that /var/log/traefik exists and that traefik user can write to it
+      systemd.services.traefik.serviceConfig = {
+        LogsDirectory = "traefik";
+        LogsDirectoryMode = "0754";
+      };
 
       services.traefik = {
         enable = true;
@@ -112,6 +123,7 @@ in
             })
             (lib.mkIf (cfg.letsencrypt.challengeType == "dns") {
               dnsChallenge.provider = "dynu";
+              dnsChallenge.resolvers = cfg.letsencrypt.dnsChallenge.resolvers;
             })
           ];
           api.dashboard = true;

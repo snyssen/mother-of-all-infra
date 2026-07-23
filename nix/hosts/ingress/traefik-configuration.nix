@@ -30,6 +30,9 @@ let
     speedtest = "speedtest.snyssen.be";
     team = "bigdouf.team";
     umami = "umami.snyssen.be";
+
+    # Note: this lives on the argunix host
+    argunix = "argunix.snyssen.be";
   };
   proxiedTCPServices = {
     minecraft = {

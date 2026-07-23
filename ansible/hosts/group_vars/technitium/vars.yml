@@ -75,6 +75,13 @@ technitium_dns_setup_split_records:
         ip: "100.74.131.24"
 
   - zone: snyssen.be
+    name: "argunix"
+    entries:
+      # Always respond with tailnet IP since it is only accessible from there
+      - network: "0.0.0.0/0"
+        ip: "100.67.189.71"
+
+  - zone: snyssen.be
     name: "hass"
     entries:
       - network: "192.168.1.0/24"

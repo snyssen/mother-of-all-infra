@@ -19,6 +19,7 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
+    flake.modules.nixos.traefik
     # flake.modules.nixos.crowdsec-firewall-bouncer # TODO: generate API key and enable
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
@@ -46,7 +47,19 @@
       sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
     };
+    "traefik/dynu-api-key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "traefik";
+      group = "traefik";
+      mode = "0400";
+    };
     "argunix/github-token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/caches/attic/token" = {
       sopsFile = ./data/secrets.yaml;
       owner = "argunix";
       group = "argunix";
@@ -58,12 +71,6 @@
     enable = true;
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
-  };
-
-  tailscale.serve = {
-    enable = true;
-    httpsPort = 443;
-    target = "http://127.0.0.1:8080";
   };
 
   grafana-alloy = {
@@ -103,11 +110,30 @@
     dependsOn.tailscale = true;
   };
 
+  traefik = {
+    letsencrypt = {
+      challengeType = "dns";
+      dnsChallenge = {
+        apiKeyPath = config.sops.secrets."traefik/dynu-api-key".path;
+      };
+    };
+  };
+  services.traefik.dynamicConfigOptions = {
+    http.routers.argunix = {
+      entryPoints = [ "websecure" ];
+      rule = "Host(`argunix.snyssen.be`)";
+      service = "argunix";
+    };
+    http.services.argunix.loadBalancer.servers = [
+      { url = "http://127.0.0.1:8080"; }
+    ];
+  };
+
   services.argunix = {
     enable = true;
     listen = "127.0.0.1:8080";
     settings = {
-      external_url = "https://argunix.taild023c5.ts.net";
+      external_url = "https://argunix.snyssen.be";
       forges.github = {
         kind = "github";
         web_url = "https://github.com";
@@ -117,6 +143,13 @@
           # "you/your-flake".watched_branches = [ "main" "release/*" ];
         };
       };
+      binary_caches = [
+        {
+          push_url = "https://attic.snyssen.be";
+          public_key = "snyssen-infra:dxx9yngQiQbhs+XqBC0kN9tb5iU1Sqbs11Mr2EarYIs=";
+          signing_key_path = config.sops.secrets."argunix/caches/attic/token".path;
+        }
+      ];
     };
   };
 
