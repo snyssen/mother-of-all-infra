@@ -77,7 +77,9 @@ in
       # Ensures that /var/log/traefik exists and that traefik user can write to it
       systemd.services.traefik.serviceConfig = {
         LogsDirectory = "traefik";
-        LogsDirectoryMode = "0754";
+        LogsDirectoryMode = "0750";
+        # Keep logs readable by the traefik group so collectors can read them
+        UMask = "0027";
       };
 
       services.traefik = {

@@ -126,6 +126,10 @@ in
         extraFlags = [ "--disable-reporting" ];
       };
 
+      systemd.services.alloy.serviceConfig = lib.mkIf config.services.traefik.enable {
+        SupplementaryGroups = [ "traefik" ];
+      };
+
       environment.etc."alloy/config.alloy".text = ''
         ${if cfg.varlogs.enable then alloy_varlogs else ""}
         ${if cfg.journald.enable then alloy_journald else ""}
