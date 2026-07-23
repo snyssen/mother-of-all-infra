@@ -13,12 +13,8 @@ keys: &all_keys
   - &root_technitium_primary age1flln5jgw557ft9zff073ccer3hjcv344zaypm7gvrx9zlcnzsgws6ssrxg
   - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
   - &root_apps age1un9lm7u4whghrydmeyxhv9mmkt7tyhjejn0mhesfc6g3x60atflqna7lg7
+  - &root_argunix age1lz26wpeeq7jnl9h40p2pexde8syzxmsen53v3xxg8hcx84zpjvnqj6kust
 creation_rules:
-  # global secrets
-  - path_regex: nix/data/[^/]+\.(yaml|json|env|ini)$
-    key_groups:
-      - pgp:
-        age: *all_keys
   # host specific secrets
   - path_regex: nix/hosts/purplehaze/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -88,5 +84,12 @@ creation_rules:
       - pgp:
         age:
           - *root_apps
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
+  - path_regex: nix/hosts/argunix/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *root_argunix
           - *snyssen_purplehaze
           - *snyssen_blackfog

@@ -483,6 +483,7 @@ monitoring__extra_monitored_hosts:
   - 100.117.7.65:9100 # technitium-primary
   - 100.64.88.28:9100 # technitium-secondary
   # - 100.86.224.95:9100 # apps - already part of "monitored" group
+  - "argunix:9100"
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:

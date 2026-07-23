@@ -7,7 +7,7 @@ libvirt_vms:
   # Home Assistant OS appliance (qcow2 image)
   - name: haos
     vcpu: 2
-    ram_mb: 4096
+    ram_mb: 2048
     mac_address: "52:54:00:12:34:56" # always start with "52:54:00" for QEMU/KVM; last 3 octets can be random but must be unique per VM
     disk_gb: 64 # only resizes up; leave unset to skip resize
     disk_image:
@@ -69,4 +69,14 @@ libvirt_vms:
       enable: true
     disk_image:
       dest: "/mnt/vmstore/apps/disk.qcow2"
+      build: false
+  - name: argunix
+    vcpu: 4
+    ram_mb: 4096
+    mac_address: "52:54:00:00:01:01"
+    disk_gb: 128
+    virtiofs_luks_key:
+      enable: true
+    disk_image:
+      dest: "/mnt/vmstore/argunix/disk.qcow2"
       build: false
