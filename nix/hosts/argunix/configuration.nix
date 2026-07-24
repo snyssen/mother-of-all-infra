@@ -119,6 +119,11 @@
     };
   };
   services.traefik.dynamicConfigOptions = {
+    http.routers.traefik-dashboard = {
+      entryPoints = [ "websecure" ];
+      rule = "Host(`argunix-ingress.snyssen.be`)";
+      service = "api@internal";
+    };
     http.routers.argunix = {
       entryPoints = [ "websecure" ];
       rule = "Host(`argunix.snyssen.be`)";

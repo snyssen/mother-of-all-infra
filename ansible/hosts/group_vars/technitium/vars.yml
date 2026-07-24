@@ -80,6 +80,12 @@ technitium_dns_setup_split_records:
       # Always respond with tailnet IP since it is only accessible from there
       - network: "0.0.0.0/0"
         ip: "100.67.189.71"
+  - zone: snyssen.be
+    name: "argunix-ingress"
+    entries:
+      # Always respond with tailnet IP since it is only accessible from there
+      - network: "0.0.0.0/0"
+        ip: "100.67.189.71"
 
   - zone: snyssen.be
     name: "hass"
