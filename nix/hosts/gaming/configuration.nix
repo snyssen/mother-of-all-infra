@@ -52,6 +52,8 @@ in
     flake.modules.nixos.sunshine
 
     ./network.nix
+
+    flake.inputs.argunix.nixosModules.argunix-builder
   ];
 
   disko =
@@ -74,6 +76,12 @@ in
   sops.secrets = {
     "users/snyssen/passwordHash" = {
       neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
+    };
+    "argunix/builder_enrollment/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix-builder";
+      group = "argunix-builder";
+      mode = "0400";
     };
   };
 
@@ -143,6 +151,13 @@ in
     ckan
     lutris
   ];
+
+  services.argunix-builder = {
+    enable = true;
+    argunixHost = "argunix.snyssen.be";
+    argunixPort = 45678;
+    enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
+  };
 
   stylix = with theming.dark; {
     wallpaper = lib.mkDefault wallpaper;
