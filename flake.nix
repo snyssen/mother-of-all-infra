@@ -27,6 +27,12 @@
     stylix.url = "github:danth/stylix/release-26.05";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Use raw scheme files directly to avoid eval-time package realization.
+    tinted-schemes = {
+      url = "github:tinted-theming/schemes";
+      flake = false;
+    };
+
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -39,20 +45,37 @@
   # Load the blueprint
   outputs =
     inputs:
-    inputs.blueprint {
-      inherit inputs;
-      prefix = "nix/";
-      nixpkgs.config.allowUnfree = true;
-      nixpkgs.overlays = [
-        inputs.nix-vscode-extensions.overlays.default
-        inputs.argunix.overlays.default
-        (final: _: {
-          # this allows you to access `pkgs.unstable` anywhere in your config
-          unstable = import inputs.nixpkgs-unstable {
-            inherit (final.stdenv.hostPlatform) system;
-            inherit (final) config;
-          };
-        })
-      ];
+    let
+      flakeOutputs = inputs.blueprint {
+        inherit inputs;
+        prefix = "nix/";
+        nixpkgs.config.allowUnfree = true;
+        nixpkgs.overlays = [
+          inputs.nix-vscode-extensions.overlays.default
+          inputs.argunix.overlays.default
+          (final: _: {
+            # this allows you to access `pkgs.unstable` anywhere in your config
+            unstable = import inputs.nixpkgs-unstable {
+              inherit (final.stdenv.hostPlatform) system;
+              inherit (final) config;
+            };
+          })
+        ];
+      };
+
+      # Argunix already evaluates `nixosConfigurations` directly.
+      # Dropping host-closure duplicates from `checks` reduces CI eval fan-out.
+      pruneHostClosureChecks =
+        checksForSystem:
+        let
+          namesToDrop = builtins.filter (
+            name: builtins.match "^(nixos|darwin|system)-.*" name != null
+          ) (builtins.attrNames checksForSystem);
+        in
+        builtins.removeAttrs checksForSystem namesToDrop;
+    in
+    flakeOutputs
+    // {
+      checks = builtins.mapAttrs (_: pruneHostClosureChecks) flakeOutputs.checks;
     };
 }

@@ -113,7 +113,7 @@ in
   stylix = {
     enable = true;
     image = ../../files/wallpapers/bear1.jpg;
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/atelier-forest.yaml";
+    base16Scheme = "${inputs.tinted-schemes}/base16/atelier-forest.yaml";
     polarity = "dark";
 
     fonts = {

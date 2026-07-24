@@ -21,7 +21,7 @@ in
     schemeName = lib.mkOption {
       type = lib.types.str;
       description = ''
-        Name of a base 16 scheme to pick from pkgs.base16-schemes.
+        Name of a base16 scheme to pick from tinted-theming/schemes.
         A gallery of schemes can be found at https://tinted-theming.github.io/tinted-gallery/
       '';
       example = "atelier-cave-light";
@@ -33,7 +33,7 @@ in
     stylix = {
       enable = true;
       image = cfg.wallpaper;
-      base16Scheme = "${pkgs.base16-schemes}/share/themes/${cfg.schemeName}.yaml";
+      base16Scheme = "${inputs.tinted-schemes}/base16/${cfg.schemeName}.yaml";
       polarity = if cfg.isLightTheme then "light" else "dark";
       fonts = {
         monospace = {
