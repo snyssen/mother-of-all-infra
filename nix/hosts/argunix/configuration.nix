@@ -53,7 +53,13 @@
       group = "traefik";
       mode = "0400";
     };
-    "argunix/github-token" = {
+    "argunix/builder_enrollment/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/forges/github/token" = {
       sopsFile = ./data/secrets.yaml;
       owner = "argunix";
       group = "argunix";
@@ -139,10 +145,14 @@
     listen = "127.0.0.1:8080";
     settings = {
       external_url = "https://argunix.snyssen.be";
+      builder_enrollment = {
+        listen = "[::]:45678";
+        token_path = config.sops.secrets."argunix/builder_enrollment/token".path;
+      };
       forges.github = {
         kind = "github";
         web_url = "https://github.com";
-        token_path = config.sops.secrets."argunix/github-token".path;
+        token_path = config.sops.secrets."argunix/forges/github/token".path;
         repos = {
           "snyssen/mother-of-all-infra" = { }; # default: build main + all PRs
           # "you/your-flake".watched_branches = [ "main" "release/*" ];
@@ -158,6 +168,7 @@
       eval.timeout_seconds = 3600;
     };
   };
+  networking.firewall.allowedTCPPorts = [ 45678 ];
 
   # TODO: make this part automatically defined
   nix.settings = {
