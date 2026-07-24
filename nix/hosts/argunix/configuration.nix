@@ -150,6 +150,7 @@
           signing_key_path = config.sops.secrets."argunix/caches/attic/token".path;
         }
       ];
+      eval.timeout_seconds = 3600;
     };
   };
 
