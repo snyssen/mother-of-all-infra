@@ -631,6 +631,9 @@ garage__data_dir: "/mnt/storage/garage/data"
 garage__rpc_secret: "{{ vault_garage__rpc_secret }}"
 garage__admin_token: "{{ vault_garage__admin_token }}"
 garage__metrics_token: "{{ vault_garage__metrics_token }}"
+garage__default_bucket: cache
+garage__default_access_key: "{{ vault_garage__default_access_key }}"
+garage__default_secret_key: "{{ vault_garage__default_secret_key }}"
 
 crowdsec__webui_user: "{{ vault_crowdsec__webui_user }}"
 crowdsec__webui_password: "{{ vault_crowdsec__webui_password }}"

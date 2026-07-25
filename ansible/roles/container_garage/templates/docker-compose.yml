@@ -1,6 +1,6 @@
 services:
   garage:
-    image: dxflrs/garage:v2.1.0
+    image: dxflrs/garage:v2.3.0
     container_name: garage
     restart: unless-stopped
     networks:
@@ -17,6 +17,11 @@ services:
       - "{{ garage__config_dir }}/garage.toml:/etc/garage.toml:ro"
       - "{{ garage__meta_dir }}:/var/lib/garage/meta"
       - "{{ garage__data_dir }}:/var/lib/garage/data"
+    environment:
+      GARAGE_DEFAULT_BUCKET: "{{ garage__default_bucket }}"
+      GARAGE_DEFAULT_ACCESS_KEY: "{{ garage__default_access_key }}"
+      GARAGE_DEFAULT_SECRET_KEY: "{{ garage__default_secret_key }}"
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
 
   garage-ui:
     image: khairul169/garage-webui:1.1.0
@@ -30,6 +35,8 @@ services:
     environment:
       API_BASE_URL: "http://garage:3903"
       S3_ENDPOINT_URL: "http://garage:3900"
+    volumes:
+      - "{{ garage__config_dir }}/garage.toml:/etc/garage.toml:ro"
     labels:
       - traefik.enable=true
       - traefik.docker.network=web
