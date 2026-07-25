@@ -3,6 +3,7 @@
   flake,
   config,
   pkgs,
+  lib,
   ...
 }:
 {
@@ -84,10 +85,18 @@
     openFirewall = true;
     package = pkgs.unstable.technitium-dns-server;
   };
+  # Keep resolved for upstream DNS management, but free local :53 so
+  # Technitium can bind TCP/53 for AXFR/IXFR.
+  services.resolved.settings.Resolve.DNSStubListener = false;
+  environment.etc."resolv.conf".source = lib.mkForce "/run/systemd/resolve/resolv.conf";
   # services.technitium-dns-server.openFirewall = true; does not open the firewall for DHCP, so we do so below
   networking.firewall.allowedUDPPorts = [
     67
     68
+  ];
+  # it does not open for DNS TCP either, which is required for zone transfers
+  networking.firewall.allowedTCPPorts = [
+    53
   ];
 
   services.openssh = {
