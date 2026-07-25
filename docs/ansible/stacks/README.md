@@ -41,6 +41,7 @@ Other specialized stacks providing specific services (see individual files for d
 - **dawarich**: Location tracking and history
 - **ddns**: Dynamic DNS client
 - **foundryvtt**: Foundry Virtual Tabletop for RPG games
+- **garage**: S3-compatible object storage and web UI for binary caching
 - **immich**: Photo and video management (self-hosted Google Photos)
 - **ntfy**: Push notifications
 - **personal-website**: Static website hosting

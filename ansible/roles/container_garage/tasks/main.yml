@@ -1,0 +1,31 @@
+- name: Ensure Garage directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ garage__config_dir }}"
+    - "{{ garage__meta_dir }}"
+    - "{{ garage__data_dir }}"
+
+- name: Ensure Garage required secrets are configured
+  ansible.builtin.assert:
+    that:
+      - garage__rpc_secret | length > 0
+      - garage__admin_token | length > 0
+      - garage__metrics_token | length > 0
+    fail_msg: >-
+      Garage secrets are missing. Set vault_garage__rpc_secret,
+      vault_garage__admin_token and vault_garage__metrics_token in apps vault.
+
+- name: Deploy Garage configuration
+  ansible.builtin.template:
+    src: garage.toml
+    dest: "{{ garage__config_dir }}/garage.toml"
+    mode: "0600"
+
+- name: Deploy Garage stack
+  ansible.builtin.include_role:
+    name: snyssen.compose_deploy
+  vars:
+    stack_name: garage
