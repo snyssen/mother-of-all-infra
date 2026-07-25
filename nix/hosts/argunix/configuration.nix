@@ -182,8 +182,14 @@
     };
   };
   networking.firewall.allowedTCPPorts = [ 45678 ];
-  systemd.services.argunix.serviceConfig.EnvironmentFile =
-    config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
+  systemd.services.argunix = {
+    environment = {
+      RUST_LOG = "argunix=debug,argunix_daemon=debug,warn";
+      RUST_BACKTRACE = "1";
+    };
+    serviceConfig.EnvironmentFile =
+      config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
+  };
 
   # TODO: make this part automatically defined
   nix.settings = {
