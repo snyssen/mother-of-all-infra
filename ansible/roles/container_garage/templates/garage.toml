@@ -13,7 +13,11 @@ bootstrap_peers = []
 [s3_api]
 s3_region = "{{ garage__s3_region }}"
 api_bind_addr = "[::]:3900"
-root_domain = ".{{ garage__s3_subdomain }}.{{ main_domain }}"
+root_domain = ".{{ garage__s3_api_subdomain }}.{{ main_domain }}"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".{{ main_domain }}"
 
 [admin]
 api_bind_addr = "[::]:3903"
