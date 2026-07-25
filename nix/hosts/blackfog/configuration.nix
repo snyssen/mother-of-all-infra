@@ -84,6 +84,11 @@ in
       group = "argunix-builder";
       mode = "0400";
     };
+    "nix-caches/cache_snyssen_be/signing_key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "snyssen";
+      mode = "0400";
+    };
   };
 
   users = {
