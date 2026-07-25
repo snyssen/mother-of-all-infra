@@ -1,0 +1,56 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: garage
+    restart: unless-stopped
+    networks:
+      - web
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.garage-s3-api.entryPoints=websecure
+      - traefik.http.routers.garage-s3-api.rule=Host(`{{ garage__s3_api_subdomain }}.{{ main_domain }}`)
+      - traefik.http.routers.garage-s3-api.service=garage-s3-api
+      - traefik.http.services.garage-s3-api.loadBalancer.server.port=3900
+      - traefik.http.routers.garage-s3-web.entryPoints=websecure
+      - traefik.http.routers.garage-s3-web.rule=Host(`{{ garage__default_bucket }}.{{ main_domain }}`)
+      - traefik.http.routers.garage-s3-web.service=garage-s3-web
+      - traefik.http.services.garage-s3-web.loadBalancer.server.port=3902
+    volumes:
+      - "{{ garage__config_dir }}/garage.toml:/etc/garage.toml:ro"
+      - "{{ garage__meta_dir }}:/var/lib/garage/meta"
+      - "{{ garage__data_dir }}:/var/lib/garage/data"
+    environment:
+      GARAGE_DEFAULT_BUCKET: "{{ garage__default_bucket }}"
+      GARAGE_DEFAULT_ACCESS_KEY: "{{ garage__default_access_key }}"
+      GARAGE_DEFAULT_SECRET_KEY: "{{ garage__default_secret_key }}"
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+
+  garage-ui:
+    image: khairul169/garage-webui:1.1.0
+    container_name: garage-ui
+    restart: unless-stopped
+    depends_on:
+      - garage
+    networks:
+      - web
+      - internal
+    environment:
+      API_BASE_URL: "http://garage:3903"
+      S3_ENDPOINT_URL: "http://garage:3900"
+    volumes:
+      - "{{ garage__config_dir }}/garage.toml:/etc/garage.toml:ro"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.garage-ui.entryPoints=websecure
+      - traefik.http.routers.garage-ui.rule=Host(`{{ garage__ui_subdomain }}.{{ main_domain }}`)
+      - traefik.http.routers.garage-ui.service=garage-ui
+      - traefik.http.services.garage-ui.loadBalancer.server.port=3909
+      - traefik.http.routers.garage-ui.middlewares=authelia@docker,traefik-compress
+
+networks:
+  web:
+    external: true
+  internal:

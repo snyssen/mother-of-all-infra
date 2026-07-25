@@ -621,6 +621,20 @@ matrix__maubot__admin_pass: "{{ vault_matrix__maubot__admin_pass }}"
 
 attic__postgres_password: "{{ vault_attic__postgres_password }}"
 
+garage__s3_api_subdomain: s3
+garage__ui_subdomain: garage
+garage__s3_region: home
+garage__replication_factor: 1
+garage__config_dir: "{{ docker_mounts_directory }}/garage"
+garage__meta_dir: "{{ docker_mounts_directory }}/garage/meta"
+garage__data_dir: "/mnt/storage/garage/data"
+garage__rpc_secret: "{{ vault_garage__rpc_secret }}"
+garage__admin_token: "{{ vault_garage__admin_token }}"
+garage__metrics_token: "{{ vault_garage__metrics_token }}"
+garage__default_bucket: cache
+garage__default_access_key: "{{ vault_garage__default_access_key }}"
+garage__default_secret_key: "{{ vault_garage__default_secret_key }}"
+
 crowdsec__webui_user: "{{ vault_crowdsec__webui_user }}"
 crowdsec__webui_password: "{{ vault_crowdsec__webui_password }}"
 

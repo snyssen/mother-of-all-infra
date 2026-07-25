@@ -207,6 +207,7 @@ access_control:
         - "speedtest-tracker.{{ main_domain }}"
         - "backrest.{{ main_domain }}"
         - "crowdsec-ui.{{ main_domain }}"
+        - "garage.{{ main_domain }}"
       policy: two_factor
       subject:
         - ["group:sysadmin"]

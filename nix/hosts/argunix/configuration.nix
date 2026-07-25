@@ -65,6 +65,18 @@
       group = "argunix";
       mode = "0400";
     };
+    "argunix/caches/cache_snyssen_be/signing_key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/caches/cache_snyssen_be/s3_credentials" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
     "argunix/caches/attic/token" = {
       sopsFile = ./data/secrets.yaml;
       owner = "argunix";
@@ -160,15 +172,24 @@
       };
       binary_caches = [
         {
-          push_url = "https://attic.snyssen.be";
-          public_key = "snyssen-infra:dxx9yngQiQbhs+XqBC0kN9tb5iU1Sqbs11Mr2EarYIs=";
-          signing_key_path = config.sops.secrets."argunix/caches/attic/token".path;
+          push_url = "s3://cache?endpoint=https://s3.snyssen.be&region=home";
+          public_url = "https://cache.snyssen.be";
+          public_key = "cache.snyssen.be:YbGmg46EztCHAFVaMztDfW/tuSuqVjLlYeG67R3VhGY=";
+          signing_key_path = config.sops.secrets."argunix/caches/cache_snyssen_be/signing_key".path;
         }
       ];
       eval.timeout_seconds = 3600;
     };
   };
   networking.firewall.allowedTCPPorts = [ 45678 ];
+  systemd.services.argunix = {
+    environment = {
+      RUST_LOG = "argunix=debug,argunix_daemon=debug,warn";
+      RUST_BACKTRACE = "1";
+    };
+    serviceConfig.EnvironmentFile =
+      config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
+  };
 
   # TODO: make this part automatically defined
   nix.settings = {

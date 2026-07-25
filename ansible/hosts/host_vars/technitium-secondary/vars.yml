@@ -27,6 +27,7 @@ technitium_dns_setup_cluster_secondary_ip_addresses:
   - "100.64.88.28"
 
 technitium_dns_setup_trigger_secondary_resync: true
+technitium_dns_setup_force_secondary_rejoin: false
 
 # Use a Tailscale-issued certificate (converted to PKCS#12) for Technitium HTTPS.
 technitium_dns_setup_tls_enable_managed_certificate: true

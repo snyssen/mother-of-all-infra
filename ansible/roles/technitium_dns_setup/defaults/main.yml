@@ -22,6 +22,11 @@ technitium_dns_setup_cluster_secondary_ip_addresses: []
 # Useful when a node has already joined but appears stale.
 technitium_dns_setup_trigger_secondary_resync: false
 
+# Force the secondary to call cluster join again even when it reports
+# clusterInitialized=true. Useful to recover from a stale/mis-joined
+# node that no longer tracks primary zone updates.
+technitium_dns_setup_force_secondary_rejoin: false
+
 # Configure a managed HTTPS certificate on the primary node.
 # When enabled, the role configures Technitium to use the PKCS#12 certificate
 # at technitium_dns_setup_tls_certificate_path.

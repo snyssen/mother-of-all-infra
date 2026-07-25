@@ -25,6 +25,15 @@
   register: _secondary_cluster_status
   failed_when: _secondary_cluster_status.json.status != 'ok'
 
+- name: Decide whether secondary should (re)join cluster
+  ansible.builtin.set_fact:
+    technitium_dns_setup_secondary_should_join: >-
+      {{
+        (technitium_dns_setup_force_secondary_rejoin | bool)
+        or
+        (not _secondary_cluster_status.json.response.clusterInitialized)
+      }}
+
 - name: Join cluster as secondary node
   ansible.builtin.uri:
     url: "http://{{ technitium_dns_setup_api_host }}:{{ technitium_dns_setup_api_port }}/api/admin/cluster/initJoin"
@@ -48,14 +57,14 @@
     timeout: 300
   register: _cluster_join
   failed_when: _cluster_join.json.status != 'ok'
-  when: not _secondary_cluster_status.json.response.clusterInitialized
+  when: technitium_dns_setup_secondary_should_join
 
 - name: Wait for initial config sync to settle
   ansible.builtin.pause:
     seconds: 30
     prompt: "Waiting 30 s for the Technitium cluster secondary to finish syncing config from primary…"
   when:
-    - not _secondary_cluster_status.json.response.clusterInitialized
+    - technitium_dns_setup_secondary_should_join
     - _cluster_join.json.status == 'ok'
 
 - name: Report cluster join result
@@ -63,12 +72,12 @@
     msg: >-
       {{ inventory_hostname }} has joined the Technitium cluster as a secondary node.
       Configuration and zone data will be synced from the primary automatically.
-  when: not _secondary_cluster_status.json.response.clusterInitialized
+  when: technitium_dns_setup_secondary_should_join
 
 - name: Report already joined
   ansible.builtin.debug:
     msg: "{{ inventory_hostname }} is already a member of a Technitium cluster — skipping join."
-  when: _secondary_cluster_status.json.response.clusterInitialized
+  when: not technitium_dns_setup_secondary_should_join
 
 - name: Trigger immediate cluster resync on secondary (optional)
   effectivelywild.technitium_dns.technitium_dns_resync_cluster:
@@ -77,4 +86,4 @@
     api_token: "{{ technitium_dns_setup_session_token }}"
   when:
     - technitium_dns_setup_trigger_secondary_resync | bool
-    - _secondary_cluster_status.json.response.clusterInitialized or (_cluster_join is defined and _cluster_join.json.status == 'ok')
+    - (not technitium_dns_setup_secondary_should_join) or (_cluster_join is defined and _cluster_join.json.status == 'ok')
