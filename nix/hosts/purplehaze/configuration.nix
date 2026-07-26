@@ -50,12 +50,25 @@ in
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
+
+    flake.inputs.argunix.nixosModules.argunix-builder
   ];
 
   sops.defaultSshKeys.mode = "user";
   sops.secrets = {
     "users/snyssen/passwordHash" = {
       neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
+    };
+    "argunix/builder_enrollment/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix-builder";
+      group = "argunix-builder";
+      mode = "0400";
+    };
+    "nix-caches/cache_snyssen_be/signing_key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "snyssen";
+      mode = "0400";
     };
   };
 
@@ -122,6 +135,14 @@ in
     wallpaper = wallpaper;
     schemeName = scheme;
   };
+
+  services.argunix-builder = {
+    enable = true;
+    argunixHost = "argunix.snyssen.be";
+    argunixPort = 45678;
+    enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
+  };
+
   specialisation = {
     gnome-light.configuration.stylix = with theming.light; {
       wallpaper = lib.mkForce wallpaper;
