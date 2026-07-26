@@ -33,6 +33,7 @@ in
     ./hardware-configuration.nix
 
     flake.modules.nixos.sops
+    flake.modules.nixos.comin
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -57,6 +58,8 @@ in
       neededForUsers = true; # ensure this secret is available before creating the user account that depends on it
     };
   };
+
+  comin.desktop.enable = true;
 
   users = {
     mutableUsers = false;

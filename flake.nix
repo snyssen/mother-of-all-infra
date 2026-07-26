@@ -40,6 +40,8 @@
     nixcord.inputs.nixpkgs.follows = "nixpkgs";
 
     argunix.url = "git+https://codeberg.org/tfc/argunix";
+    comin.url = "github:nlewo/comin";
+    comin.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   # Load the blueprint
@@ -68,9 +70,9 @@
       pruneHostClosureChecks =
         checksForSystem:
         let
-          namesToDrop = builtins.filter (
-            name: builtins.match "^(nixos|darwin|system)-.*" name != null
-          ) (builtins.attrNames checksForSystem);
+          namesToDrop = builtins.filter (name: builtins.match "^(nixos|darwin|system)-.*" name != null) (
+            builtins.attrNames checksForSystem
+          );
         in
         builtins.removeAttrs checksForSystem namesToDrop;
     in
