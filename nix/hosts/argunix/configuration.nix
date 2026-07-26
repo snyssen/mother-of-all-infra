@@ -168,6 +168,9 @@
         repos = {
           "snyssen/mother-of-all-infra" = { }; # default: build main + all PRs
           # "you/your-flake".watched_branches = [ "main" "release/*" ];
+          "snyssen/webb-launcher" = { };
+          "snyssen/personal-website" = { };
+          "snyssen/nix-dev-env" = { };
         };
       };
       binary_caches = [
