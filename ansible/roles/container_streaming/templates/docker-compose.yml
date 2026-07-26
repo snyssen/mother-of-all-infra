@@ -104,7 +104,7 @@ services:
   #   restart: "unless-stopped"
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.0.4@sha256:b67039e6739c2379f2eac8901248cdfcd78536ee34fe6948faea6b8ce8b4805b
+    image: lscr.io/linuxserver/sabnzbd:5.0.4@sha256:f12cb77b4e16d2d60fc8226e433daf69884e83874d90447c6ff1d57ef4247d6f
     container_name: usenet
     network_mode: service:vpn
     environment:
@@ -305,7 +305,7 @@ services:
       - peertube_redis
 
   peertube_redis:
-    image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+    image: redis:8-alpine@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb
     container_name: peertube_redis
     restart: unless-stopped
     networks:
@@ -314,7 +314,7 @@ services:
       - "{{ docker_mounts_directory }}/peertube/redis:/data"
 
   audiomuse_redis:
-    image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+    image: redis:8-alpine@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb
     container_name: audiomuse_redis
     restart: unless-stopped
     networks:
