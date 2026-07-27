@@ -165,19 +165,13 @@
         kind = "github";
         web_url = "https://github.com";
         token_path = config.sops.secrets."argunix/forges/github/token".path;
-        repos =
-          let
-            watched_branches = [
-              "main"
-              "renovate/*"
-            ];
-          in
-          {
-            "snyssen/mother-of-all-infra".watched_branches = watched_branches;
-            "snyssen/webb-launcher".watched_branches = watched_branches;
-            "snyssen/personal-website".watched_branches = watched_branches;
-            "snyssen/nix-dev-env".watched_branches = watched_branches;
-          };
+        repos = {
+          "snyssen/mother-of-all-infra" = { }; # default: build main + all PRs
+          # "you/your-flake".watched_branches = [ "main" "release/*" ];
+          "snyssen/webb-launcher" = { };
+          "snyssen/personal-website" = { };
+          "snyssen/nix-dev-env" = { };
+        };
       };
       binary_caches = [
         {
