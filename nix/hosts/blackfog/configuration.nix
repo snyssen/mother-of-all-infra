@@ -37,6 +37,8 @@ in
     ./hardware-configuration.nix
 
     flake.modules.nixos.sops
+    flake.modules.nixos.comin
+    flake.modules.nixos.argunix
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -53,8 +55,6 @@ in
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
     flake.modules.nixos.prometheus-node-exporter
-
-    flake.inputs.argunix.nixosModules.argunix-builder
   ];
 
   disko =
@@ -90,6 +90,9 @@ in
       mode = "0400";
     };
   };
+
+  argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
+  comin.desktop.enable = true;
 
   users = {
     mutableUsers = false;
@@ -177,13 +180,6 @@ in
   stylix = with theming.dark; {
     wallpaper = lib.mkDefault wallpaper;
     schemeName = lib.mkDefault scheme;
-  };
-
-  services.argunix-builder = {
-    enable = true;
-    argunixHost = "argunix.snyssen.be";
-    argunixPort = 45678;
-    enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
   };
 
   specialisation = {

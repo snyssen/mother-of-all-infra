@@ -34,6 +34,7 @@ in
 
     flake.modules.nixos.sops
     flake.modules.nixos.comin
+    flake.modules.nixos.argunix
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -50,8 +51,6 @@ in
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
-
-    flake.inputs.argunix.nixosModules.argunix-builder
   ];
 
   sops.defaultSshKeys.mode = "user";
@@ -72,6 +71,7 @@ in
     };
   };
 
+  argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
   comin.desktop.enable = true;
 
   users = {
@@ -134,13 +134,6 @@ in
   stylix = with theming.dark; {
     wallpaper = wallpaper;
     schemeName = scheme;
-  };
-
-  services.argunix-builder = {
-    enable = true;
-    argunixHost = "argunix.snyssen.be";
-    argunixPort = 45678;
-    enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
   };
 
   specialisation = {

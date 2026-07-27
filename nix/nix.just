@@ -1,6 +1,11 @@
 alias nhr := nix-remote-install
+alias nb := nix-build
 alias nbc := nix-build-cache
 alias nbcs := nix-build-cache-sign
+
+# Build NixOS configuration
+nix-build host=hostname:
+  nh os build -H {{host}}
 
 # Build NixOS configuration and push result to the S3 binary cache
 nix-build-cache host=hostname:

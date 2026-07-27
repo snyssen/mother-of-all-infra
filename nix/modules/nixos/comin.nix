@@ -21,6 +21,8 @@ in
     desktop.enable = lib.mkEnableOption "comin desktop integration";
   };
 
+  # TODO: use options
+  # TODO: services.comin.sshAllowedSignersPath
   config = lib.mkIf cfg.enable {
     services.comin = {
       enable = true;

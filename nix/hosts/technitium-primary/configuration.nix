@@ -20,6 +20,7 @@
     ./network.nix
 
     flake.modules.nixos.sops
+    flake.modules.nixos.comin
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout

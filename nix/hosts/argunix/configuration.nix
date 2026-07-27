@@ -11,6 +11,8 @@
     ./hardware-configuration.nix
 
     flake.modules.nixos.sops
+    flake.modules.nixos.comin
+    flake.modules.nixos.argunix
     flake.modules.nixos.cache
     flake.modules.nixos.grub
     flake.modules.nixos.kbd-layout
@@ -24,8 +26,6 @@
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
     flake.modules.nixos.nfs-mounts
-
-    flake.inputs.argunix.nixosModules.default
   ];
 
   disko =
@@ -152,60 +152,26 @@
     ];
   };
 
-  services.argunix = {
-    enable = true;
-    listen = "0.0.0.0:8080";
-    settings = {
-      external_url = "https://argunix.snyssen.be";
-      builder_enrollment = {
-        listen = "[::]:45678";
-        token_path = config.sops.secrets."argunix/builder_enrollment/token".path;
+  argunix.mode = "both";
+  argunix.coordinator = {
+    builderEnrollment.tokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
+    forges.github = {
+      tokenFile = config.sops.secrets."argunix/forges/github/token".path;
+      repos = {
+        # They all defaults to:
+        #  - build main + all PRs
+        #  - allowlist PRs: renovate[bot]
+        "snyssen/mother-of-all-infra" = { };
+        "snyssen/webb-launcher" = { };
+        "snyssen/personal-website" = { };
+        "snyssen/nix-dev-env" = { };
       };
-      forges.github = {
-        kind = "github";
-        web_url = "https://github.com";
-        token_path = config.sops.secrets."argunix/forges/github/token".path;
-        repos =
-          let
-            pr_allowlist = [ "renovate[bot]" ];
-          in
-          {
-            # default: build main + all PRs
-            "snyssen/mother-of-all-infra" = {
-              # watched_branches = [ "main" "release/*" ];
-              pr_allowlist = pr_allowlist;
-            };
-            "snyssen/webb-launcher" = {
-              pr_allowlist = pr_allowlist;
-            };
-            "snyssen/personal-website" = {
-              pr_allowlist = pr_allowlist;
-            };
-            "snyssen/nix-dev-env" = {
-              pr_allowlist = pr_allowlist;
-            };
-          };
-      };
-      binary_caches = [
-        {
-          push_url = "s3://cache?endpoint=https://s3.snyssen.be&region=home";
-          public_url = "https://cache.snyssen.be";
-          public_key = "cache.snyssen.be:YbGmg46EztCHAFVaMztDfW/tuSuqVjLlYeG67R3VhGY=";
-          signing_key_path = config.sops.secrets."argunix/caches/cache_snyssen_be/signing_key".path;
-        }
-      ];
-      eval.timeout_seconds = 3600;
     };
+    caches.cache_snyssen_be.signing_key_file =
+      config.sops.secrets."argunix/caches/cache_snyssen_be/signing_key".path;
+    environmentFile.path = config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
   };
-  networking.firewall.allowedTCPPorts = [ 45678 ];
-  systemd.services.argunix = {
-    environment = {
-      RUST_LOG = "argunix=debug,argunix_daemon=debug,warn";
-      RUST_BACKTRACE = "1";
-    };
-    serviceConfig.EnvironmentFile =
-      config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
-  };
+  argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
 
   # TODO: make this part automatically defined
   nix.settings = {
