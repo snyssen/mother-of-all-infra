@@ -31,6 +31,7 @@ in
           name = "mother-of-all-infra";
           url = "https://github.com/snyssen/mother-of-all-infra";
           poller.period = 300; # I find the default of 60 seconds way too aggressive
+          branches.main.name = "main";
         }
       ];
       desktop.enable = cfg.desktop.enable;
