@@ -57,7 +57,7 @@ services:
       - /mnt/storage/streaming/media:/data/media
 
   audiobookshelf:
-    image: ghcr.io/advplyr/audiobookshelf:2.35.1@sha256:1eef6716183c52abafe5405e7d6be8390248ecd59c7488c44af871757ac8fc4d
+    image: ghcr.io/advplyr/audiobookshelf:2.36.0@sha256:180acad33d69c99ed208676465d8edcb268fa46967735579a7810859885b1a8e
     restart: unless-stopped
     container_name: audiobookshelf
     networks:
@@ -167,7 +167,7 @@ services:
       - vpn
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.4.0@sha256:4fd7a166c8f46dd3370a871c250ee577d6c2ae97a0dbe0e3614b5ef736205620
+    image: lscr.io/linuxserver/prowlarr:2.5.2@sha256:2f3d31307beba3ba2dd226d191f5f5c14ee3b4d8b49277c64683f5ed97083179
     container_name: prowlarr
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.0.3@sha256:2f84774931ba8ee7216a3059cba3137e36075bf137c2813e33d543345a2a56a8
+    image: ghcr.io/neptunehub/audiomuse-ai:3.0.5@sha256:03d8090935e28ee434ca300057c1924a1ad5c1db7923adf8c83d6273c53e196a
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.0.3@sha256:2f84774931ba8ee7216a3059cba3137e36075bf137c2813e33d543345a2a56a8
+    image: ghcr.io/neptunehub/audiomuse-ai:3.0.5@sha256:03d8090935e28ee434ca300057c1924a1ad5c1db7923adf8c83d6273c53e196a
     container_name: audiomuse_worker
     networks:
       - db

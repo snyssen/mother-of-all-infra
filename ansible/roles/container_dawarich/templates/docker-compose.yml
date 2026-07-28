@@ -1,7 +1,7 @@
 # Derived from: https://github.com/Freika/dawarich/blob/master/docker/docker-compose.yml
 services:
   dawarich_redis:
-    image: redis:8.8.0@sha256:234c902a2db49461a129e2d4aeff85b28cf20187ed274a67f6e50995fa713c7b
+    image: redis:8.8.1@sha256:c88d347edef6249a6d2293f926f1eeb48bd40c57cbcd02c07f52e7f1fd2cb46b
     container_name: dawarich_redis
     command: redis-server
     networks:
@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
 
   dawarich_app:
-    image: freikin/dawarich:1.10.0@sha256:25ba1dc02e5571cc915bd104aae9c4c28929848ad1741c1829f5c40f86489a16
+    image: freikin/dawarich:1.10.1@sha256:405f7daaaf9cf5f94fd2114311ad5967c78745691d618780bbbf8ebe74fd8e30
     container_name: dawarich_app
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
@@ -137,7 +137,7 @@ services:
         condition: service_healthy
         restart: true
   dawarich_sidekiq:
-    image: freikin/dawarich:1.10.0@sha256:25ba1dc02e5571cc915bd104aae9c4c28929848ad1741c1829f5c40f86489a16
+    image: freikin/dawarich:1.10.1@sha256:405f7daaaf9cf5f94fd2114311ad5967c78745691d618780bbbf8ebe74fd8e30
     container_name: dawarich_sidekiq
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
