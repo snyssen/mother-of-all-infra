@@ -300,8 +300,12 @@ dashboard__shortcuts:
   - name: Work & Tools
     icon_classes: las la-tools
     children:
-      - name: GitHub
-        url: https://github.com
+      - name: Development
+        children:
+          - name: GitHub
+            url: https://github.com
+          - name: Argunix
+            url: https://argunix.snyssen.be
       - name: Dawarich
         url: https://location.snyssen.be
       - name: PDF tools
@@ -401,6 +405,14 @@ dashboard__shortcuts:
             url: https://www.dynu.com/en-US/ControlPanel
           - name: Porkbun
             url: https://porkbun.com/account/login
+      - name: Reverse Proxies
+        children:
+          - name: Apps
+            url: https://routing.snyssen.be
+          - name: Ingress
+            url: https://ingress.snyssen.be
+          - name: Argunix
+            url: https://argunix-ingress.snyssen.be
       - name: Networking
         children:
           - name: Router
