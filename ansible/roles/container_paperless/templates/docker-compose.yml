@@ -62,7 +62,7 @@ services:
       # RBAC is done on Authelia side, so only authorized users can actually signup
       # Direct LDAP implementation would probably be better, and there is a way to enable it: https://github.com/paperless-ngx/paperless-ngx/discussions/3228
       # But this is not an official implementation, so I prefer this way.
-      # Note that user do not have any permissions ater signup, so an admin still has to login and change them
+      # Note that user do not have any permissions after signup, so an admin still has to login and change them
       PAPERLESS_SOCIALACCOUNT_AUTO_SIGNUP: "true"
       PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
       PAPERLESS_SOCIALACCOUNT_EMAIL_AUTHENTICATION: "true"
