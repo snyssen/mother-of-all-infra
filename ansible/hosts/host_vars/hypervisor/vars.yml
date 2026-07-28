@@ -61,8 +61,8 @@ libvirt_vms:
       dest: "/mnt/vmstore/technitium-secondary/disk.qcow2"
       build: false
   - name: apps
-    vcpu: 2
-    ram_mb: 4096
+    vcpu: 4
+    ram_mb: 8192
     mac_address: "52:54:00:00:00:01"
     disk_gb: 300
     virtiofs_luks_key:
@@ -71,6 +71,7 @@ libvirt_vms:
       dest: "/mnt/vmstore/apps/disk.qcow2"
       build: false
   - name: argunix
+    state: absent
     vcpu: 4
     ram_mb: 8192
     mac_address: "52:54:00:00:01:01"

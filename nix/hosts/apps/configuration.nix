@@ -26,6 +26,9 @@
     flake.modules.nixos.docker
     flake.modules.nixos.nfs-mounts
     flake.modules.nixos.compose-stacks
+
+    flake.modules.nixos.traefik
+    flake.modules.nixos.argunix
   ];
 
   disko =
@@ -46,6 +49,42 @@
     "users/snyssen/passwordHash" = {
       sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
+    };
+    "traefik/dynu-api-key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "traefik";
+      group = "traefik";
+      mode = "0400";
+    };
+    "argunix/builder_enrollment/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/forges/github/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/caches/cache_snyssen_be/signing_key" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/caches/cache_snyssen_be/s3_credentials" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
+    };
+    "argunix/caches/attic/token" = {
+      sopsFile = ./data/secrets.yaml;
+      owner = "argunix";
+      group = "argunix";
+      mode = "0400";
     };
   };
 
@@ -99,6 +138,51 @@
     "monitoring"
   ];
   docker.cadvisor.enable = true;
+
+  traefik = {
+    letsencrypt = {
+      challengeType = "dns";
+      dnsChallenge = {
+        apiKeyPath = config.sops.secrets."traefik/dynu-api-key".path;
+      };
+    };
+  };
+  services.traefik.dynamicConfigOptions = {
+    http.routers.traefik-dashboard = {
+      entryPoints = [ "websecure" ];
+      rule = "Host(`argunix-ingress.snyssen.be`)";
+      service = "api@internal";
+    };
+    http.routers.argunix = {
+      entryPoints = [ "websecure" ];
+      rule = "Host(`argunix.snyssen.be`)";
+      service = "argunix";
+    };
+    http.services.argunix.loadBalancer.servers = [
+      { url = "http://127.0.0.1:8080"; }
+    ];
+  };
+
+  argunix.mode = "both";
+  argunix.coordinator = {
+    builderEnrollment.tokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
+    forges.github = {
+      tokenFile = config.sops.secrets."argunix/forges/github/token".path;
+      repos = {
+        # They all defaults to:
+        #  - build main + all PRs
+        #  - allowlist PRs: renovate[bot]
+        "snyssen/mother-of-all-infra" = { };
+        "snyssen/webb-launcher" = { };
+        "snyssen/personal-website" = { };
+        "snyssen/nix-dev-env" = { };
+      };
+    };
+    caches.cache_snyssen_be.signing_key_file =
+      config.sops.secrets."argunix/caches/cache_snyssen_be/signing_key".path;
+    environmentFile.path = config.sops.secrets."argunix/caches/cache_snyssen_be/s3_credentials".path;
+  };
+  argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
 
   # TODO: make this part automatically defined
   nix.settings = {
