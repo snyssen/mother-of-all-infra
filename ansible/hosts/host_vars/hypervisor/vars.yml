@@ -70,14 +70,3 @@ libvirt_vms:
     disk_image:
       dest: "/mnt/vmstore/apps/disk.qcow2"
       build: false
-  - name: argunix
-    state: absent
-    vcpu: 4
-    ram_mb: 8192
-    mac_address: "52:54:00:00:01:01"
-    disk_gb: 128
-    virtiofs_luks_key:
-      enable: true
-    disk_image:
-      dest: "/mnt/vmstore/argunix/disk.qcow2"
-      build: false
