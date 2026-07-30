@@ -1,0 +1,31 @@
+# TODO: actually, that could probably live on the host -> https://wiki.nixos.org/wiki/PostgreSQL
+services:
+  postgres:
+    image: postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD
+    volumes:
+      - "/var/lib/app-data/databases/postgres/data:/var/lib/postgresql"
+    # Expose port directly on host so ansible can connect to manage databases
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - db
+
+  pgadmin:
+    image: dpage/pgadmin4:9.16@sha256:40fa840c5bb7c8463957f1255b01283732c2d8c9396a956d180f8e6c296753b3
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@snyssen.be"
+      PGADMIN_DEFAULT_PASSWORD: "thisisatest"
+    networks:
+      - db
+    ports:
+      - 8888:80
+
+networks:
+  db:
+    external: true

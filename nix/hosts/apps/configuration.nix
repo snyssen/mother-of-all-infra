@@ -29,6 +29,11 @@
 
     flake.modules.nixos.traefik
     flake.modules.nixos.argunix
+
+    ###################################
+    # Application stacks dependencies #
+    ###################################
+    ./compose/databases/default.nix
   ];
 
   disko =
@@ -86,6 +91,10 @@
       group = "argunix";
       mode = "0400";
     };
+    # Application stacks secrets
+    "compose-stacks/databases" = {
+      sopsFile = ./data/secrets.yaml;
+    };
   };
 
   tailscale.autoconnect = {
@@ -123,6 +132,12 @@
     };
   };
 
+  ###########
+  # Storage #
+  ###########
+  # App data is stored in two main directories:
+  # - /mnt/bulk: NFS mount to hypervisor for bulk storage - Slow but large, HDD-backed
+  # - /var/lib/app-data: Local storage for app data - Fast but small, SSD-backed - lives on the VM disk image (stored in /mnt/vmstore in hypervisor)
   nfsMounts.enable = true;
   nfsMounts.mounts.bulk = {
     path = "/mnt/bulk";
@@ -130,6 +145,9 @@
     remotePath = "/mnt/bulk/apps";
     dependsOn.tailscale = true;
   };
+  systemd.tmpfiles.rules = [
+    "d /var/lib/app-data 0755 snyssen snyssen -"
+  ];
 
   docker.networks = [
     "web"
@@ -138,6 +156,16 @@
     "monitoring"
   ];
   docker.cadvisor.enable = true;
+  #######################
+  # Applications stacks #
+  #######################
+  compose-stacks.stacks = {
+    databases = {
+      composeFile = ./compose/databases/docker-compose.yaml;
+      environmentFile = config.sops.secrets."compose-stacks/databases".path;
+      dockerNetworks = [ "db" ];
+    };
+  };
 
   traefik = {
     letsencrypt = {
