@@ -54,7 +54,7 @@ in
     };
     garnix = {
       enable = lib.mkEnableOption "the garnix cache (https://cache.garnix.io)" // {
-        default = true;
+        default = false;
       };
       url = lib.mkOption {
         type = lib.types.str;
