@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.1.0@sha256:2c25f0f5a624ec0c9d0c4b4ff3af3cce544b9f88d2c8f8047abc6b36e5f2ef11
+    image: ghcr.io/neptunehub/audiomuse-ai:3.1.1@sha256:15c50b3e7ec34f9c1e99340f54bf0a61135226d9b838bf75284e1ef55dfbc2ab
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.1.0@sha256:2c25f0f5a624ec0c9d0c4b4ff3af3cce544b9f88d2c8f8047abc6b36e5f2ef11
+    image: ghcr.io/neptunehub/audiomuse-ai:3.1.1@sha256:15c50b3e7ec34f9c1e99340f54bf0a61135226d9b838bf75284e1ef55dfbc2ab
     container_name: audiomuse_worker
     networks:
       - db
@@ -376,7 +376,7 @@ services:
     restart: unless-stopped
 
   vpn:
-    image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
+    image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
     container_name: vpn
     cap_add:
       - NET_ADMIN
