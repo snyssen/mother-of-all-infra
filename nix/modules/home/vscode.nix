@@ -72,6 +72,9 @@ in
             "workbench.editorAssociations" = {
               "*.md" = "vscode.markdown.preview.editor";
             };
+            "files.associations" = {
+              ".envrc.*" = "shellscript";
+            };
             "chat.viewSessions.orientation" = "stacked";
             "chat.tools.urls.autoApprove" = {
               "https://search.nixos.org" = {
