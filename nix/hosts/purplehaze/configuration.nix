@@ -33,7 +33,6 @@ in
     ./hardware-configuration.nix
 
     flake.modules.nixos.sops
-    flake.modules.nixos.comin
     flake.modules.nixos.argunix
     flake.modules.nixos.cache
     flake.modules.nixos.grub
@@ -72,7 +71,6 @@ in
   };
 
   argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
-  comin.desktop.enable = true;
 
   users = {
     mutableUsers = false;
