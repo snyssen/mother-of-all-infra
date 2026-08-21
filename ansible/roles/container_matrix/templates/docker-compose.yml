@@ -22,7 +22,7 @@ services:
 
   matrix_mas:
     container_name: matrix_mas
-    image: ghcr.io/element-hq/matrix-authentication-service:1.22.0@sha256:8cb319ec41706adc1ed8b5b63e1de2f067073cc33a304686226f658f5e83c8b3
+    image: ghcr.io/element-hq/matrix-authentication-service:1.23.0@sha256:e82b2e4a5f9c7ca74096743349160795f5b5a792556fb85c6b5166a9180a5985
     restart: unless-stopped
     environment:
       MAS_CONFIG: /config/mas_config.yaml
@@ -63,7 +63,7 @@ services:
   ###########
   matrix-discord:
     container_name: matrix-discord
-    image: dock.mau.dev/mautrix/discord:v0.7.6@sha256:e4946b0df6a2786c88ed490e0d2692e352f1b79b9ff0e821a33764bd8bd1fffd
+    image: dock.mau.dev/mautrix/discord:v0.7.7@sha256:065405ca2f961b2687ca577c4eb65592c139d641342a9611d98b5394f30cf84a
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_discord:/data
@@ -73,7 +73,7 @@ services:
 
   matrix-signal:
     container_name: matrix-signal
-    image: dock.mau.dev/mautrix/signal:v26.07@sha256:e02b5c140346f2ecfa9a4a029cd7c0311dcb6d114d5aedfaaa88897ede9a9ee8
+    image: dock.mau.dev/mautrix/signal:v26.08@sha256:edafbdfa23366715a5ca9e4c3a5d08efd01e1ff86212d683e1e5c16b681fa2f3
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_signal:/data
@@ -83,7 +83,7 @@ services:
 
   matrix-whatsapp:
     container_name: matrix-whatsapp
-    image: dock.mau.dev/mautrix/whatsapp:v26.07@sha256:716cb6e6b59b1710bde0b7740e295aa889fef6494a8efcd4ad02ea1965293eaf
+    image: dock.mau.dev/mautrix/whatsapp:v26.08@sha256:86237c4d0d33a1e08910b1f820e6c561f9b8e21dc26943caf266e01021087002
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_whatsapp:/data
@@ -93,7 +93,7 @@ services:
 
   matrix-meta:
     container_name: matrix-meta
-    image: dock.mau.dev/mautrix/meta:v26.07@sha256:c65eb7f10a3880933490972bed574678874d780df70458a5ab0568157f9cc15c
+    image: dock.mau.dev/mautrix/meta:v26.08@sha256:662f3d52249304c44c91cbc3d3552eced3e5baf93916be7c6b17a47677036de8
     restart: unless-stopped
     volumes:
       - /mnt/storage/matrix/matrix_meta:/data

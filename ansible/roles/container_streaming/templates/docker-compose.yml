@@ -104,7 +104,7 @@ services:
   #   restart: "unless-stopped"
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.1.0@sha256:e79d3fd9282b7fa51a3382cec9fdcc4cf736f46c9d43d188193e3ce1c7accbcd
+    image: lscr.io/linuxserver/sabnzbd:5.1.1@sha256:78253a5ed379d08c16deba4154a2468875aa25a729c54c59c1199f851f87c29e
     container_name: usenet
     network_mode: service:vpn
     environment:
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.3.0@sha256:7405d46efa97a7ad80418db4e01c6bbd62de3b2b92f16bd40e2069be64ea1be6
+    image: ghcr.io/neptunehub/audiomuse-ai:3.3.1@sha256:c89d17a3584a37a4da0cc0427fffc20a80680e78046d1ae6b0a27fa8af98fb90
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.3.0@sha256:7405d46efa97a7ad80418db4e01c6bbd62de3b2b92f16bd40e2069be64ea1be6
+    image: ghcr.io/neptunehub/audiomuse-ai:3.3.1@sha256:c89d17a3584a37a4da0cc0427fffc20a80680e78046d1ae6b0a27fa8af98fb90
     container_name: audiomuse_worker
     networks:
       - db
