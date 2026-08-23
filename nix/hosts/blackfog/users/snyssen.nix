@@ -22,6 +22,7 @@
     flake.modules.home.obsidian
     flake.modules.home.rclone
     flake.modules.home.vesktop
+    flake.modules.home.matrix-clients
 
     flake.modules.home.restic-dr
   ];
@@ -36,6 +37,8 @@
   programs.bat.enable = true;
 
   programs.keepassxc.enable = true;
+
+  matrix.clients.cinny.enable = true;
 
   home.packages = with pkgs; [
     librewolf

@@ -10,7 +10,6 @@ in
 {
   options.matrix.clients = {
     element.enable = lib.mkEnableOption "Element Desktop";
-    # TODO: cinny pkg is marked as broken; install as flatpak ?
     cinny.enable = lib.mkEnableOption "Cinny Desktop";
     fluffychat.enable = lib.mkEnableOption "FluffyChat";
     # TODO: commet -> only available as flatpak :(
