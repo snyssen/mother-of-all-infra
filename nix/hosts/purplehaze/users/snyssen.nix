@@ -37,7 +37,7 @@
 
   matrix.clients = {
     element.enable = true;
-    cinny.enable = false;
+    cinny.enable = true;
     fluffychat.enable = true;
   };
 
@@ -52,6 +52,7 @@
     moonlight-qt
     gradia
     dbeaver-bin
+    feishin
   ];
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
