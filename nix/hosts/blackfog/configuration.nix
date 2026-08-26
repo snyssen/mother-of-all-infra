@@ -54,6 +54,7 @@ in
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
     flake.modules.nixos.prometheus-node-exporter
+    flake.modules.nixos.ai
   ];
 
   disko =
@@ -147,20 +148,17 @@ in
     };
   };
 
-  services.ollama = {
-    enable = true;
-    # Optional: preload models, see https://ollama.com/library
-    loadModels = [
+  ai = {
+    ollama.enable = true;
+    ollama.models = [
       "deepseek-r1:8b"
       "gemma4:latest"
       "gemma4:31b"
       "qwen3:30b"
       "qwen3-coder:30b"
     ];
-  };
-  services.open-webui = {
-    enable = true;
-    port = 8888;
+    opencode.enable = true;
+    opencode.desktop.enable = true;
   };
 
   libvirtd = {
