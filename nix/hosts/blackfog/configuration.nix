@@ -159,6 +159,7 @@ in
     ];
     opencode.enable = true;
     opencode.desktop.enable = true;
+    claude.enable = true;
   };
 
   libvirtd = {

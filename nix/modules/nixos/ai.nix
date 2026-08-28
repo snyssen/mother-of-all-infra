@@ -29,6 +29,9 @@ in
       enable = lib.mkEnableOption "OpenCode service";
       desktop.enable = lib.mkEnableOption "OpenCode desktop application";
     };
+    claude = {
+      enable = lib.mkEnableOption "Claude-Code service";
+    };
   };
 
   config = {
@@ -43,6 +46,7 @@ in
     environment.systemPackages =
       [ ]
       ++ lib.optional (cfg.opencode.enable) pkgs.opencode
-      ++ lib.optional (cfg.opencode.desktop.enable) pkgs.opencode-desktop;
+      ++ lib.optional (cfg.opencode.desktop.enable) pkgs.opencode-desktop
+      ++ lib.optional (cfg.claude.enable) pkgs.claude-code;
   };
 }
