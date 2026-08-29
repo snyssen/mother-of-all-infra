@@ -104,7 +104,7 @@ services:
   #   restart: "unless-stopped"
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.1.1@sha256:78253a5ed379d08c16deba4154a2468875aa25a729c54c59c1199f851f87c29e
+    image: lscr.io/linuxserver/sabnzbd:5.1.2@sha256:13d4404f1242f819e0cc2e294def5858def251a3609eb59404dad303075a564a
     container_name: usenet
     network_mode: service:vpn
     environment:
@@ -213,7 +213,7 @@ services:
       - vpn
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.53@sha256:461f78684388e8992dd0d5bb5769dbcfa29ca542bdb2e39f056753a1bf9663c7
+    image: thewicklowwolf/lidatube:0.2.56@sha256:37bb899c410f5a011582e8037ea7d2294be6c99d5c1fb9932a600bbbc00011a4
     container_name: lidatube
     environment:
       - PUID=33
@@ -233,7 +233,7 @@ services:
     restart: unless-stopped
 
   lidify:
-    image: thewicklowwolf/lidify:0.2.10@sha256:15a28139a6b16ff4bc5e6cc2fae413f837f8bd1971e15918c6cc7fd7fa0dcf54
+    image: thewicklowwolf/lidify:0.2.11@sha256:3e99fa32bd5f4462e61d07ac949ca3443931f4a62a3cfcf443ec804814a2cd76
     container_name: lidify
     environment:
       - PUID=33
@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.4.0@sha256:25b104373db717c4465d44e1125fc35c589af9eff97f44b578c1c6923ec55b1f
+    image: ghcr.io/neptunehub/audiomuse-ai:3.5.0@sha256:244bb151e3aa1a39730be82d92f93e90f8ea0ca79548ba6bcc8aa6dd344eebf6
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.4.0@sha256:25b104373db717c4465d44e1125fc35c589af9eff97f44b578c1c6923ec55b1f
+    image: ghcr.io/neptunehub/audiomuse-ai:3.5.0@sha256:244bb151e3aa1a39730be82d92f93e90f8ea0ca79548ba6bcc8aa6dd344eebf6
     container_name: audiomuse_worker
     networks:
       - db
