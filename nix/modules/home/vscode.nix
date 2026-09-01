@@ -11,6 +11,7 @@ in
 {
   options.vscode = {
     useUnstable = pkgs.lib.mkEnableOption "Use vscode from nixpkgs-unstable";
+    gitlens.enable = pkgs.lib.mkEnableOption "GitLens extension";
   };
 
   config = {
@@ -32,6 +33,18 @@ in
                 pkgs.vscode-extensions.github.copilot
                 pkgs.vscode-extensions.github.copilot-chat
               ];
+          gitExtensions =
+            with pkgs.vscode-marketplace;
+            if cfg.gitlens.enable then
+              [
+                eamodio.gitlens
+                mhutchie.git-graph # Keeping it for now as I don't remember if gitlens provides the same functionality or not
+              ]
+            else
+              [
+                mk12.better-git-line-blame
+                mhutchie.git-graph
+              ];
           defaultExtensions =
             with pkgs.vscode-marketplace;
             [
@@ -39,8 +52,7 @@ in
               jnoortheen.nix-ide
               aaron-bond.better-comments
               streetsidesoftware.code-spell-checker
-              mk12.better-git-line-blame
-              mhutchie.git-graph
+
               oderwat.indent-rainbow
               pomdtr.excalidraw-editor
               yzhang.markdown-all-in-one
@@ -59,6 +71,7 @@ in
               mechatroner.rainbow-csv
             ]
             ++ versionAlignedExtensions
+            ++ gitExtensions
             ++ lib.lists.optional osConfig.services.tailscale.enable pkgs.vscode-marketplace.tailscale.vscode-tailscale;
           defaultUserSettings = {
             "git.autofetch" = "all";
