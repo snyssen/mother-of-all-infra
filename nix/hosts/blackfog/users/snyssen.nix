@@ -29,7 +29,10 @@
 
   git.signingKeyFilename = "id_ed25519.pub";
 
-  vscode.useUnstable = true;
+  vscode = {
+    useUnstable = true;
+    gitlens.enable = true;
+  };
 
   rclone.gui.enable = true;
 
