@@ -36,6 +36,11 @@ in
       cosmic-ext-applet-privacy-indicator
 
       nautilus # Cosmic Files still has a few bugs, in particular when extracting archive or connecting to network storage, so I prefer Nautilus for those tasks.
+
+      # Screen recording
+      gst_all_1.gstreamer # dependency
+      kazam
+      obs-studio
     ];
   };
 }
