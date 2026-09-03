@@ -108,6 +108,7 @@ in
             "remote.autoForwardPorts" = false;
             "remote.autoForwardPortsSource" = "hybrid";
             "resharper.region.region" = "Europe";
+            "claudeCode.preferredLocation" = "panel";
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
