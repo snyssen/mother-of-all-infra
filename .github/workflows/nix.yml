@@ -14,4 +14,4 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check Nix flake inputs
-        uses: DeterminateSystems/flake-checker-action@de924abd783455e8429c858962b9e43062d19da1 # main
+        uses: DeterminateSystems/flake-checker-action@5f742ef432899e83dac91c073be77282067018ca # main
