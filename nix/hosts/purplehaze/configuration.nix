@@ -50,6 +50,7 @@ in
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
     flake.modules.nixos.sunshine
+    flake.modules.nixos.ai
   ];
 
   sops.defaultSshKeys.mode = "user";
@@ -127,6 +128,12 @@ in
     heroic.enable = false;
     minecraft.enable = false;
     retroarch.enable = false;
+  };
+
+  ai = {
+    opencode.enable = true;
+    opencode.desktop.enable = true;
+    claude.enable = true;
   };
 
   stylix = with theming.dark; {

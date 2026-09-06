@@ -22,15 +22,17 @@
     flake.modules.home.rclone
     flake.modules.home.matrix-clients
     flake.modules.home.vesktop
+    flake.modules.home.restic-dr
   ];
 
   git.signingKeyFilename = "id_ed25519.pub";
 
-  vscode.useUnstable = true;
+  vscode = {
+    useUnstable = true;
+    gitlens.enable = true;
+  };
 
   rclone.gui.enable = true;
-
-  # obsidian.vaults.manage = true;
 
   programs.btop.enable = true;
   programs.bat.enable = true;
