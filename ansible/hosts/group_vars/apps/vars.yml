@@ -1,6 +1,8 @@
 main_domain: "{{ vault_main_domain }}"
 team_domain: "{{ vault_team_domain }}"
 
+docker_compose_pull: missing
+
 snapraid_runner_path: /opt/snapraid-runner/snapraid-runner
 snapraid_runner_conf: "{{ snapraid_runner_path }}.conf"
 snapraid_runner_bin: "{{ snapraid_runner_path }}.py"
