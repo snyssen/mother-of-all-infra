@@ -323,7 +323,7 @@ services:
       - "audiomuse_redis_data:/data"
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.5.0@sha256:244bb151e3aa1a39730be82d92f93e90f8ea0ca79548ba6bcc8aa6dd344eebf6
+    image: ghcr.io/neptunehub/audiomuse-ai:3.5.2@sha256:726d30981a601cb4556c6caece162ac15df247a7e7f09e36b64e8afd2f8f0b60
     container_name: audiomuse_web
     networks:
       - web
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.5.0@sha256:244bb151e3aa1a39730be82d92f93e90f8ea0ca79548ba6bcc8aa6dd344eebf6
+    image: ghcr.io/neptunehub/audiomuse-ai:3.5.2@sha256:726d30981a601cb4556c6caece162ac15df247a7e7f09e36b64e8afd2f8f0b60
     container_name: audiomuse_worker
     networks:
       - db
