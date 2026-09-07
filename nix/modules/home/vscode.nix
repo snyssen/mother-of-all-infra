@@ -73,7 +73,9 @@ in
             ++ versionAlignedExtensions
             ++ gitExtensions
             ++ lib.lists.optional osConfig.services.tailscale.enable pkgs.vscode-marketplace.tailscale.vscode-tailscale
-            ++ lib.lists.optional osConfig.ai.claude.enable pkgs.vscode-marketplace.anthropic.claude-code;
+            ++ lib.lists.optional (
+              builtins.hasAttr "ai" osConfig && osConfig.ai.claude.enable
+            ) pkgs.vscode-marketplace.anthropic.claude-code;
           defaultUserSettings = {
             "git.autofetch" = "all";
             "git.enableSmartCommit" = true;
