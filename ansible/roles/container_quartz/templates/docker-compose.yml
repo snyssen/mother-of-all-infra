@@ -1,7 +1,7 @@
 services:
 {% for vault in quartz__vaults %}
   quartz-{{ vault.name }}:
-    image: ghcr.io/jackyzha0/quartz:latest@sha256:e61636f42055b57c4dd7a3ef12e5fde99aefe25a072507ecf5421689fbb9c4d2
+    image: ghcr.io/jackyzha0/quartz:latest@sha256:2e3bdef1c5daf3b46966c61704f294ca0398a4099fa7cfd2e793580198eb21f9
     container_name: quartz-{{ vault.name }}
     restart: unless-stopped
     volumes:
