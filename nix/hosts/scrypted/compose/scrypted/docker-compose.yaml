@@ -9,7 +9,7 @@ services:
       # See volumes and security_opt section below to use the host daemon.
       # SCRYPTED_DOCKER_AVAHI: "true"
 
-    image: ghcr.io/koush/scrypted:v0.146.0-noble-full@sha256:7f04a070a0a6382802d66a8fe16ce18c4385c7843738a2846a93063e192a37e6
+    image: ghcr.io/koush/scrypted:v0.147.0-noble-full@sha256:e78b4fcecdd6c61acaaf22b50ccef303c738da58cc0be57afdb116521df52296
 
     volumes:
       # Scrypted NVR Storage (Part 3 of 3)
