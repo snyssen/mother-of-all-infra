@@ -205,6 +205,7 @@ services:
     environment:
       # Set the timezone to your local timezone
       - TZ={{ iana_timezone }}
+      - LOG_LEVEL=info
     network_mode: service:vpn
     volumes:
       - "{{ docker_mounts_directory }}/pinchflat/config:/config"
