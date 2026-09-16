@@ -49,7 +49,7 @@ No stacks are currently marked as deferred in Phase 0.
 
 | Stack | Description | Disposition |
 |-------|-------------|-------------|
-| `databases` | Central PostgreSQL + MariaDB + Redis | ✅ Migrate |
+| `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate |
 | `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate |
 | `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate |
 | `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM |

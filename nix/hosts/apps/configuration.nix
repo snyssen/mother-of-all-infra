@@ -90,10 +90,6 @@
       group = "argunix";
       mode = "0400";
     };
-    # Application stacks secrets
-    "compose-stacks/databases" = {
-      sopsFile = ./data/secrets.yaml;
-    };
   };
 
   tailscale.autoconnect = {
@@ -155,16 +151,6 @@
     "monitoring"
   ];
   docker.cadvisor.enable = true;
-  #######################
-  # Applications stacks #
-  #######################
-  compose-stacks.stacks = {
-    databases = {
-      composeFile = ./compose/databases/docker-compose.yaml;
-      environmentFile = config.sops.secrets."compose-stacks/databases".path;
-      dockerNetworks = [ "db" ];
-    };
-  };
 
   traefik = {
     letsencrypt = {

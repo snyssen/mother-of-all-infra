@@ -1,4 +1,3 @@
-# TODO: actually, that could probably live on the host -> https://wiki.nixos.org/wiki/PostgreSQL
 services:
   postgres:
     image: postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
@@ -7,20 +6,82 @@ services:
       - POSTGRES_PASSWORD
     volumes:
       - "/var/lib/app-data/databases/postgres/data:/var/lib/postgresql"
-    # Expose port directly on host so ansible can connect to manage databases
-    ports:
-      - "127.0.0.1:5432:5432"
     networks:
       - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: creates/updates roles+databases for every name in $DB_NAMES and locks
+  # down PUBLIC privileges. Safe to re-run; invoked via `docker compose run --rm
+  # provision` (see the `databases-provision` systemd unit), never as part of
+  # `docker compose up -d`, so it never restarts the long-running containers.
+  provision:
+    image: postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - db
+    volumes:
+      - ./provision.sh:/provision.sh:ro
+    entrypoint: ["sh", "/provision.sh"]
+    environment:
+      - POSTGRES_PASSWORD
+      - DB_NAMES
+      - PG_PASSWORD_LLDAP
+      - PG_PASSWORD_AUTHELIA
+      - PG_PASSWORD_NEXTCLOUD
+      - PG_PASSWORD_RECIPES
+      - PG_PASSWORD_PAPERLESS
+      - PG_PASSWORD_TEAM_WIKI
+      - PG_PASSWORD_RALLLY
+      - PG_PASSWORD_SPEEDTEST_TRACKER
+      - PG_PASSWORD_UMAMI
+      - PG_PASSWORD_SHARKEY
+      - PG_PASSWORD_SEMAPHORE
+      - PG_PASSWORD_MATRIX
+      - PG_PASSWORD_MATRIX_MAS
+      - PG_PASSWORD_MATRIX_DISCORD
+      - PG_PASSWORD_MATRIX_SIGNAL
+      - PG_PASSWORD_MATRIX_WHATSAPP
+      - PG_PASSWORD_MATRIX_META
+      - PG_PASSWORD_MAUBOT
+      - PG_PASSWORD_PEERTUBE
+      - PG_PASSWORD_AUDIOMUSE
+
+  postgres_backups:
+    image: prodrigestivill/postgres-backup-local:18@sha256:f70742ebe42b2277689b028d1fd15aa80f77cffa01da163cc9f85a6ff1866e7f
+    restart: unless-stopped
+    networks:
+      - db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${DB_NAMES}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: Europe/Brussels
+      HEALTHCHECK_ID: ${HEALTHCHECK_ID}
+      SCHEDULE: 30 */4 * * *
+    volumes:
+      - /mnt/bulk/backups/postgres:/backups
+      - ./hooks:/hooks
 
   pgadmin:
     image: dpage/pgadmin4:9.17@sha256:2f4ce946ddf8360680d7eff4eaba1d91859eb6b4003e6623bad5c63a322c2f4d
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      PGADMIN_DEFAULT_EMAIL: "admin@snyssen.be"
-      PGADMIN_DEFAULT_PASSWORD: "thisisatest"
+      - PGADMIN_DEFAULT_EMAIL
+      - PGADMIN_DEFAULT_PASSWORD
     networks:
       - db
     ports:

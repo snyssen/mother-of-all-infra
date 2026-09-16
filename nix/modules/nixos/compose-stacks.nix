@@ -73,14 +73,24 @@ in
 
     # Convenience CLI wrapper per stack: `compose-<name> logs -f`, `compose-<name> down`, etc.
     # --project-name is pinned so commands work regardless of working directory.
+    # Loads environmentFile the same way systemd's EnvironmentFile= would, so manual
+    # invocation matches what `systemctl start compose-<name>` actually runs.
     environment.systemPackages = lib.mapAttrsToList (
       name: stack:
-      pkgs.writeShellScriptBin "compose-${name}" ''
-        exec ${pkgs.docker}/bin/docker compose \
-          --project-name ${lib.escapeShellArg name} \
-          -f ${lib.escapeShellArg "${stack.composeFile}"} \
-          "$@"
-      ''
+      pkgs.writeShellScriptBin "compose-${name}" (
+        lib.optionalString (stack.environmentFile != null) ''
+          while IFS='=' read -r key value || [ -n "$key" ]; do
+            case "$key" in "" | "#"*) continue ;; esac
+            export "$key=$value"
+          done < ${lib.escapeShellArg "${stack.environmentFile}"}
+        ''
+        + ''
+          exec ${pkgs.docker}/bin/docker compose \
+            --project-name ${lib.escapeShellArg name} \
+            -f ${lib.escapeShellArg "${stack.composeFile}"} \
+            "$@"
+        ''
+      )
     ) cfg.stacks;
   };
 }
