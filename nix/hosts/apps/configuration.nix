@@ -34,6 +34,7 @@
     ###################################
     ./compose/databases/default.nix
     ./compose/reverse-proxy/default.nix
+    ./compose/monitoring/default.nix
   ];
 
   disko =
@@ -85,6 +86,19 @@
       group = "argunix";
       mode = "0400";
     };
+    # Shared across any stack that sends mail, not specific to one stack.
+    "smtp/host" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    "smtp/port" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    "smtp/user" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    "smtp/password" = {
+      sopsFile = ./data/secrets.yaml;
+    };
   };
 
   tailscale.autoconnect = {
@@ -96,6 +110,9 @@
   grafana-alloy = {
     varlogs.enable = true;
     journald.enable = true;
+    # Ship this host's own logs to its own monitoring stack instead of the default
+    # (the still-live production box's Loki) now that one exists here.
+    loki.endpoint = "http://127.0.0.1:3100/loki/api/v1/push";
   };
 
   services.openssh = {
@@ -155,6 +172,10 @@
 
   argunix.mode = "both";
   argunix.coordinator = {
+    # Only reached through reverse-proxy now (see its argunix dynamic-config
+    # fragment) via the docker-bridge firewall trust rule in docker.nix — no longer
+    # needs its own port open to the WAN.
+    api.openFirewall = false;
     builderEnrollment.tokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
     forges.github = {
       tokenFile = config.sops.secrets."argunix/forges/github/token".path;

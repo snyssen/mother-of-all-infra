@@ -32,8 +32,12 @@ in
       };
       openFirewall = lib.mkOption {
         type = lib.types.bool;
-        default = true;
-        description = "Whether to open the firewall for cAdvisor.";
+        default = false;
+        description = ''
+          Whether to open cAdvisor's port to the WAN. Not needed for containers on
+          this host's own docker networks to reach it — see the docker-bridge
+          firewall trust rule below — only for external scraping.
+        '';
       };
     };
   };
@@ -73,5 +77,19 @@ in
     networking.firewall.allowedTCPPorts = lib.optionals (
       cfg.cadvisor.enable && cfg.cadvisor.openFirewall
     ) [ cfg.cadvisor.port ];
+
+    # Let containers on this host's docker networks reach host-native services
+    # (cadvisor, node-exporter, argunix, ...) without opening those services' ports
+    # to the WAN. Docker's default address pool for auto-assigned bridge network
+    # subnets stays within 172.16.0.0/12 (no --subnet is passed when creating the
+    # networks above), so trusting that range for INPUT covers every docker network
+    # on this host without needing to know their actual, non-deterministic subnets.
+    # Inserted (not appended) so it's evaluated before nixos-fw's own reject rules.
+    networking.firewall.extraCommands = lib.mkIf (cfg.networks != [ ]) ''
+      iptables -I nixos-fw -s 172.16.0.0/12 -j nixos-fw-accept
+    '';
+    networking.firewall.extraStopCommands = lib.mkIf (cfg.networks != [ ]) ''
+      iptables -D nixos-fw -s 172.16.0.0/12 -j nixos-fw-accept || true
+    '';
   };
 }

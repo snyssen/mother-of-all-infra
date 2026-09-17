@@ -1,0 +1,101 @@
+services:
+  prometheus:
+    image: quay.io/prometheus/prometheus:v3.14.0@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+    restart: unless-stopped
+    networks:
+      - monitoring
+      - web
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=1y"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./node_rules.yml:/etc/prometheus/node_rules.yml:ro
+      - /var/lib/app-data/monitoring/prometheus:/prometheus
+    # node-exporter and cadvisor are native host services, scraped via the
+    # docker-bridge firewall trust rule instead of publishing their ports.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 2g
+
+  grafana:
+    image: grafana/grafana-oss:13.0.2@sha256:5dad0df181cb644a14e13617b913b261a54f7d4fd4510721dba420929f35bea2
+    restart: unless-stopped
+    networks:
+      - monitoring
+      - web
+    volumes:
+      - /var/lib/app-data/monitoring/grafana:/var/lib/grafana
+    # Values that are themselves secrets (or could contain arbitrary characters) are
+    # forwarded bare rather than via ${VAR} compose interpolation, which would
+    # mis-parse a literal `$` in a password; the env file below already combines
+    # them into the exact values Grafana expects.
+    environment:
+      - GF_INSTALL_PLUGINS=volkovlabs-rss-datasource
+      - GF_SERVER_ROOT_URL
+      - GF_ANALYTICS_ENABLED=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST
+      - GF_SMTP_USER
+      - GF_SMTP_PASSWORD
+      - GF_SMTP_FROM_ADDRESS
+      # OIDC via Authelia deferred until the `auth` stack exists.
+    mem_limit: 256m
+
+  loki:
+    image: grafana/loki:3.7.7@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - /var/lib/app-data/monitoring/loki:/loki
+    networks:
+      - monitoring
+    # Not routed through reverse-proxy: nothing needs to reach it externally today
+    # (grafana queries it over the `monitoring` network as a datasource; grafana-alloy
+    # on this host pushes to it over loopback below) and it has no built-in auth
+    # (auth_enabled: false), so it isn't exposed until that's actually needed.
+    ports:
+      - "127.0.0.1:3100:3100"
+    mem_limit: 2g
+
+  uptime:
+    image: louislam/uptime-kuma:1@sha256:3d632903e6af34139a37f18055c4f1bfd9b7205ae1138f1e5e8940ddc1d176f9
+    restart: unless-stopped
+    networks:
+      - monitoring
+      - web
+    volumes:
+      - /var/lib/app-data/monitoring/uptime:/app/data
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-v2.13.2@sha256:611cacc80f53fe289f7e7bfe301032a117fb57e790c37272ee05f3b0eba690a3
+    restart: unless-stopped
+    networks:
+      - web
+      - db
+    environment:
+      - DATABASE_URL
+      - DATABASE_TYPE=postgresql
+      - APP_SECRET
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:3000/api/heartbeat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # grafana-to-ntfy deferred: it only relays Grafana alerts to ntfy, which isn't
+  # converted yet.
+
+networks:
+  monitoring:
+    external: true
+  web:
+    external: true
+  db:
+    external: true
