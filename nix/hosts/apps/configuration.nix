@@ -164,7 +164,7 @@
   ];
   docker.cadvisor.enable = true;
 
-  domains.main = "snyssen.be";
+  domains.main = "snyssen1.xyz";
 
   # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized

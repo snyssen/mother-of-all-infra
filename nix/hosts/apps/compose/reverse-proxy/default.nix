@@ -85,7 +85,9 @@ in
       ACME_CA_SERVER=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/ca_server"}
       DYNU_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/dynu_api_key"}
       PORKBUN_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_api_key"}
-      PORKBUN_SECRET_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"}
+      PORKBUN_SECRET_API_KEY=${
+        config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"
+      }
     '';
 
     # argunix is a native process (not a container), reachable from inside the Traefik
@@ -94,34 +96,39 @@ in
     # The dashboard has no Authelia protection yet (the `auth` stack doesn't exist yet) —
     # matching the exposure the existing native argunix-only Traefik already has today,
     # not a new gap. Revisit once `auth` is deployed.
-    reverseProxy.dynamicConfig.argunix = ''
-      http:
-        routers:
-          argunix:
-            rule: "Host(`argunix.${config.domains.main}`)"
-            entryPoints:
-              - websecure
-            service: argunix
-            tls:
-              certResolver: le_main
-          traefik-dashboard:
-            rule: "Host(`argunix-ingress.${config.domains.main}`) || Host(`routing.${config.domains.main}`)"
-            entryPoints:
-              - websecure
-            service: api@internal
-            middlewares:
-              - traefik-compress
-            tls:
-              certResolver: le_main
-        services:
-          argunix:
-            loadBalancer:
-              servers:
-                - url: "http://host.docker.internal:8080"
-        middlewares:
-          traefik-compress:
-            compress: {}
-    '';
+    reverseProxy.dynamicConfig.argunix =
+      let
+        # argunix_domain = config.domains.main;
+        argunix_domain = "snyssen.be"; # keep this separate as of now because this is the only live application amidst a test VM.
+      in
+      ''
+        http:
+          routers:
+            argunix:
+              rule: "Host(`argunix.${argunix_domain}`)"
+              entryPoints:
+                - websecure
+              service: argunix
+              tls:
+                certResolver: le_main
+            traefik-dashboard:
+              rule: "Host(`argunix-ingress.${argunix_domain}`) || Host(`routing.${config.domains.main}`)"
+              entryPoints:
+                - websecure
+              service: api@internal
+              middlewares:
+                - traefik-compress
+              tls:
+                certResolver: le_main
+          services:
+            argunix:
+              loadBalancer:
+                servers:
+                  - url: "http://host.docker.internal:8080"
+          middlewares:
+            traefik-compress:
+              compress: {}
+      '';
 
     compose-stacks.stacks.reverse-proxy = {
       inherit composeFile;
