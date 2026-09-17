@@ -25,6 +25,7 @@
     flake.modules.nixos.docker
     flake.modules.nixos.nfs-mounts
     flake.modules.nixos.compose-stacks
+    flake.modules.nixos.domains
 
     flake.modules.nixos.argunix
 
@@ -145,6 +146,8 @@
     "monitoring"
   ];
   docker.cadvisor.enable = true;
+
+  domains.main = "snyssen.be";
 
   # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized

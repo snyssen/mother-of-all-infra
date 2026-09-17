@@ -80,6 +80,7 @@ in
     };
 
     sops.templates."compose-reverse-proxy.env".content = ''
+      MAIN_DOMAIN=${config.domains.main}
       ACME_EMAIL=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/email"}
       ACME_CA_SERVER=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/ca_server"}
       DYNU_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/dynu_api_key"}
@@ -97,14 +98,14 @@ in
       http:
         routers:
           argunix:
-            rule: "Host(`argunix.snyssen.be`)"
+            rule: "Host(`argunix.${config.domains.main}`)"
             entryPoints:
               - websecure
             service: argunix
             tls:
               certResolver: le_main
           traefik-dashboard:
-            rule: "Host(`argunix-ingress.snyssen.be`) || Host(`routing.snyssen.be`)"
+            rule: "Host(`argunix-ingress.${config.domains.main}`) || Host(`routing.${config.domains.main}`)"
             entryPoints:
               - websecure
             service: api@internal

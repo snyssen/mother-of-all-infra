@@ -20,8 +20,8 @@ services:
       - "--entrypoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust ingress host's tailnet IP
       - "--entrypoints.websecure.http.tls=true"
       - "--entrypoints.websecure.http.tls.certResolver=le_main"
-      - "--entrypoints.websecure.http.tls.domains[0].main=snyssen.be"
-      - "--entrypoints.websecure.http.tls.domains[0].sans=*.snyssen.be"
+      - "--entrypoints.websecure.http.tls.domains[0].main=${MAIN_DOMAIN}"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.${MAIN_DOMAIN}"
 
       - "--certificatesResolvers.le_main.acme.email=${ACME_EMAIL}"
       - "--certificatesResolvers.le_main.acme.storage=/certs/acme-main.json"
@@ -46,6 +46,7 @@ services:
       - "--certificatesResolvers.le_team.acme.httpChallenge=false"
       - "--certificatesResolvers.le_team.acme.httpChallenge.entryPoint=web"
     environment:
+      - MAIN_DOMAIN
       - ACME_EMAIL
       - ACME_CA_SERVER
       - DYNU_API_KEY
