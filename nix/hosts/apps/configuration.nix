@@ -26,13 +26,13 @@
     flake.modules.nixos.nfs-mounts
     flake.modules.nixos.compose-stacks
 
-    flake.modules.nixos.traefik
     flake.modules.nixos.argunix
 
     ###################################
     # Application stacks dependencies #
     ###################################
     ./compose/databases/default.nix
+    ./compose/reverse-proxy/default.nix
   ];
 
   disko =
@@ -53,12 +53,6 @@
     "users/snyssen/passwordHash" = {
       sopsFile = ./data/secrets.yaml;
       neededForUsers = true;
-    };
-    "traefik/dynu-api-key" = {
-      sopsFile = ./data/secrets.yaml;
-      owner = "traefik";
-      group = "traefik";
-      mode = "0400";
     };
     "argunix/builder_enrollment/token" = {
       sopsFile = ./data/secrets.yaml;
@@ -152,29 +146,9 @@
   ];
   docker.cadvisor.enable = true;
 
-  traefik = {
-    letsencrypt = {
-      challengeType = "dns";
-      dnsChallenge = {
-        apiKeyPath = config.sops.secrets."traefik/dynu-api-key".path;
-      };
-    };
-  };
-  services.traefik.dynamicConfigOptions = {
-    http.routers.traefik-dashboard = {
-      entryPoints = [ "websecure" ];
-      rule = "Host(`argunix-ingress.snyssen.be`)";
-      service = "api@internal";
-    };
-    http.routers.argunix = {
-      entryPoints = [ "websecure" ];
-      rule = "Host(`argunix.snyssen.be`)";
-      service = "argunix";
-    };
-    http.services.argunix.loadBalancer.servers = [
-      { url = "http://127.0.0.1:8080"; }
-    ];
-  };
+  # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,
+  # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized
+  # Traefik instance that replaces this host's previous native one.
 
   argunix.mode = "both";
   argunix.coordinator = {

@@ -1,0 +1,68 @@
+services:
+  traefik:
+    image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+    restart: unless-stopped
+    networks:
+      - web
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+
+      - "--entryPoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      - "--entryPoints.websecure.address=:443"
+      - "--entrypoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust ingress host's tailnet IP
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.certResolver=le_main"
+      - "--entrypoints.websecure.http.tls.domains[0].main=snyssen.be"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.snyssen.be"
+
+      - "--certificatesResolvers.le_main.acme.email=${ACME_EMAIL}"
+      - "--certificatesResolvers.le_main.acme.storage=/certs/acme-main.json"
+      - "--certificatesresolvers.le_main.acme.caserver=${ACME_CA_SERVER}"
+      - "--certificatesResolvers.le_main.acme.tlsChallenge=false"
+      - "--certificatesresolvers.le_main.acme.dnschallenge=true"
+      - "--certificatesresolvers.le_main.acme.dnschallenge.provider=dynu"
+      - "--certificatesresolvers.le_main.acme.dnschallenge.resolvers=9.9.9.9"
+      - "--certificatesresolvers.le_main.acme.dnschallenge.delaybeforecheck=30"
+      - "--certificatesResolvers.le_main.acme.httpChallenge=false"
+      - "--certificatesResolvers.le_main.acme.httpChallenge.entryPoint=web"
+
+      # Not used by any router yet (no team_domain stack converted) — ready for when one is.
+      - "--certificatesResolvers.le_team.acme.email=${ACME_EMAIL}"
+      - "--certificatesResolvers.le_team.acme.storage=/certs/acme-team.json"
+      - "--certificatesresolvers.le_team.acme.caserver=${ACME_CA_SERVER}"
+      - "--certificatesResolvers.le_team.acme.tlsChallenge=false"
+      - "--certificatesresolvers.le_team.acme.dnschallenge=true"
+      - "--certificatesresolvers.le_team.acme.dnschallenge.provider=porkbun"
+      - "--certificatesresolvers.le_team.acme.dnschallenge.resolvers=9.9.9.9"
+      - "--certificatesresolvers.le_team.acme.dnschallenge.delaybeforecheck=30"
+      - "--certificatesResolvers.le_team.acme.httpChallenge=false"
+      - "--certificatesResolvers.le_team.acme.httpChallenge.entryPoint=web"
+    environment:
+      - ACME_EMAIL
+      - ACME_CA_SERVER
+      - DYNU_API_KEY
+      - PORKBUN_API_KEY
+      - PORKBUN_SECRET_API_KEY
+      - LEGO_DISABLE_CNAME_SUPPORT=true # Needed because team_domain has a wildcard CNAME to the apex
+    ports:
+      - "80:80"
+      - "443:443"
+    # argunix is a native process on the host, not a container — reachable from
+    # inside Traefik via the docker-provided host gateway rather than a docker network.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/lib/app-data/reverse-proxy/certs:/certs
+      - /var/lib/reverse-proxy/dynamic:/etc/traefik/dynamic:ro
+
+networks:
+  web:
+    external: true
