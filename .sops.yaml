@@ -93,3 +93,6 @@ creation_rules:
           - *root_argunix
           - *snyssen_purplehaze
           - *snyssen_blackfog
+stores:
+  yaml:
+    indent: 2
