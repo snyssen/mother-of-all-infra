@@ -53,7 +53,7 @@ in
         name = "compose-stacks/databases/postgres/passwords/${name}";
         value = {
           sopsFile = ../../data/secrets.yaml;
-          restartUnits = [ "databases-provision.service" ];
+          restartUnits = [ "compose-databases.service" ];
         };
       }) (dbNames ++ [ "superuser" ])
     ))
@@ -91,21 +91,14 @@ in
     extraAfter = [ "mnt-bulk.mount" ];
   };
 
-  # `compose-databases.service` only brings up the long-running containers
-  # (`docker compose up -d`). Provisioning runs as its own `docker compose run --rm`
-  # invocation in a separate unit so that adding a database or rotating a password
-  # never stops/restarts the already-running Postgres/pgAdmin/backup containers.
-  systemd.services.databases-provision = {
-    description = "Run the databases stack's Postgres provisioning step";
-    after = [ "compose-databases.service" ];
-    requires = [ "compose-databases.service" ];
-    wantedBy = [ "multi-user.target" ];
-    restartTriggers = [ config.sops.templates."compose-databases.env".content ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${pkgs.docker}/bin/docker compose --project-name databases -f ${composeFile} run --rm provision";
-      EnvironmentFile = config.sops.templates."compose-databases.env".path;
-    };
-  };
+  # Provisioning runs as an ExecStartPost on the same unit that brings up
+  # postgres/pgadmin/postgres_backups, right after `docker compose up -d` — adding a
+  # database or rotating a password restarts the whole stack (a few seconds of
+  # Postgres downtime), which is an acceptable cost here in exchange for not needing a
+  # second unit: this only ever happens via a deliberate `nixos-rebuild switch`, never
+  # as a surprise. `provision`'s `profiles` entry keeps `up -d` itself from also trying
+  # to start it as an ordinary service.
+  systemd.services.compose-databases.serviceConfig.ExecStartPost = [
+    "${pkgs.docker}/bin/docker compose --project-name databases -f ${composeFile} run --rm provision"
+  ];
 }

@@ -16,10 +16,13 @@ services:
 
   # One-shot: creates/updates roles+databases for every name in $DB_NAMES and locks
   # down PUBLIC privileges. Safe to re-run; invoked via `docker compose run --rm
-  # provision` (see the `databases-provision` systemd unit), never as part of
-  # `docker compose up -d`, so it never restarts the long-running containers.
+  # provision` from an ExecStartPost on the compose-databases systemd unit.
+  # `profiles` keeps it out of ordinary `up`/`up -d` reconciliation, which would
+  # otherwise try to start it as a normal long-running service.
   provision:
     image: postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    profiles:
+      - provision
     depends_on:
       postgres:
         condition: service_healthy
