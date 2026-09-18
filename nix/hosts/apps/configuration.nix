@@ -35,6 +35,7 @@
     ./compose/databases/default.nix
     ./compose/reverse-proxy/default.nix
     ./compose/monitoring/default.nix
+    ./compose/auth/default.nix
   ];
 
   disko =

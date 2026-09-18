@@ -30,18 +30,23 @@ in
     GF_SMTP_USER=${config.sops.placeholder."smtp/user"}
     GF_SMTP_PASSWORD=${config.sops.placeholder."smtp/password"}
     GF_SMTP_FROM_ADDRESS=grafana@${config.domains.main}
+    GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret"}
+    GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${config.domains.main}/api/oidc/authorization
+    GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://auth.${config.domains.main}/api/oidc/token
+    GF_AUTH_GENERIC_OAUTH_API_URL=https://auth.${config.domains.main}/api/oidc/userinfo
     DATABASE_URL=postgresql://umami:${config.sops.placeholder."compose-stacks/databases/postgres/passwords/umami"}@postgres:5432/umami
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
   '';
 
-  # Dashboards are exposed without Authelia protection for now (the `auth` stack
-  # doesn't exist yet) — same reasoning as reverse-proxy's own dashboard: this test
-  # VM isn't reachable from the public Internet yet (DNS hasn't cut over), only via
-  # Tailscale, where it's already an implicitly trusted network. Revisit once `auth`
-  # is deployed. Loki has no route here at all — nothing needs to reach it
-  # externally (Grafana queries it over the `monitoring` docker network, and
-  # grafana-alloy on this host reaches it over loopback), and it has no built-in
-  # auth (`auth_enabled: false`), so there's no reason to expose it yet.
+  # Grafana now logs in via Authelia OIDC (see the `auth` stack). Prometheus and
+  # Uptime Kuma's dashboards are still exposed without any forwardAuth gating —
+  # that's a separate follow-up (wiring an actual `forwardAuth` middleware per
+  # dashboard), not automatic just because `auth` now exists. Loki has no route here
+  # at all — nothing needs to reach it externally (Grafana queries it over the
+  # `monitoring` docker network, and grafana-alloy on this host reaches it over
+  # loopback), and it has no built-in auth (`auth_enabled: false`), so there's no
+  # reason to expose it yet.
   reverseProxy.dynamicConfig.monitoring = ''
     http:
       routers:

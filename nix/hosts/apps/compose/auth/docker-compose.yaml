@@ -1,0 +1,65 @@
+services:
+  lldap:
+    image: lldap/lldap:v0.6.3@sha256:2a8454b668c1aba7157e832eab0e242e1e7eb5fb7591d7e7774ba05286511ca8
+    restart: unless-stopped
+    networks:
+      - db
+      - ldap
+      - web
+    environment:
+      - TZ=Europe/Brussels
+      - LLDAP_JWT_SECRET
+      - LLDAP_KEY_SEED
+      - LLDAP_LDAP_BASE_DN=dc=snyssen,dc=be
+      - LLDAP_LDAP_USER_PASS
+      - LLDAP_DATABASE_URL
+      # Used only when bootstrap.sh is invoked (see the auth-lldap-bootstrap systemd
+      # unit, which runs it via `docker compose exec`) — bundled inside this same
+      # image, not a separate service. Declares only the Authelia LDAP bind service
+      # account; real human users/groups are still created manually via the web UI,
+      # since bootstrap.sh's default behavior only creates/updates what it's told
+      # about and never deletes anything else.
+      - LLDAP_URL=http://localhost:17170
+      - LLDAP_ADMIN_USERNAME=admin
+      - LLDAP_ADMIN_PASSWORD
+    volumes:
+      - ./lldap-bootstrap:/bootstrap:ro
+      - ${LDAP_BIND_PASSWORD_PATH}:/run/authelia-ldap-bind-secret:ro
+
+  authelia:
+    image: ghcr.io/authelia/authelia:4.39.27@sha256:40005803cd4e2eaeea4418517e9e9c7f515b55b31071a02829341ca2e50ca7c0
+    restart: unless-stopped
+    networks:
+      - web
+      - db
+      - ldap
+      - monitoring
+      - authelia
+    depends_on:
+      - authelia_redis
+    environment:
+      - TZ=Europe/Brussels
+    volumes:
+      - ${AUTHELIA_CONFIG_PATH}:/config/configuration.yml:ro
+
+  authelia_redis:
+    image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
+    restart: unless-stopped
+    networks:
+      - authelia
+    volumes:
+      - authelia_sessions:/data
+
+networks:
+  db:
+    external: true
+  ldap:
+    external: true
+  web:
+    external: true
+  monitoring:
+    external: true
+  authelia:
+
+volumes:
+  authelia_sessions:
