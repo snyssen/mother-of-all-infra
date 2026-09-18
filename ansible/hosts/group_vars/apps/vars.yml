@@ -413,8 +413,8 @@ dashboard__shortcuts:
             url: https://routing.snyssen.be
           - name: Ingress
             url: https://ingress.snyssen.be
-          - name: Argunix
-            url: https://argunix-ingress.snyssen.be
+          - name: Apps (test VM)
+            url: https://routing.snyssen1.xyz
       - name: Networking
         children:
           - name: Router

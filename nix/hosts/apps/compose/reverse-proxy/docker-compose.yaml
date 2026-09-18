@@ -28,11 +28,29 @@ services:
       - "--certificatesresolvers.le_main.acme.caserver=${ACME_CA_SERVER}"
       - "--certificatesResolvers.le_main.acme.tlsChallenge=false"
       - "--certificatesresolvers.le_main.acme.dnschallenge=true"
-      - "--certificatesresolvers.le_main.acme.dnschallenge.provider=porkbun" # TODO: change back to "dynu" after domain change
+      - "--certificatesresolvers.le_main.acme.dnschallenge.provider=porkbun" # TODO: change back to "dynu" once domains.main returns to snyssen.be (then le_argunix below becomes redundant and can be removed)
       - "--certificatesresolvers.le_main.acme.dnschallenge.resolvers=9.9.9.9"
       - "--certificatesresolvers.le_main.acme.dnschallenge.delaybeforecheck=30"
       - "--certificatesResolvers.le_main.acme.httpChallenge=false"
       - "--certificatesResolvers.le_main.acme.httpChallenge.entryPoint=web"
+
+      # TODO: temporary, remove once domains.main returns to snyssen.be. le_main is
+      # pointed at the test domain (snyssen1.xyz, Porkbun-managed) for the duration of
+      # the parallel-host migration test, but argunix stays pinned to the permanent
+      # domain (snyssen.be, Dynu-managed — see argunix_domain in reverse-proxy's
+      # default.nix). A single certResolver can only prove ownership through one DNS
+      # provider, so argunix's own routes need this separate Dynu-backed resolver
+      # instead of le_main.
+      - "--certificatesResolvers.le_argunix.acme.email=${ACME_EMAIL}"
+      - "--certificatesResolvers.le_argunix.acme.storage=/certs/acme-argunix.json"
+      - "--certificatesresolvers.le_argunix.acme.caserver=${ACME_CA_SERVER}"
+      - "--certificatesResolvers.le_argunix.acme.tlsChallenge=false"
+      - "--certificatesresolvers.le_argunix.acme.dnschallenge=true"
+      - "--certificatesresolvers.le_argunix.acme.dnschallenge.provider=dynu"
+      - "--certificatesresolvers.le_argunix.acme.dnschallenge.resolvers=9.9.9.9"
+      - "--certificatesresolvers.le_argunix.acme.dnschallenge.delaybeforecheck=30"
+      - "--certificatesResolvers.le_argunix.acme.httpChallenge=false"
+      - "--certificatesResolvers.le_argunix.acme.httpChallenge.entryPoint=web"
 
       # Not used by any router yet (no team_domain stack converted) — ready for when one is.
       - "--certificatesResolvers.le_team.acme.email=${ACME_EMAIL}"

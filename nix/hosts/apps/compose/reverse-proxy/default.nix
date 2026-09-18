@@ -93,9 +93,9 @@ in
     # argunix is a native process (not a container), reachable from inside the Traefik
     # container via host.docker.internal. Its direct debug port (8080) is retired here —
     # it's only reached through Traefik now, over its own hostname with TLS.
-    # The dashboard has no Authelia protection yet (the `auth` stack doesn't exist yet) —
-    # matching the exposure the existing native argunix-only Traefik already has today,
-    # not a new gap. Revisit once `auth` is deployed.
+    # The dashboard is gated behind Authelia (forwardAuth, defined in the `auth` stack's
+    # own dynamicConfig fragment) — argunix's own API route stays open, since it's the
+    # coordinator API consumed by builders, not something a human logs into.
     reverseProxy.dynamicConfig.argunix =
       let
         # argunix_domain = config.domains.main;
@@ -110,13 +110,18 @@ in
                 - websecure
               service: argunix
               tls:
-                certResolver: le_main
+                certResolver: le_argunix
+            # Only reachable under domains.main, not argunix_domain — avoids needing
+            # the dashboard itself to deal with the snyssen.be/snyssen1.xyz split
+            # (unlike argunix's own API route above, this one has no other consumer
+            # tying it to the permanent domain, so there's nothing to migrate later).
             traefik-dashboard:
-              rule: "Host(`argunix-ingress.${argunix_domain}`) || Host(`routing.${config.domains.main}`)"
+              rule: "Host(`routing.${config.domains.main}`)"
               entryPoints:
                 - websecure
               service: api@internal
               middlewares:
+                - authelia
                 - traefik-compress
               tls:
                 certResolver: le_main

@@ -133,6 +133,22 @@ in
           loadBalancer:
             servers:
               - url: "http://lldap:17170"
+      # Shared by any other stack's dynamicConfig fragment that wants to gate a route
+      # behind Authelia — referenced by plain name (`authelia`), since every fragment
+      # is merged into one Traefik file-provider directory. Mirrors the middleware the
+      # old container_backbone role defined once and every protected stack referenced
+      # as `authelia@docker`; /api/authz/forward-auth is Authelia's current endpoint
+      # for this (the old /api/verify is legacy).
+      middlewares:
+        authelia:
+          forwardAuth:
+            address: "http://authelia:9091/api/authz/forward-auth"
+            trustForwardHeader: true
+            authResponseHeaders:
+              - Remote-User
+              - Remote-Groups
+              - Remote-Email
+              - Remote-Name
   '';
 
   compose-stacks.stacks.auth = {

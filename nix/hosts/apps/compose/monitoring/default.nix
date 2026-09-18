@@ -39,14 +39,15 @@ in
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
   '';
 
-  # Grafana now logs in via Authelia OIDC (see the `auth` stack). Prometheus and
-  # Uptime Kuma's dashboards are still exposed without any forwardAuth gating —
-  # that's a separate follow-up (wiring an actual `forwardAuth` middleware per
-  # dashboard), not automatic just because `auth` now exists. Loki has no route here
-  # at all — nothing needs to reach it externally (Grafana queries it over the
-  # `monitoring` docker network, and grafana-alloy on this host reaches it over
-  # loopback), and it has no built-in auth (`auth_enabled: false`), so there's no
-  # reason to expose it yet.
+  # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
+  # Uptime Kuma have no login of their own, so they're gated behind Authelia's
+  # forwardAuth middleware instead (defined once in the `auth` stack's own
+  # dynamicConfig fragment, referenced here by plain name) — matching what the old
+  # container_backbone/container_monitoring roles protected with `authelia@docker`.
+  # Umami stays ungated, same as before. Loki has no route here at all — nothing needs
+  # to reach it externally (Grafana queries it over the `monitoring` docker network,
+  # and grafana-alloy on this host reaches it over loopback), and it has no built-in
+  # auth (`auth_enabled: false`), so there's no reason to expose it yet.
   reverseProxy.dynamicConfig.monitoring = ''
     http:
       routers:
@@ -55,6 +56,8 @@ in
           entryPoints:
             - websecure
           service: prometheus
+          middlewares:
+            - authelia
           tls:
             certResolver: le_main
         grafana:
@@ -69,6 +72,8 @@ in
           entryPoints:
             - websecure
           service: uptime
+          middlewares:
+            - authelia
           tls:
             certResolver: le_main
         umami:
