@@ -83,10 +83,12 @@
       # submission:// (STARTTLS, port 587) matches the most common self-hosted SMTP
       # relay setup — switch to submissions:// if the actual provider needs implicit
       # TLS (typically port 465) instead.
-      address: "submission://${config.sops.placeholder."smtp/host"}:${config.sops.placeholder."smtp/port"}"
+      address: "submission://${config.sops.placeholder."smtp/host"}:${
+        config.sops.placeholder."smtp/port"
+      }"
       username: "${config.sops.placeholder."smtp/user"}"
       password: "${config.sops.placeholder."smtp/password"}"
-      sender: "Authelia <auth@${config.domains.main}>"
+      sender: "Authelia <auth@${config.sops.placeholder."smtp/from_domain"}>"
 
   # deny with zero rules is rejected by Authelia's validator ("when no rules are
   # specified it must be 'two_factor' or 'one_factor'") — nothing is actually gated
@@ -115,7 +117,9 @@
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
-          client_secret: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret_hash"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret_hash"
+          }"
           authorization_policy: two_factor
           redirect_uris:
             - "https://monitor.${config.domains.main}/login/generic_oauth"

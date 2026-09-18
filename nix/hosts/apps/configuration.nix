@@ -100,6 +100,9 @@
     "smtp/password" = {
       sopsFile = ./data/secrets.yaml;
     };
+    "smtp/from_domain" = {
+      sopsFile = ./data/secrets.yaml;
+    };
   };
 
   tailscale.autoconnect = {
