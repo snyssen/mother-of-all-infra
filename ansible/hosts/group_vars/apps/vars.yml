@@ -491,12 +491,12 @@ foundryvtt__admin_key: "{{ vault_foundryvtt__admin_key }}"
 monitoring__extra_monitored_hosts:
   - vi-s-tower.lan:9100
   # - 100.98.130.79:9100 # Gaming - Now pushing instead of pulling
-  - pne.ingress.snyssen.be
+  # - pne.ingress.snyssen.be # ingress - Now pushing instead of pulling
   # - 100.96.180.95:9100 # blackfog - Now pushing instead of pulling
   # - 100.90.124.28:9100 # hypervisor - Now pushing instead of pulling
-  - 100.117.7.65:9100 # technitium-primary
-  - 100.64.88.28:9100 # technitium-secondary
-  # - 100.86.224.95:9100 # apps - already part of "monitored" group
+  # - 100.117.7.65:9100 # technitium-primary - Now pushing instead of pulling
+  # - 100.64.88.28:9100 # technitium-secondary - Now pushing instead of pulling
+  # - 100.86.224.95:9100 # apps - already part of "monitored" group - Now pushing instead of pulling
 monitoring__uptime_user: "{{ vault_monitoring__uptime_user }}"
 monitoring__uptime_pass: "{{ vault_monitoring__uptime_pass }}"
 monitoring__uptime_monitors:
