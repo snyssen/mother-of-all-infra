@@ -19,7 +19,7 @@ monitored:
   hosts:
     snyssen.be:
     backup.snyssen.be:
-    apps.taild023c5.ts.net:
+    # apps.taild023c5.ts.net:
 
 livecams:
   hosts:

@@ -11,14 +11,16 @@ services:
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
       - "--storage.tsdb.retention.time=1y"
+      - "--web.enable-remote-write-receiver"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./node_rules.yml:/etc/prometheus/node_rules.yml:ro
       - /var/lib/app-data/monitoring/prometheus:/prometheus
-    # node-exporter and cadvisor are native host services, scraped via the
-    # docker-bridge firewall trust rule instead of publishing their ports.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # Loopback only: this host's own Alloy (host-native) pushes here directly.
+    # Tailnet hosts push through Traefik's prometheus-write router instead (see
+    # default.nix), so no wider publish is needed.
+    ports:
+      - "127.0.0.1:9090:9090"
     mem_limit: 2g
 
   grafana:
@@ -71,10 +73,11 @@ services:
       - /var/lib/app-data/monitoring/loki:/loki
     networks:
       - monitoring
-    # Not routed through reverse-proxy: nothing needs to reach it externally today
-    # (grafana queries it over the `monitoring` network as a datasource; grafana-alloy
-    # on this host pushes to it over loopback below) and it has no built-in auth
-    # (auth_enabled: false), so it isn't exposed until that's actually needed.
+    # Routed through reverse-proxy (see default.nix's `loki` router, tailnet-whitelist
+    # gated) so tailnet hosts other than this one can push logs in too — it has no
+    # built-in auth (auth_enabled: false), hence the IP allowlist instead of Authelia.
+    # Still published to loopback as well: this host's own grafana-alloy and Grafana
+    # (as a datasource) both reach it directly without going through Traefik.
     ports:
       - "127.0.0.1:3100:3100"
     mem_limit: 2g

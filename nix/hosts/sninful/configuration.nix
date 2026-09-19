@@ -43,6 +43,7 @@ in
     flake.modules.nixos.printing
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
+    flake.modules.nixos.grafana-alloy
   ];
 
   specialisation = {
@@ -122,6 +123,22 @@ in
         name = "FiraMono Nerd Font Mono";
       };
     };
+  };
+
+  grafana-alloy = {
+    varlogs.enable = true;
+    journald.enable = true;
+    nodeMetrics.enable = true;
+    # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
+    # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
+    loki.endpoints = [
+      "https://loki.snyssen.be/loki/api/v1/push"
+      "https://loki.snyssen1.xyz/loki/api/v1/push"
+    ];
+    remoteWrite.endpoints = [
+      "https://prometheus.snyssen.be/api/v1/write"
+      "https://prometheus.snyssen1.xyz/api/v1/write"
+    ];
   };
 
   # TODO: make this part automatically defined

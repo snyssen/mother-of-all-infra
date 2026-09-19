@@ -40,14 +40,20 @@ in
   '';
 
   # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
-  # Uptime Kuma have no login of their own, so they're gated behind Authelia's
-  # forwardAuth middleware instead (defined once in the `auth` stack's own
+  # Uptime Kuma have no login of their own, so their dashboards are gated behind
+  # Authelia's forwardAuth middleware instead (defined once in the `auth` stack's own
   # dynamicConfig fragment, referenced here by plain name) — matching what the old
   # container_backbone/container_monitoring roles protected with `authelia@docker`.
-  # Umami stays ungated, same as before. Loki has no route here at all — nothing needs
-  # to reach it externally (Grafana queries it over the `monitoring` docker network,
-  # and grafana-alloy on this host reaches it over loopback), and it has no built-in
-  # auth (`auth_enabled: false`), so there's no reason to expose it yet.
+  # Umami stays ungated, same as before.
+  #
+  # prometheus-write and loki are separate, ingestion-only routes for Grafana Alloy
+  # (on this host and every tailnet host, see grafana-alloy.nix) to push metrics/logs
+  # into — an agent push has no browser session, so it can't go through Authelia.
+  # Gated instead by a tailnet-only IP allowlist, mirroring the `lan-whitelist`
+  # middleware the legacy container_backbone/container_monitoring roles already use
+  # for the exact same problem on Loki's own route there. Traefik's default
+  # longest-rule-wins priority means prometheus-write's more specific rule doesn't
+  # weaken the general prometheus dashboard router's Authelia gate.
   reverseProxy.dynamicConfig.monitoring = ''
     http:
       routers:
@@ -58,6 +64,15 @@ in
           service: prometheus
           middlewares:
             - authelia
+          tls:
+            certResolver: le_main
+        prometheus-write:
+          rule: "Host(`prometheus.${config.domains.main}`) && Path(`/api/v1/write`)"
+          entryPoints:
+            - websecure
+          service: prometheus
+          middlewares:
+            - tailnet-whitelist
           tls:
             certResolver: le_main
         grafana:
@@ -83,6 +98,15 @@ in
           service: umami
           tls:
             certResolver: le_main
+        loki:
+          rule: "Host(`loki.${config.domains.main}`)"
+          entryPoints:
+            - websecure
+          service: loki
+          middlewares:
+            - tailnet-whitelist
+          tls:
+            certResolver: le_main
       services:
         prometheus:
           loadBalancer:
@@ -100,6 +124,15 @@ in
           loadBalancer:
             servers:
               - url: "http://umami:3000"
+        loki:
+          loadBalancer:
+            servers:
+              - url: "http://loki:3100"
+      middlewares:
+        tailnet-whitelist:
+          ipAllowList:
+            sourceRange:
+              - "100.64.0.0/10"
   '';
 
   compose-stacks.stacks.monitoring = {

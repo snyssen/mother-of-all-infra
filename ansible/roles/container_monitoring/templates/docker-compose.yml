@@ -12,6 +12,7 @@ services:
       --web.console.libraries=/usr/share/prometheus/console_libraries
       --web.console.templates=/usr/share/prometheus/consoles
       --storage.tsdb.retention.time=1y
+      --web.enable-remote-write-receiver
     volumes:
       - /mnt/storage/prometheus:/etc/prometheus
       - "{{ docker_mounts_directory }}/monitoring/prometheus:/prometheus"
@@ -21,6 +22,13 @@ services:
       - traefik.http.routers.prometheus.entryPoints=websecure
       - traefik.http.routers.prometheus.rule=Host(`prometheus.{{ main_domain }}`)
       - traefik.http.routers.prometheus.middlewares=authelia@docker
+      # Ingestion path for Grafana Alloy remote_write (any tailnet host) — an agent
+      # push has no browser session, so it's IP-whitelisted instead of Authelia-gated,
+      # same as loki's own route below. More specific rule wins over the router above,
+      # so this doesn't weaken the dashboard's Authelia gate.
+      - traefik.http.routers.prometheus-write.entryPoints=websecure
+      - traefik.http.routers.prometheus-write.rule=Host(`prometheus.{{ main_domain }}`) && Path(`/api/v1/write`)
+      - traefik.http.routers.prometheus-write.middlewares=lan-whitelist
     mem_limit: 2g
 
   grafana:

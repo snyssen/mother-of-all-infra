@@ -20,7 +20,6 @@
 
     flake.modules.nixos.tailscale
     # flake.modules.nixos.crowdsec-firewall-bouncer # TODO: generate API key and enable
-    flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
     flake.modules.nixos.docker
     flake.modules.nixos.nfs-mounts
@@ -114,9 +113,18 @@
   grafana-alloy = {
     varlogs.enable = true;
     journald.enable = true;
-    # Ship this host's own logs to its own monitoring stack instead of the default
-    # (the still-live production box's Loki) now that one exists here.
-    loki.endpoint = "http://127.0.0.1:3100/loki/api/v1/push";
+    nodeMetrics.enable = true;
+    cadvisorMetrics.enable = true;
+    # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
+    # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
+    loki.endpoints = [
+      "http://127.0.0.1:3100/loki/api/v1/push"
+      "https://loki.snyssen.be/loki/api/v1/push"
+    ];
+    remoteWrite.endpoints = [
+      "http://127.0.0.1:9090/api/v1/write"
+      "https://prometheus.snyssen.be/api/v1/write"
+    ];
   };
 
   services.openssh = {
