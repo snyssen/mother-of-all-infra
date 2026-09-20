@@ -55,4 +55,5 @@ instances:
         username: "{{ crowdsec__webui_user }}"
         password:
           env: CROWDSEC_PASSWORD
-    metrics: []
+    metrics:
+      - url: http://crowdsec:6060/metrics
