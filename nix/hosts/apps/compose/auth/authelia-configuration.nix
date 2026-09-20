@@ -130,4 +130,19 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        - client_name: CrowdSec
+          client_id: "${config.sops.placeholder."compose-stacks/crowdsec/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/crowdsec/oidc/client_secret_hash"
+          }"
+          authorization_policy: two_factor
+          redirect_uris:
+            - "https://crowdsec-ui.${config.domains.main}/api/auth/oidc/callback"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
 ''

@@ -12,6 +12,12 @@ services:
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
 
+      # Loads the CrowdSec bouncer plugin (used by the crowdsec stack's own routes
+      # only for now — see the WAF scope note in crowdsec/default.nix; applying it to
+      # other stacks' routers is a deliberate later follow-up, not done here).
+      - "--experimental.plugins.crowdsec-bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      - "--experimental.plugins.crowdsec-bouncer.version=v1.7.1"
+
       - "--entryPoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -81,6 +87,10 @@ services:
     volumes:
       - /var/lib/app-data/reverse-proxy/certs:/certs
       - /var/lib/reverse-proxy/dynamic:/etc/traefik/dynamic:ro
+      # Read directly by the crowdsec-bouncer plugin (crowdsecLapiKeyFile, see the
+      # crowdsec stack's dynamicConfig fragment) — a raw secret file, not rendered
+      # through this stack's own env template, since it's owned/declared by crowdsec.
+      - ${CROWDSEC_WAF_BOUNCER_KEY_PATH}:/run/secrets/crowdsec_waf_bouncer_key:ro
 
 networks:
   web:

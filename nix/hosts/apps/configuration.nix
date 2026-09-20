@@ -19,7 +19,7 @@
     flake.modules.nixos.nh
 
     flake.modules.nixos.tailscale
-    # flake.modules.nixos.crowdsec-firewall-bouncer # TODO: generate API key and enable
+    flake.modules.nixos.crowdsec-firewall-bouncer
     flake.modules.nixos.grafana-alloy
     flake.modules.nixos.docker
     flake.modules.nixos.nfs-mounts
@@ -35,6 +35,7 @@
     ./compose/reverse-proxy/default.nix
     ./compose/monitoring/default.nix
     ./compose/auth/default.nix
+    ./compose/crowdsec/default.nix
   ];
 
   disko =
@@ -110,6 +111,15 @@
     enableSSH = true;
   };
 
+  # Points at this host's own new LAPI (compose/crowdsec), not the legacy shared one —
+  # matches how `ingress`'s existing, working bouncer reaches its LAPI over HTTPS
+  # rather than a local shortcut. Whether other hosts eventually repoint to this new
+  # LAPI is a separate, later fleet-wide decision, not made here.
+  crowdsec-firewall-bouncer = {
+    apiUrl = "https://crowdsec.${config.domains.main}";
+    apiKeyPath = config.sops.secrets."compose-stacks/crowdsec/firewall_bouncer/api_key".path;
+  };
+
   grafana-alloy = {
     varlogs.enable = true;
     journald.enable = true;
@@ -139,6 +149,14 @@
     users = {
       snyssen = {
         isNormalUser = true;
+        # Pinned rather than left to auto-allocation (confirmed the live value is
+        # already 1000) — the crowdsec-web-ui container runs as uid 1000 (gosu node
+        # in its entrypoint), and its sops secret/template are owned by snyssen so
+        # Linux's raw-uid permission check lets that container read them without
+        # making them world-readable. Auto-allocation is stable across rebuilds in
+        # practice, but pinning makes this reproducible even from a from-scratch
+        # install, not just "whatever it happened to end up as."
+        uid = 1000;
         extraGroups = [
           "networkmanager"
           "wheel"

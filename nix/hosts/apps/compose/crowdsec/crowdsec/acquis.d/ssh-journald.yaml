@@ -1,0 +1,6 @@
+source: loki
+url: http://loki:3100
+query: |
+  {job="journald", unit=~"sshd\\.service"}
+labels:
+  type: sshd

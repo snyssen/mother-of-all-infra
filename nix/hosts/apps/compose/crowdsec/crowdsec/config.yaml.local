@@ -1,0 +1,18 @@
+api:
+  server:
+    use_forwarded_for_headers: true
+    trusted_proxies:
+      # Docker's default address pool for auto-assigned bridge network subnets stays
+      # within 172.16.0.0/12 (no --subnet passed when creating the networks) — same
+      # range already trusted for host-native services in docker.nix. The legacy
+      # config used a single /24 matching that box's specific bridge subnet; this
+      # host's subnets are non-deterministic, so trust the whole range instead.
+      - "172.16.0.0/12"
+# level: full (not the docs' other option, "aggregated") per the web UI's own
+# Metrics page, which wants per-parser/per-scenario detail, not just minimal
+# low-cardinality aggregates. listen_addr/listen_port left at the image's own
+# defaults (0.0.0.0:6060) — already what the legacy role relied on unconfigured,
+# reachable at crowdsec:6060 from other containers on the same docker network.
+prometheus:
+  enabled: true
+  level: full

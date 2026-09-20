@@ -88,6 +88,9 @@ in
       PORKBUN_SECRET_API_KEY=${
         config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"
       }
+      # Declared by the crowdsec stack, consumed here as a raw file path — see its
+      # default.nix for why this needs to be a file mount rather than a placeholder.
+      CROWDSEC_WAF_BOUNCER_KEY_PATH=${config.sops.secrets."compose-stacks/crowdsec/waf_bouncer/api_key".path}
     '';
 
     # argunix is a native process (not a container), reachable from inside the Traefik
