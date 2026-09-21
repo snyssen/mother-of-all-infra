@@ -55,6 +55,10 @@
         "wheel"
       ];
       hashedPasswordFile = config.sops.secrets."users/snyssen/passwordHash".path;
+      openssh.authorizedKeys.keys = [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG68A6FS8yzwzaOUsoKHL9bc+2gB1P5OQriFjEWzG/LH snyssen@blackfog"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIERQS+yhsr8HU1xoTnIOlJLWD9sJnKbiNQglBH/xaGM7 snyssen@purplehaze"
+      ];
     };
   };
 
