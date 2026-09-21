@@ -58,7 +58,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`) |
 | `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | n/a |
 | `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
-| `ntfy` | Push notification server | ✅ Migrate | ⏳ Not started — **recommended next** |
+| `ntfy` | Push notification server | ✅ Migrate | ✅ Done |
 | `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate | ⏳ Not started |
 | `immich` | Photo/video management | ✅ Migrate | ⏳ Not started |
 | `paperless` | Document management (OCR) | ✅ Migrate | ⏳ Not started |
@@ -345,7 +345,7 @@ For each stack, the migration consists of:
 
 1. **MVS first:** Get the base NixOS config booting on the test hypervisor with correct disk layout, networking, NFS mount, and SOPS secrets — no stacks yet. **✅ Done.**
 2. **Infrastructure stacks first:** Migrate `databases`, `monitoring`, `backbone`, `crowdsec` — these are dependencies of most other stacks. **✅ Done** (`backbone` as `reverse-proxy` + `auth`). As a side effect of building `monitoring`, fleet-wide metrics/logs shipping was also converted from pull-based `node_exporter` to push-based Grafana Alloy, dual-shipping to both the legacy and new Prometheus/Loki during the migration — broader than originally scoped for this step, but needed so every host stays observable through the cutover.
-3. **Incremental stack migration:** Add stacks one or a few at a time; verify after each batch. **🚧 Up next** — follow `ansible/roles/stacks_deploy/tasks/main.yml`'s own deployment order, skipping excluded stacks (`unifi`, `quartz`, `attic`, `scrypted`). Next in that order: **`ntfy`**, then `streaming`, `immich`, `paperless`, `nextcloud`, `actual-budget`, `recipes`, `speedtest`, `dashboard`, `personal_website`, `s-pdf`, `foundryvtt`, `minecraft`, `syncthing` (as a NixOS module, not Compose), `team_wiki`, `rallly`, `speedtest-tracker`, `sharkey`, `dawarich`, `semaphore`, `backrest`, `skyrim_together`, `matrix`, `garage`, `mobilizon`. See the Status column in Current Stack Inventory above for live progress.
+3. **Incremental stack migration:** Add stacks one or a few at a time; verify after each batch. **🚧 In progress** — following `ansible/roles/stacks_deploy/tasks/main.yml`'s own deployment order, skipping excluded stacks (`unifi`, `quartz`, `attic`, `scrypted`). `ntfy` is done (users/hashes/topic secrets carried over unchanged from the legacy Ansible Vault rather than rotated, so existing UnifiedPush/Home-Assistant/*arr integrations keep working through cutover; also gained a Prometheus scrape job, matching the `crowdsec` precedent). Next in order: **`streaming`**, then `immich`, `paperless`, `nextcloud`, `actual-budget`, `recipes`, `speedtest`, `dashboard`, `personal_website`, `s-pdf`, `foundryvtt`, `minecraft`, `syncthing` (as a NixOS module, not Compose), `team_wiki`, `rallly`, `speedtest-tracker`, `sharkey`, `dawarich`, `semaphore`, `backrest`, `skyrim_together`, `matrix`, `garage`, `mobilizon`. See the Status column in Current Stack Inventory above for live progress.
 4. **Partial data restore:** Restore a subset of data from the current apps server for realistic testing (e.g., a small Nextcloud dataset, test Postgres DB).
 5. **No production traffic yet:** All testing happens on the test hypervisor; DNS is not changed until Phase B (production cutover).
 

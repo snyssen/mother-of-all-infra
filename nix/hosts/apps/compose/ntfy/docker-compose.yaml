@@ -1,0 +1,48 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.28.0@sha256:6ef4b819f722fccdc036af611c4774cfdc2de821ab74fdd48bbf4c9d6f8973da
+    restart: unless-stopped
+    command:
+      - serve
+    environment:
+      - TZ=Europe/Brussels
+      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
+      - NTFY_CACHE_DURATION=48h
+      - NTFY_BEHIND_PROXY=true
+      - NTFY_ATTACHMENT_CACHE_DIR=/var/cache/ntfy/attachments
+      - NTFY_AUTH_FILE=/ntfy/auth/auth.db
+      - NTFY_ENABLE_LOGIN=true
+      - NTFY_AUTH_DEFAULT_ACCESS=deny-all
+      - NTFY_METRICS_LISTEN_HTTP=:9090
+      # Domain-dependent and secret-derived values are forwarded bare rather than via
+      # ${VAR} compose interpolation, which would mis-parse a bcrypt hash's `$`
+      # characters as compose variable references (same rationale as monitoring's
+      # docker-compose.yaml). The env file (default.nix) supplies all of these.
+      - NTFY_BASE_URL
+      - NTFY_AUTH_USERS
+      - NTFY_AUTH_ACCESS
+      - NTFY_AUTH_TOKENS
+    volumes:
+      - /var/lib/app-data/ntfy/cache:/var/cache/ntfy
+      - /var/lib/app-data/ntfy/auth:/ntfy/auth
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -Eo '\"healthy\"\\s*:\\s*true' || exit 1",
+        ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - web
+      # Not in the legacy stack — added so Prometheus (on the same network) can scrape
+      # NTFY_METRICS_LISTEN_HTTP directly, matching the crowdsec precedent.
+      - monitoring
+
+networks:
+  web:
+    external: true
+  monitoring:
+    external: true

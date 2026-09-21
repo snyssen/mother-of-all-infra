@@ -17,10 +17,13 @@ scrape_configs:
   - job_name: "crowdsec"
     static_configs:
       - targets: ["crowdsec:6060"]
+  - job_name: "ntfy"
+    static_configs:
+      - targets: ["ntfy:9090"]
 
   # Deferred until the corresponding host/stack exists on this migration:
   # minecraft, jellyfin, healthchecks.io, authelia, backup.snyssen.be rest_server,
-  # ntfy, hass. Cross-host metrics/logs (other Nix hosts, the still-live Ubuntu box)
+  # hass. Cross-host metrics/logs (other Nix hosts, the still-live Ubuntu box)
   # are no longer deferred — node/cadvisor metrics arrive via Alloy's remote_write
   # push (see grafana-alloy.nix) from any tailnet host, not scraped here.
 

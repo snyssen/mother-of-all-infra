@@ -36,6 +36,7 @@
     ./compose/monitoring/default.nix
     ./compose/auth/default.nix
     ./compose/crowdsec/default.nix
+    ./compose/ntfy/default.nix
   ];
 
   disko =
