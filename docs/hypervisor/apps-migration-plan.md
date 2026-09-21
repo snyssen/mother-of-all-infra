@@ -31,7 +31,7 @@ The migration is therefore **two-phased**:
 | Compose file convention | `nix/hosts/apps/compose/${stack_name}/docker-compose.yaml` |
 | Docker networks | `web`, `db`, `ldap`, `monitoring` bridge networks pre-created by a new `docker-networks` NixOS module |
 | `lan` ipvlan network | **Not recreated.** Unifi moves to its own VM (Unifi OS Server); Syncthing drops LAN discovery (relies on Tailscale/global relay instead) |
-| Monitoring | `prometheus-node-exporter` (NixOS module) + `grafana-alloy` (NixOS module) + `cAdvisor` (new NixOS module wrapping a container) |
+| Monitoring | `grafana-alloy` (NixOS module) pushing node + cAdvisor metrics and logs via `remote_write`/Loki push, not `prometheus-node-exporter` pull — converted fleet-wide (`apps`, `ingress`, `technitium-{primary,secondary}`, and workstation hosts `blackfog`/`gaming`/`purplehaze`/`sninful`) so metrics/logs dual-ship to both the legacy Prometheus/Loki and the new `apps` stack during the migration. `cAdvisor` ended up as a `docker.cadvisor.enable` option on the existing `docker` module, not a dedicated module. |
 | Backups | `services.restic.backups` (NixOS native); restores via `restic` CLI; optional read-only GUI (`backrest` container) as a separate concern |
 | Secrets | SOPS-encrypted `nix/hosts/apps/data/secrets.yaml`; injected into compose stacks via `environmentFile` |
 | VM provisioning | `libvirt_provision` Ansible role (existing pattern) |
@@ -47,40 +47,45 @@ All stacks currently deployed by the `stacks_deploy` Ansible role (in deployment
 Disposition column indicates what happens to each in this migration (`migrate` / `exclude` / `defer`).
 No stacks are currently marked as deferred in Phase 0.
 
-| Stack | Description | Disposition |
-|-------|-------------|-------------|
-| `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate |
-| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate |
-| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate |
-| `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM |
-| `crowdsec` | CrowdSec security engine | ✅ Migrate |
-| `ntfy` | Push notification server | ✅ Migrate |
-| `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate |
-| `immich` | Photo/video management | ✅ Migrate |
-| `paperless` | Document management (OCR) | ✅ Migrate |
-| `nextcloud` | Personal cloud (files, calendar, contacts) | ✅ Migrate |
-| `actual-budget` | Personal finance / budgeting | ✅ Migrate |
-| `recipes` | Recipe manager (Tandoor) | ✅ Migrate |
-| `speedtest` | Speedtest (Librespeed) | ✅ Migrate |
-| `dashboard` | Homepage dashboard | ✅ Migrate |
-| `personal_website` | Personal website (static) | ✅ Migrate |
-| `quartz` | Quartz digital garden (static) | ⛔ Exclude - Outdated stack |
-| `s-pdf` | Stirling PDF tools | ✅ Migrate |
-| `foundryvtt` | FoundryVTT TTRPG platform | ✅ Migrate |
-| `minecraft` | Minecraft server | ✅ Migrate |
-| `syncthing` | File sync | ✅ Migrate (as NixOS module; not as Compose stack) |
-| `team_wiki` | Wiki.js team wiki | ✅ Migrate |
-| `rallly` | Meeting scheduler | ✅ Migrate |
-| `speedtest-tracker` | Speedtest tracker | ✅ Migrate |
-| `sharkey` | Misskey fork (ActivityPub) | ✅ Migrate |
-| `dawarich` | Location history tracker | ✅ Migrate |
-| `semaphore` | Ansible Semaphore UI | ✅ Migrate |
-| `backrest` | Restic backup browser GUI | ⚠️ Migrate as read-only browse UI (restores via CLI) |
-| `skyrim_together` | Skyrim Together Reborn server | ✅ Migrate (on-demand only) |
-| `matrix` | Matrix homeserver (Synapse) + bridges | ✅ Migrate |
-| `attic` | Nix binary cache (Attic server) | ⛔ Exclude - Makes more sense as a nix module (dedicated VM?) |
-| `mobilizon` | Federated events platform | ✅ Migrate |
-| `scrypted` | NVR / camera bridge | ⛔ Exclude — already its own NixOS VM |
+Status column tracks actual progress on the `apps` NixOS VM as of 2026-09-21. `backbone`
+ended up split into two independent Compose stacks on `apps` — `reverse-proxy` (Traefik)
+and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are done.
+
+| Stack | Description | Disposition | Status |
+|-------|-------------|-------------|--------|
+| `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate | ✅ Done |
+| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done |
+| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`) |
+| `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | n/a |
+| `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
+| `ntfy` | Push notification server | ✅ Migrate | ⏳ Not started — **recommended next** |
+| `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate | ⏳ Not started |
+| `immich` | Photo/video management | ✅ Migrate | ⏳ Not started |
+| `paperless` | Document management (OCR) | ✅ Migrate | ⏳ Not started |
+| `nextcloud` | Personal cloud (files, calendar, contacts) | ✅ Migrate | ⏳ Not started |
+| `actual-budget` | Personal finance / budgeting | ✅ Migrate | ⏳ Not started |
+| `recipes` | Recipe manager (Tandoor) | ✅ Migrate | ⏳ Not started |
+| `speedtest` | Speedtest (Librespeed) | ✅ Migrate | ⏳ Not started |
+| `dashboard` | Homepage dashboard | ✅ Migrate | ⏳ Not started |
+| `personal_website` | Personal website (static) | ✅ Migrate | ⏳ Not started |
+| `quartz` | Quartz digital garden (static) | ⛔ Exclude - Outdated stack | n/a |
+| `s-pdf` | Stirling PDF tools | ✅ Migrate | ⏳ Not started |
+| `foundryvtt` | FoundryVTT TTRPG platform | ✅ Migrate | ⏳ Not started |
+| `minecraft` | Minecraft server | ✅ Migrate | ⏳ Not started |
+| `syncthing` | File sync | ✅ Migrate (as NixOS module; not as Compose stack) | ⏳ Not started |
+| `team_wiki` | Wiki.js team wiki | ✅ Migrate | ⏳ Not started |
+| `rallly` | Meeting scheduler | ✅ Migrate | ⏳ Not started |
+| `speedtest-tracker` | Speedtest tracker | ✅ Migrate | ⏳ Not started |
+| `sharkey` | Misskey fork (ActivityPub) | ✅ Migrate | ⏳ Not started |
+| `dawarich` | Location history tracker | ✅ Migrate | ⏳ Not started |
+| `semaphore` | Ansible Semaphore UI | ✅ Migrate | ⏳ Not started |
+| `backrest` | Restic backup browser GUI | ⚠️ Migrate as read-only browse UI (restores via CLI) | ⏳ Not started |
+| `skyrim_together` | Skyrim Together Reborn server | ✅ Migrate (on-demand only) | ⏳ Not started |
+| `matrix` | Matrix homeserver (Synapse) + bridges | ✅ Migrate | ⏳ Not started |
+| `attic` | Nix binary cache (Attic server) | ⛔ Exclude - Makes more sense as a nix module (dedicated VM?) | n/a |
+| `garage` | Garage S3-compatible object storage + web UI | ✅ Migrate — *missing from the original inventory; the role was added to `stacks_deploy` after this doc was written* | ⏳ Not started |
+| `mobilizon` | Federated events platform | ✅ Migrate | ⏳ Not started |
+| `scrypted` | NVR / camera bridge | ⛔ Exclude — already its own NixOS VM | n/a |
 
 ---
 
@@ -212,19 +217,21 @@ Compose files: Jinja2 variable `{{ docker_mounts_directory }}` → `/var/lib/app
 | `docker` | ✅ Exists | Reuse as-is |
 | `sops` | ✅ Exists | Reuse as-is |
 | `tailscale` | ✅ Exists | Reuse as-is |
-| `grafana-alloy` | ✅ Exists | Reuse as-is |
-| `prometheus-node-exporter` | ✅ Exists | Reuse as-is |
-| `crowdsec-firewall-bouncer` | ✅ Exists | Reuse as-is |
-| `docker-networks` | 🆕 Create | Pre-create named bridge networks (`web`, `db`, `ldap`, `monitoring`) as systemd oneshot units, so they exist before any compose stack starts |
-| `cadvisor` | 🆕 Create | Run cAdvisor as a native NixOS service (or `virtualisation.oci-containers` entry) to expose Prometheus container metrics |
+| `grafana-alloy` | ✅ Exists | Reuse as-is; also gained `nodeMetrics.enable`/`cadvisorMetrics.enable` and dual `remoteWrite.endpoints`/`loki.endpoints` (legacy + new) for fleet-wide dual-shipping during the migration |
+| `prometheus-node-exporter` | ⛔ Superseded | Replaced fleet-wide by `grafana-alloy`'s push-based `nodeMetrics`/`cadvisorMetrics` — no host in the fleet uses this module anymore |
+| `crowdsec-firewall-bouncer` | ✅ Exists | Reused as-is on `apps`, pointed at `apps`'s own new LAPI (`compose/crowdsec`) |
+| `docker-networks` | ✅ Not needed as a separate module | Folded into the existing `docker` module (`docker.networks` option) + `compose-stacks`'s own `dockerNetworks`/`docker-network-<name>.service` units — no dedicated module was created |
+| `cadvisor` | ✅ Exists | Folded into the existing `docker` module as `docker.cadvisor.enable` (wraps a container), not a dedicated module |
 
 ---
 
 ## Hypervisor Changes Required
 
+**Status: ✅ Done.** Both changes below have been live since the VM was first provisioned.
+
 ### 1. NFS Export for `/mnt/bulk/apps`
 
-Add to `nix/hosts/hypervisor/configuration.nix`:
+Live in `nix/hosts/hypervisor/configuration.nix`:
 
 ```nix
 nfsExports.exports = [
@@ -235,27 +242,50 @@ nfsExports.exports = [
 
 ### 2. VM Provisioning
 
-Add `apps` VM entry in `ansible/hosts/host_vars/hypervisor/vars.yml`:
+Live `apps` VM entry in `ansible/hosts/host_vars/hypervisor/vars.yml` (final sizing
+differs slightly from the original plan — `disk_gb` grew from the planned `128` to
+`300`, matching the "test hardware" capacity row below; everything else matches):
 
 ```yaml
 - name: apps
-  vcpu: 4        # adjust after Phase 0 capacity planning
-  ram_mb: 8192   # adjust after Phase 0 capacity planning
-  mac_address: "52:54:00:XX:XX:XX"  # assign unique MAC
-  disk_gb: 128   # OS disk on vmstore SSD pool
+  vcpu: 4
+  ram_mb: 8192
+  mac_address: "52:54:00:00:00:01"
+  disk_gb: 300
   virtiofs_luks_key:
     enable: true
-  iso_image:
-    url: "https://channels.nixos.org/nixos-25.11/latest-nixos-minimal-x86_64-linux.iso"
-    dest: "/mnt/vmstore/apps/installer.iso"
-    enable_mount: false
+  disk_image:
+    dest: "/mnt/vmstore/apps/disk.qcow2"
+    build: false
 ```
 
 ---
 
 ## apps Host Configuration Outline
 
-`nix/hosts/apps/configuration.nix` should import:
+**Superseded — see the live `nix/hosts/apps/configuration.nix` instead of this
+snippet.** The outline below was the pre-implementation sketch; actual imports
+diverged in a few ways worth calling out rather than re-syncing line-by-line (it will
+just drift again):
+
+- No dedicated `flake.modules.nixos.user` module — `users.users.snyssen` is defined
+  directly in `configuration.nix` (with `uid = 1000;` pinned explicitly, needed for the
+  `crowdsec` stack's sops secret permissions).
+- `flake.modules.nixos.prometheus-node-exporter` was never imported on `apps` — it went
+  straight to `grafana-alloy` with `nodeMetrics.enable`/`cadvisorMetrics.enable`.
+- No `flake.modules.nixos.docker-networks`/`cadvisor` modules exist (see the NixOS
+  Module Requirements table above) — networks are `docker.networks = [ "web" "db"
+  "ldap" "monitoring" ];` and cAdvisor is `docker.cadvisor.enable = true;`, both options
+  on the existing `docker` module.
+- Extra imports not in the original outline: `flake.modules.nixos.domains` (drives
+  `config.domains.main`, used throughout every stack's Traefik routing) and
+  `flake.modules.nixos.argunix` (a CI/build-cache service unrelated to this migration,
+  moved onto `apps` in a separate piece of work).
+- Grafana Alloy's config carries dual `remoteWrite.endpoints`/`loki.endpoints` (legacy
+  `snyssen.be` + new `snyssen1.xyz`) rather than a single endpoint — see the Monitoring
+  row in Architecture Decisions above.
+
+The original outline snippet (kept for history, not as a source of truth):
 
 ```nix
 imports = [
@@ -313,9 +343,9 @@ For each stack, the migration consists of:
 
 ## Testing Strategy
 
-1. **MVS first:** Get the base NixOS config booting on the test hypervisor with correct disk layout, networking, NFS mount, and SOPS secrets — no stacks yet.
-2. **Infrastructure stacks first:** Migrate `databases`, `monitoring`, `backbone`, `crowdsec` — these are dependencies of most other stacks.
-3. **Incremental stack migration:** Add stacks one or a few at a time; verify after each batch.
+1. **MVS first:** Get the base NixOS config booting on the test hypervisor with correct disk layout, networking, NFS mount, and SOPS secrets — no stacks yet. **✅ Done.**
+2. **Infrastructure stacks first:** Migrate `databases`, `monitoring`, `backbone`, `crowdsec` — these are dependencies of most other stacks. **✅ Done** (`backbone` as `reverse-proxy` + `auth`). As a side effect of building `monitoring`, fleet-wide metrics/logs shipping was also converted from pull-based `node_exporter` to push-based Grafana Alloy, dual-shipping to both the legacy and new Prometheus/Loki during the migration — broader than originally scoped for this step, but needed so every host stays observable through the cutover.
+3. **Incremental stack migration:** Add stacks one or a few at a time; verify after each batch. **🚧 Up next** — follow `ansible/roles/stacks_deploy/tasks/main.yml`'s own deployment order, skipping excluded stacks (`unifi`, `quartz`, `attic`, `scrypted`). Next in that order: **`ntfy`**, then `streaming`, `immich`, `paperless`, `nextcloud`, `actual-budget`, `recipes`, `speedtest`, `dashboard`, `personal_website`, `s-pdf`, `foundryvtt`, `minecraft`, `syncthing` (as a NixOS module, not Compose), `team_wiki`, `rallly`, `speedtest-tracker`, `sharkey`, `dawarich`, `semaphore`, `backrest`, `skyrim_together`, `matrix`, `garage`, `mobilizon`. See the Status column in Current Stack Inventory above for live progress.
 4. **Partial data restore:** Restore a subset of data from the current apps server for realistic testing (e.g., a small Nextcloud dataset, test Postgres DB).
 5. **No production traffic yet:** All testing happens on the test hypervisor; DNS is not changed until Phase B (production cutover).
 
