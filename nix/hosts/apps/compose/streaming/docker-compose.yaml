@@ -1,0 +1,331 @@
+services:
+  jellyfin:
+    image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
+    restart: unless-stopped
+    networks:
+      - web
+      - monitoring
+      - ldap
+    user: "33:100"
+    environment:
+      - JELLYFIN_DATA_DIR=/data
+      - JELLYFIN_CONFIG_DIR=/config
+      - JELLYFIN_CACHE_DIR=/cache
+      - JELLYFIN_LOG_DIR=/logs
+      - JELLYFIN_playlists__allowDuplicates=false
+      # Domain-dependent — see default.nix's env file (avoids ${VAR} compose
+      # interpolation for values not known statically here).
+      - JELLYFIN_PublishedServerUrl
+    # No /dev/dri passthrough (Intel QuickSync) yet — the apps VM has no GPU passed
+    # through from the hypervisor. Falls back to software transcoding until that's set
+    # up as a separate piece of hypervisor-level work.
+    volumes:
+      - /var/lib/app-data/jellyfin/data:/data
+      - /var/lib/app-data/jellyfin/config:/config
+      - /var/lib/app-data/jellyfin/cache:/cache
+      - /var/lib/app-data/jellyfin/logs:/logs
+      - /mnt/bulk/streaming/media:/data/media
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:2.36.1@sha256:3528a93b6442ffe54bd46771bbbab7c97084e1101071586d9dc2254f30bb4358
+    restart: unless-stopped
+    networks:
+      - web
+    user: "33:100"
+    volumes:
+      - /mnt/bulk/streaming/media/audiobooks:/audiobooks
+      - /mnt/bulk/streaming/media/audiobooks_vi:/audiobooks_vi
+      - /mnt/bulk/streaming/media/podcasts:/podcasts
+      - /mnt/bulk/streaming/media/podcasts_vi:/podcasts_vi
+      - /var/lib/app-data/audiobookshelf/config:/config
+      - /var/lib/app-data/audiobookshelf/metadata:/metadata
+
+  torrent:
+    image: lscr.io/linuxserver/transmission:4.1.3@sha256:1a12fef3c89eca48b7be9e7d36b17b4eb4e1bcf5e1ee7fbf372e3a38b562939d
+    restart: unless-stopped
+    network_mode: service:vpn
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    volumes:
+      - /mnt/bulk/torrent:/config
+      - /mnt/bulk/streaming/torrent:/data/torrent
+    mem_limit: 712m
+    depends_on:
+      - vpn
+
+  usenet:
+    image: lscr.io/linuxserver/sabnzbd:5.1.3@sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85
+    restart: unless-stopped
+    network_mode: service:vpn
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    volumes:
+      - /mnt/bulk/usenet:/config
+      - /mnt/bulk/streaming/usenet:/data/usenet
+    mem_limit: 256m
+    depends_on:
+      - vpn
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:4.0.20@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/sonarr/config:/config
+      - /mnt/bulk/streaming:/data
+    mem_limit: 1g
+    depends_on:
+      - vpn
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:6.4.4@sha256:c960f2b52ec6542dbe6707c5a21e696a7c74fd8b17997454f4d10a55dacee133
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/radarr/config:/config
+      - /mnt/bulk/streaming:/data
+    mem_limit: 1g
+    depends_on:
+      - vpn
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:3.1.0@sha256:8ab0fd370b604ae034d9a9c261a9d8d873bece33d9736852e7ce4f3566e4a35d
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/lidarr/config:/config
+      - /mnt/bulk/streaming:/data
+    mem_limit: 1g
+    depends_on:
+      - vpn
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:2.6.5@sha256:c96b56d94d116a9f4de94bc23d3381689492e6c3cfb7435320e8d982e406f99a
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/prowlarr/config:/config
+    mem_limit: 1g
+    depends_on:
+      - vpn
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:1.6.1@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+      - TZ=Europe/Brussels
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/bazarr/config:/config
+      - /mnt/bulk/streaming:/data
+    mem_limit: 1g
+    depends_on:
+      - vpn
+
+  pinchflat:
+    image: ghcr.io/kieraneglin/pinchflat:v2025.6.6@sha256:4e975edf58f0861a5cbfe8fc6aac4851ff5a02dfc3f05ffeea4982e3084a5a4a
+    restart: unless-stopped
+    user: "33:100"
+    environment:
+      - TZ=Europe/Brussels
+      - LOG_LEVEL=info
+    network_mode: service:vpn
+    volumes:
+      - /var/lib/app-data/pinchflat/config:/config
+      - /mnt/bulk/streaming/media/tv:/downloads
+    depends_on:
+      - vpn
+
+  lidatube:
+    image: thewicklowwolf/lidatube:0.2.56@sha256:37bb899c410f5a011582e8037ea7d2294be6c99d5c1fb9932a600bbbc00011a4
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+    volumes:
+      - /var/lib/app-data/lidatube/config:/lidatube/config
+      - /mnt/bulk/streaming/media/music:/lidatube/downloads
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+
+  lidify:
+    image: thewicklowwolf/lidify:0.2.11@sha256:3e99fa32bd5f4462e61d07ac949ca3443931f4a62a3cfcf443ec804814a2cd76
+    restart: unless-stopped
+    environment:
+      - PUID=33
+      - PGID=100
+    volumes:
+      - /var/lib/app-data/lidify/config:/lidify/config
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+
+  peertube:
+    image: chocobozzz/peertube:production-bookworm@sha256:011b0ec43d921bd60a3aa01fc7995e42cf15275925f16bee6f17a6c896ca5060
+    restart: unless-stopped
+    networks:
+      - web
+      - monitoring
+      - db
+      - peertube_internal
+    environment:
+      - PEERTUBE_DB_USERNAME=peertube
+      - PEERTUBE_DB_HOSTNAME=postgres
+      - PEERTUBE_DB_NAME=peertube
+      - PEERTUBE_DB_SSL=false
+      - PEERTUBE_REDIS_HOSTNAME=peertube_redis
+      - PEERTUBE_WEBSERVER_HTTPS=true
+      # Trust the same non-deterministic docker bridge range already trusted
+      # elsewhere in this migration (see crowdsec's config.yaml.local for the same
+      # rationale), not the legacy role's fixed /16.
+      - 'PEERTUBE_TRUST_PROXY=["127.0.0.1", "loopback", "172.16.0.0/12"]'
+      - PEERTUBE_SMTP_TLS=true
+      - PEERTUBE_SMTP_DISABLE_STARTTLS=false
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_ENABLED=true
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_BUTTON_LABEL=Login with Authelia
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_SCOPE=openid profile email groups
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_USERNAME_PROPERTY=preferred_username
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_EMAIL_PROPERTY=email
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISPLAY_NAME_PROPERTY=name
+      # Domain-dependent and secret-derived values are forwarded bare — see the env
+      # file in default.nix (same rationale as monitoring's docker-compose.yaml: a
+      # secret's `$` characters would otherwise get misparsed as compose variable
+      # references).
+      - PEERTUBE_DB_PASSWORD
+      - PEERTUBE_WEBSERVER_HOSTNAME
+      - PEERTUBE_SECRET
+      - PEERTUBE_SMTP_HOSTNAME
+      - PEERTUBE_SMTP_PORT
+      - PEERTUBE_SMTP_USERNAME
+      - PEERTUBE_SMTP_PASSWORD
+      - PEERTUBE_SMTP_FROM
+      - PEERTUBE_ADMIN_EMAIL
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID
+      - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET
+    volumes:
+      - /mnt/bulk/streaming/peertube/data:/data
+      - /var/lib/app-data/peertube/config:/config
+    depends_on:
+      - peertube_redis
+
+  peertube_redis:
+    image: redis:8-alpine@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576
+    restart: unless-stopped
+    networks:
+      - peertube_internal
+    volumes:
+      - /var/lib/app-data/peertube/redis:/data
+
+  audiomuse_redis:
+    image: redis:8-alpine@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576
+    restart: unless-stopped
+    networks:
+      - audiomuse_internal
+    volumes:
+      - audiomuse_redis_data:/data
+
+  audiomuse_web:
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.1@sha256:a8ab621ed68061154de8a21efa897dfcc9db3d3545421cdb882010c489274fc3
+    restart: unless-stopped
+    networks:
+      - web
+      - db
+      - audiomuse_internal
+    environment:
+      - SERVICE_TYPE=flask
+      - TZ=Europe/Brussels
+      - POSTGRES_USER=audiomuse
+      - POSTGRES_DB=audiomuse
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://audiomuse_redis:6379/0
+      - TEMP_DIR=/app/temp_audio
+      - POSTGRES_PASSWORD
+    volumes:
+      - audiomuse_temp_audio_flask:/app/temp_audio
+    depends_on:
+      - audiomuse_redis
+
+  audiomuse_worker:
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.1@sha256:a8ab621ed68061154de8a21efa897dfcc9db3d3545421cdb882010c489274fc3
+    restart: unless-stopped
+    networks:
+      - db
+      - audiomuse_internal
+    environment:
+      - SERVICE_TYPE=worker
+      - TZ=Europe/Brussels
+      - POSTGRES_USER=audiomuse
+      - POSTGRES_DB=audiomuse
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://audiomuse_redis:6379/0
+      - TEMP_DIR=/app/temp_audio
+      - POSTGRES_PASSWORD
+    volumes:
+      - audiomuse_temp_audio_worker:/app/temp_audio
+    depends_on:
+      - audiomuse_redis
+
+  vpn:
+    image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    networks:
+      - web
+    volumes:
+      - /var/lib/app-data/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
+      - DNS_UNBLOCK_HOSTNAMES=news.eweka.nl
+      - TZ=Europe/Brussels
+      - UPDATER_PERIOD=24h
+      - WIREGUARD_PRIVATE_KEY
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE
+
+networks:
+  web:
+    external: true
+  monitoring:
+    external: true
+  ldap:
+    external: true
+  db:
+    external: true
+  peertube_internal:
+  audiomuse_internal:
+
+volumes:
+  audiomuse_redis_data:
+  audiomuse_temp_audio_flask:
+  audiomuse_temp_audio_worker:

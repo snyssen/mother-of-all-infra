@@ -145,4 +145,25 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        # Redirect URI per peertube-plugin-auth-openid-connect's documented callback
+        # route — unverified against a live PeerTube instance (the legacy role's own
+        # compose file flagged this exact env-var-based OIDC config as possibly not
+        # actually wired up: "TODO: remove ? ... config can probably only be done
+        # through UI"). If login fails after deploy, check PeerTube's own plugin
+        # settings page for the callback path it actually expects.
+        - client_name: PeerTube
+          client_id: "${config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_secret_hash"
+          }"
+          authorization_policy: two_factor
+          redirect_uris:
+            - "https://peertube.${config.domains.main}/plugins/auth-openid-connect/router/code-cb"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
 ''

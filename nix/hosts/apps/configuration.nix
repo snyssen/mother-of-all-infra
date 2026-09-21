@@ -37,6 +37,7 @@
     ./compose/auth/default.nix
     ./compose/crowdsec/default.nix
     ./compose/ntfy/default.nix
+    ./compose/streaming/default.nix
   ];
 
   disko =
@@ -102,6 +103,11 @@
       sopsFile = ./data/secrets.yaml;
     };
     "smtp/from_domain" = {
+      sopsFile = ./data/secrets.yaml;
+    };
+    # Admin/notification recipient address — used by PeerTube (streaming stack) so
+    # far, but shared/global like its smtp/* siblings above, not stack-specific.
+    "smtp/to" = {
       sopsFile = ./data/secrets.yaml;
     };
   };
