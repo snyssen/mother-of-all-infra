@@ -201,6 +201,21 @@
   ];
   docker.cadvisor.enable = true;
 
+  # Intel iGPU (QuickSync) passthrough for Jellyfin hardware transcoding — see the
+  # passthrough plan for the hypervisor/libvirt side (PCI hostdev). Both userspace
+  # VAAPI drivers are installed so this one config works unmodified on either the
+  # current test hardware (Haswell HD 4600, needs the legacy i965 driver — iHD doesn't
+  # support it) or the eventual production chip (i5-13400, covered by iHD); libva
+  # auto-probes the right one for whatever GPU is actually present.
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      intel-media-driver
+      intel-vaapi-driver
+      libvdpau-va-gl
+    ];
+  };
+
   domains.main = "snyssen1.xyz";
 
   # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,

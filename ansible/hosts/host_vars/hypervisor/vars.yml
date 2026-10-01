@@ -70,3 +70,10 @@ libvirt_vms:
     disk_image:
       dest: "/mnt/vmstore/apps/disk.qcow2"
       build: false
+    # Intel iGPU (QuickSync), passed through for Jellyfin hardware transcoding.
+    # Hardware-specific — re-derive via `lspci -nn` when this moves to prod hardware.
+    pci_devices:
+      - domain: "0x0000"
+        bus: "0x00"
+        slot: "0x02"
+        function: "0x0"

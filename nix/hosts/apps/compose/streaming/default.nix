@@ -69,6 +69,7 @@ in
   # without needing to regenerate/re-hash anything here.
   sops.templates."compose-streaming.env".content = ''
     JELLYFIN_PublishedServerUrl=https://streaming.${config.domains.main}
+    JELLYFIN_RENDER_GID=${toString config.users.groups.render.gid}
 
     WIREGUARD_PRIVATE_KEY=${config.sops.placeholder."compose-stacks/streaming/vpn/wireguard_private_key"}
     HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"${config.sops.placeholder."compose-stacks/streaming/vpn/control_server_api_key"}"}

@@ -71,6 +71,15 @@
     </hostdev>
 {% endfor %}
 {% endif %}
+{% if vm.pci_devices is defined and vm.pci_devices | length > 0 %}
+{% for pci in vm.pci_devices %}
+    <hostdev mode="subsystem" type="pci" managed="yes">
+      <source>
+        <address domain="{{ pci.domain }}" bus="{{ pci.bus }}" slot="{{ pci.slot }}" function="{{ pci.function }}"/>
+      </source>
+    </hostdev>
+{% endfor %}
+{% endif %}
 {% if (vm.virtiofs_luks_key | default({})).enable | default(false) %}
     <filesystem type="mount" accessmode="passthrough">
       <driver type="virtiofs"/>

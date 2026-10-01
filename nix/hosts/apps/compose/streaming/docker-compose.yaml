@@ -16,9 +16,14 @@ services:
       # Domain-dependent — see default.nix's env file (avoids ${VAR} compose
       # interpolation for values not known statically here).
       - JELLYFIN_PublishedServerUrl
-    # No /dev/dri passthrough (Intel QuickSync) yet — the apps VM has no GPU passed
-    # through from the hypervisor. Falls back to software transcoding until that's set
-    # up as a separate piece of hypervisor-level work.
+    # Intel QuickSync passthrough — the apps VM's iGPU, passed through from the
+    # hypervisor via a libvirt PCI hostdev (see the passthrough plan). Render group is
+    # domain-dependent (varies per rebuild/host), so it's forwarded bare like the
+    # secret/domain values above rather than hardcoded here.
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${JELLYFIN_RENDER_GID}"
     volumes:
       - /var/lib/app-data/jellyfin/data:/data
       - /var/lib/app-data/jellyfin/config:/config

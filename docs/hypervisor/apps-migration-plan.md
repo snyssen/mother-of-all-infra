@@ -346,7 +346,23 @@ For each stack, the migration consists of:
 1. **MVS first:** Get the base NixOS config booting on the test hypervisor with correct disk layout, networking, NFS mount, and SOPS secrets — no stacks yet. **✅ Done.**
 2. **Infrastructure stacks first:** Migrate `databases`, `monitoring`, `backbone`, `crowdsec` — these are dependencies of most other stacks. **✅ Done** (`backbone` as `reverse-proxy` + `auth`). As a side effect of building `monitoring`, fleet-wide metrics/logs shipping was also converted from pull-based `node_exporter` to push-based Grafana Alloy, dual-shipping to both the legacy and new Prometheus/Loki during the migration — broader than originally scoped for this step, but needed so every host stays observable through the cutover.
 3. **Incremental stack migration:** Add stacks one or a few at a time; verify after each batch. **🚧 In progress** — following `ansible/roles/stacks_deploy/tasks/main.yml`'s own deployment order, skipping excluded stacks (`unifi`, `quartz`, `attic`, `scrypted`). `ntfy` is done (see above). `streaming` is also done — by far the largest stack so far (18 containers: Jellyfin, Audiobookshelf, the full *arr suite + Transmission/SABnzbd behind a Gluetun VPN container via `network_mode: service:vpn`, Lidatube/Lidify, PeerTube + its own Postgres/Redis, Audiomuse + its own Postgres/Redis). Notable deviations from the legacy setup, all deliberate:
-   - No `/dev/dri` GPU passthrough (Intel QuickSync) — the `apps` VM has no GPU passed through from the hypervisor yet; Jellyfin falls back to software transcoding until that's set up as separate hypervisor-level work.
+   - GPU passthrough (Intel QuickSync) plumbing is **done and verified end-to-end**:
+     `hypervisor` has IOMMU enabled with its iGPU dedicated to `vfio-pci` (alone in its
+     own IOMMU group, no ACS override needed), the libvirt hostdev is attached to the
+     `apps` VM, and `/dev/dri` is live inside both the guest and the Jellyfin container
+     (confirmed via `docker inspect`: device + `render` group both wired correctly).
+     **Encoding itself is unconfirmed** — a raw `h264_vaapi` smoke test via the
+     bundled `jellyfin-ffmpeg` hangs on frame 1 and crashes
+     (`Assertion !avpkt->data && !avpkt->buf failed at libavcodec/encode.c:113`) on
+     this Haswell HD 4600 chip, after first failing to init the modern `iHD` driver and
+     falling back to the legacy `i965` one (expected — Haswell predates `iHD` support).
+     Unclear yet whether this is a real hardware/driver limitation on this specific
+     (old, test-only) chip or just an artifact of a synthetic CLI test — needs the
+     actual test from the Verification section below (enable QSV in Jellyfin's own
+     dashboard, play back real media, check the playback-info panel) before calling
+     this done. Software transcoding remains the fallback either way. Should carry
+     over cleanly to the production i5-13400 (Raptor Lake, fully `iHD`-supported)
+     regardless of how this resolves on the test chip.
    - No Jellyfin UDP discovery entrypoint (port 7359) — consistent with this migration's existing decision to not recreate the `lan` network/LAN-broadcast discovery for other stacks (Unifi, Syncthing); doesn't make sense for a VM behind Traefik/NAT anyway.
    - `sabnzbd.ini` is not declaratively managed (the legacy role fully templated it, including provider credentials) — SABnzbd is configured via its own first-run web UI wizard instead, same "don't over-engineer a one-time setup" call already made for crowdsec-web-ui's initial account.
    - PeerTube's OIDC client redirect URI is a best-guess based on `peertube-plugin-auth-openid-connect`'s documented callback route, unverified against a live instance — the legacy compose file itself flagged this OIDC env-var config as possibly not actually wired up ("TODO: remove ? ... config can probably only be done through UI"). Check PeerTube's own plugin settings page after deploy if login fails.

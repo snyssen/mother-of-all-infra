@@ -35,6 +35,33 @@
     ./network.nix
   ];
 
+  # Intel iGPU (QuickSync) passthrough for the `apps` VM's Jellyfin.
+  #
+  # Phase 1: enable IOMMU. Verified after deploy+reboot — the GPU (0000:00:02.0) sits
+  # completely alone in its own IOMMU group (group 0), not even sharing with its own
+  # HD Audio companion device (0000:00:03.0, its own separate group) — no ACS override
+  # patch needed. `iommu=pt` keeps every other device (this box's RAID pools
+  # especially) on passthrough-mode DMA instead of the slower translated path, since
+  # only the GPU is meant to be isolated for VFIO.
+  #
+  # Phase 2: dedicate the GPU to vfio-pci. i915 is blacklisted host-wide (this is the
+  # box's only GPU and it's headless — no display manager, no local graphical session —
+  # so losing host-side use of it costs nothing) and vfio-pci claims the device early
+  # in initrd, before i915 ever gets a chance to bind it (blacklisting alone doesn't
+  # guarantee ordering). `8086:0412` is this specific Haswell chip's PCI id — the one
+  # value that will need re-deriving (`lspci -nn`) when this moves to prod hardware.
+  boot.kernelParams = [
+    "intel_iommu=on"
+    "iommu=pt"
+  ];
+  boot.blacklistedKernelModules = [ "i915" ];
+  boot.initrd.kernelModules = [
+    "vfio_pci"
+    "vfio"
+    "vfio_iommu_type1"
+  ];
+  boot.extraModprobeConfig = "options vfio-pci ids=8086:0412";
+
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets = {
     "users/snyssen/passwordHash" = {
