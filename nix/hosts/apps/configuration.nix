@@ -25,6 +25,7 @@
     flake.modules.nixos.nfs-mounts
     flake.modules.nixos.compose-stacks
     flake.modules.nixos.domains
+    flake.modules.nixos.backrest
 
     flake.modules.nixos.argunix
 
@@ -38,6 +39,7 @@
     ./compose/crowdsec/default.nix
     ./compose/ntfy/default.nix
     ./compose/streaming/default.nix
+    ./backrest.nix
   ];
 
   disko =

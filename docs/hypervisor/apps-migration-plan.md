@@ -32,7 +32,7 @@ The migration is therefore **two-phased**:
 | Docker networks | `web`, `db`, `ldap`, `monitoring` bridge networks pre-created by a new `docker-networks` NixOS module |
 | `lan` ipvlan network | **Not recreated.** Unifi moves to its own VM (Unifi OS Server); Syncthing drops LAN discovery (relies on Tailscale/global relay instead) |
 | Monitoring | `grafana-alloy` (NixOS module) pushing node + cAdvisor metrics and logs via `remote_write`/Loki push, not `prometheus-node-exporter` pull — converted fleet-wide (`apps`, `ingress`, `technitium-{primary,secondary}`, and workstation hosts `blackfog`/`gaming`/`purplehaze`/`sninful`) so metrics/logs dual-ship to both the legacy Prometheus/Loki and the new `apps` stack during the migration. `cAdvisor` ended up as a `docker.cadvisor.enable` option on the existing `docker` module, not a dedicated module. |
-| Backups | `services.restic.backups` (NixOS native); restores via `restic` CLI; optional read-only GUI (`backrest` container) as a separate concern |
+| Backups | **Backrest** (`pkgs.backrest`, native NixOS systemd service, config declaratively rendered via `sops.templates` — not `services.restic.backups`, and not containerized via `compose-stacks`, since it needs broad read access across every stack's data regardless of which uid owns it). Revised from the original `services.restic.backups` + "optional read-only `backrest` container" split after hands-on production use elsewhere showed Backrest's restore UI is worth making the primary tool, not a passive add-on. Still "just restic" underneath — DR via plain `restic` CLI against any repo URI/password in the (sops-decrypted) config works with zero dependency on Backrest itself. |
 | Secrets | SOPS-encrypted `nix/hosts/apps/data/secrets.yaml`; injected into compose stacks via `environmentFile` |
 | VM provisioning | `libvirt_provision` Ansible role (existing pattern) |
 | Iterative testing | Build an MVS (Minimum Viable System), then migrate stacks one-by-one on a test VM |
@@ -79,7 +79,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `sharkey` | Misskey fork (ActivityPub) | ✅ Migrate | ⏳ Not started |
 | `dawarich` | Location history tracker | ✅ Migrate | ⏳ Not started |
 | `semaphore` | Ansible Semaphore UI | ✅ Migrate | ⏳ Not started |
-| `backrest` | Restic backup browser GUI | ⚠️ Migrate as read-only browse UI (restores via CLI) | ⏳ Not started |
+| `backrest` | Restic backup browser GUI | ⚠️ Migrate as read-only browse UI (restores via CLI) | 🚧 Restore-testing bridge done (registers the existing on-site `backup-snyssen-be` repo so prod snapshots are browsable/restorable onto `apps`); actual backup *plans* for `apps`'s own data are separate, later, incremental work — see the Backups row above |
 | `skyrim_together` | Skyrim Together Reborn server | ✅ Migrate (on-demand only) | ⏳ Not started |
 | `matrix` | Matrix homeserver (Synapse) + bridges | ✅ Migrate | ⏳ Not started |
 | `attic` | Nix binary cache (Attic server) | ⛔ Exclude - Makes more sense as a nix module (dedicated VM?) | n/a |

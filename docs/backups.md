@@ -1,5 +1,36 @@
 # Backups
 
+## `apps` restore-testing bridge (Backrest)
+
+`apps` (the new NixOS VM, see `docs/hypervisor/apps-migration-plan.md`) runs
+[Backrest](https://github.com/garethgeorge/backrest) as a native NixOS systemd
+service — `nix/modules/nixos/backrest.nix` (reusable module) +
+`nix/hosts/apps/backrest.nix` (this host's actual repo/plan config). Unlike the
+legacy `container_backrest` role below, this one is fully declarative: repos and
+plans are Nix options, rendered into Backrest's `config.json` via `sops.templates`
+(secrets filled in from `nix/hosts/apps/data/secrets.yaml`), not configured by hand
+through its UI.
+
+**Current scope is a restore-testing bridge, not a replacement for autorestic yet.**
+It registers the existing on-site REST-server repo, `backup-snyssen-be`
+(`rest:http://backup.snyssen.be:8000/`, LAN-only, no auth) — the same repo autorestic
+already writes nearly every location to — with **no backup plans** defined against
+it. Backrest indexes a repo's snapshots directly from the repo itself, not just ones
+it created, so registering the repo alone is enough: its UI can browse every snapshot
+autorestic has ever written there and restore any of them, retargeted to any path on
+`apps`, without needing to pre-define what to restore. That's what makes it useful for
+validating migrated stacks against real production data.
+
+`apps`'s own backup plans (and its own off-site repo, reusing the `snyssen-be-autorestic`
+B2 bucket under a separate path/prefix) are deliberately not configured yet — that's
+later, incremental work, once there's real data on `apps` worth protecting on its own
+account. The legacy production box's `autorestic` setup (below) is untouched and keeps
+running until the Phase B cutover.
+
+Reached at `https://backrest.${domain}`, gated by Authelia (same as every other admin
+UI in this migration) — it has no login of its own by design, matching how Prometheus
+and Uptime Kuma are handled in the `monitoring` stack.
+
 ## Current backup system
 
 Backups are orchestrated with **autorestic** (Restic wrapper), configured and deployed by:
@@ -126,7 +157,30 @@ b2 key create --bucket [bucket-name] [key-name] listBuckets,listFiles,readFiles,
 
 In case of ransomware, lost data on the bucket can be restored using [this software](https://github.com/viltgroup/bucket-restore).
 
-## Disaster Recovery - what to do if the house burn and we need some files
+## Disaster Recovery
+
+For day-to-day restores — and once `apps` is production, the normal case — use
+**Backrest's own web UI** (see above): browse any repo's snapshots and restore files
+or whole snapshots to any target path, without needing a desktop tool or raw CLI
+commands. It's just restic underneath, so this is purely a convenience layer, not a
+dependency: everything below still works identically regardless of whether Backrest
+itself is reachable.
+
+### If Backrest (or `apps` itself) is unavailable
+
+Any restic repository is directly usable with the plain `restic` CLI — no Backrest
+required. Pull the repo's `uri` and password straight from wherever they're
+declared (today: ansible-vault for autorestic's repos; for `apps`'s Backrest-managed
+repos, the sops-decrypted `nix/hosts/apps/data/secrets.yaml`), then:
+
+```sh
+export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # or the s3:... URI for B2 repos
+export RESTIC_PASSWORD="..."
+restic snapshots
+restic restore <snapshot-id> --target /path/to/restore
+```
+
+### If the house burns down — no access to this repo, no Nix, nothing but the raw credentials
 
 There could be a situation where the entire infrastructure is lost, and rebuilding is not an option (lack of time, hardware, energy, money, etc.). In such case, we would have to do without any of the services provided by this infra, but should still be able to access raw files such as important documents.
 
