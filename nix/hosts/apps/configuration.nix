@@ -247,6 +247,10 @@
   };
   argunix.builder.enrollmentTokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
 
+  environment.systemPackages = [
+    pkgs.btop
+  ];
+
   # TODO: make this part automatically defined
   nix.settings = {
     experimental-features = [
