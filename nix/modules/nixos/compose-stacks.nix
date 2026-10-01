@@ -64,6 +64,12 @@ in
           RemainAfterExit = true;
           ExecStart = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} up -d --remove-orphans";
           ExecStop = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} down";
+          # Default (90s) is close to the edge for stacks with many containers — the
+          # 18-container `streaming` stack measured ~65-70s for a full graceful
+          # `docker compose down` during a real host-reboot test. Give real headroom
+          # now that onShutdown=shutdown (see libvirtd.nix) means this path actually
+          # runs on every hypervisor reboot, not just manual stack restarts.
+          TimeoutStopSec = "180s";
         }
         // lib.optionalAttrs (stack.environmentFile != null) {
           EnvironmentFile = stack.environmentFile;

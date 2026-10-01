@@ -42,6 +42,19 @@ in
           virtiofsd
         ];
       };
+      # Default ("suspend") managed-saves every running guest on host
+      # shutdown/reboot and tries to resume them afterward — this is what broke
+      # technitium-secondary's virtiofs state and haos's USB passthrough after a
+      # hypervisor reboot: resuming a saved VM state assumes the exact same backend
+      # state (virtiofsd process, USB device enumeration) the host had *before*
+      # rebooting, which a fresh boot can't guarantee. "shutdown" does a graceful
+      # ACPI shutdown of each guest before the host goes down instead, so every
+      # guest always comes back via a genuine cold boot — slower, but with no stale
+      # state to fail to resume from.
+      onShutdown = "shutdown";
+      # Shut guests down concurrently rather than one-by-one (the upstream default)
+      # — no reason to serialize unrelated VMs just because the host is rebooting.
+      parallelShutdown = 4;
     };
 
     virtualisation.spiceUSBRedirection.enable = cfg.desktopClientSupport;
