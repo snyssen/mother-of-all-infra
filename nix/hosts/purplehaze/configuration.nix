@@ -133,7 +133,7 @@ in
 
   ai = {
     opencode.enable = true;
-    opencode.desktop.enable = true;
+    opencode.desktop.enable = false;
     claude.enable = true;
   };
 

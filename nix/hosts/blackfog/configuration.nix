@@ -151,14 +151,14 @@ in
   ai = {
     ollama.enable = true;
     ollama.models = [
-      "deepseek-r1:8b"
-      "gemma4:latest"
-      "gemma4:31b"
-      "qwen3:30b"
-      "qwen3-coder:30b"
+      # "deepseek-r1:8b"
+      # "gemma4:latest"
+      # "gemma4:31b"
+      # "qwen3:30b"
+      # "qwen3-coder:30b"
     ];
     opencode.enable = true;
-    opencode.desktop.enable = true;
+    opencode.desktop.enable = false;
     claude.enable = true;
   };
 
