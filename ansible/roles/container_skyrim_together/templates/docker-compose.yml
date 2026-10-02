@@ -1,6 +1,6 @@
 services:
   skyrim_together:
-    image: tiltedphoques/st-reborn-server:1.8.1@sha256:2d81cab0ccbd958ef920c81aa239a858b57288f230ae19908c77ee765d68cf84
+    image: tiltedphoques/st-reborn-server:1.8.2@sha256:1ceed0a9c125da8c48ce309e7ba99243320f2135a3b7af387f01ed44631f9faf
     container_name: skyrim_together
     networks:
       - web
