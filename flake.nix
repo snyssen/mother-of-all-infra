@@ -40,6 +40,8 @@
     nixcord.inputs.nixpkgs.follows = "nixpkgs";
 
     argunix.url = "git+https://codeberg.org/tfc/argunix";
+    argunix.inputs.nixpkgs.follows = "nixpkgs";
+    argunix.inputs.disko.follows = "disko";
     comin.url = "github:nlewo/comin";
     comin.inputs.nixpkgs.follows = "nixpkgs";
   };
