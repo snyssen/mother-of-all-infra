@@ -122,13 +122,27 @@ in
           "blackfog"
         ];
       };
+      PrismLauncher = {
+        path = "/home/snyssen/.local/share/PrismLauncher";
+        devices = [
+          "sync.snyssen.be"
+          "gaming"
+        ];
+      };
+      RetroArch = {
+        path = "/home/snyssen/.config/retroarch";
+        devices = [
+          "sync.snyssen.be"
+          "gaming"
+        ];
+      };
     };
   };
 
   gaming = {
     heroic.enable = false;
-    minecraft.enable = false;
-    retroarch.enable = false;
+    minecraft.enable = true;
+    retroarch.enable = true;
   };
 
   ai = {
