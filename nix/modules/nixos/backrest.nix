@@ -252,6 +252,19 @@ in
         BACKREST_CONFIG = configPath;
         BACKREST_DATA = dataDir;
         BACKREST_PORT = cfg.bindAddress;
+        # systemd services get no $HOME by default, so the restic subprocesses
+        # Backrest spawns can't find a place for their local metadata cache —
+        # "unable to open cache: ... neither $XDG_CACHE_HOME nor $HOME are defined".
+        # Harmless to restore/backup correctness (the cache is a pure performance
+        # optimization; restic verifies content hashes regardless), but it does mean
+        # every operation re-fetches repo metadata from scratch instead of caching it
+        # locally, and — worse — restic prints that warning as plain text before
+        # switching to JSON output, which can desync Backrest's own line-by-line JSON
+        # parser for the rest of that run's output (manifesting as a large bogus
+        # "N errors" count despite the underlying operation actually succeeding).
+        # Reusing dataDir keeps this under the same disposable-state directory as
+        # everything else Backrest itself doesn't need Nix to manage the content of.
+        HOME = dataDir;
       };
       serviceConfig = {
         ExecStart = "${pkgs.backrest}/bin/backrest";
