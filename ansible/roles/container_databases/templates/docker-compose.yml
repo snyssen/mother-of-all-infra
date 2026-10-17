@@ -60,6 +60,16 @@ services:
       TZ: "{{ iana_timezone }}"
       HEALTHCHECK_ID: "{{ db__pg_dump_healthcheck_id }}"
       SCHEDULE: 30 */4 * * *
+      # These dumps are themselves picked up by restic/autorestic (see docs/backups.md)
+      # — their only job is a quick local restore of *recent* data; anything older
+      # belongs in a restic snapshot instead. Defaults (days=7, weeks=4, months=6)
+      # quietly kept dumps for up to 6 months, which is what actually ballooned this
+      # directory's size. Weeks/months explicitly disabled, not just left at a low
+      # number — the image's own cleanup logic treats "0" as "keep none of this tier",
+      # not "unlimited" (confirmed against its backup.sh source).
+      BACKUP_KEEP_DAYS: "7"
+      BACKUP_KEEP_WEEKS: "0"
+      BACKUP_KEEP_MONTHS: "0"
     volumes:
       - /mnt/storage/backups/postgres:/backups
       - ./hooks:/hooks
