@@ -15,8 +15,18 @@ services:
       # Loads the CrowdSec bouncer plugin (used by the crowdsec stack's own routes
       # only for now — see the WAF scope note in crowdsec/default.nix; applying it to
       # other stacks' routers is a deliberate later follow-up, not done here).
-      - "--experimental.plugins.crowdsec-bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
-      - "--experimental.plugins.crowdsec-bouncer.version=v1.7.1"
+      #
+      # localPlugins, deliberately, not the remote `experimental.plugins` form: that
+      # one calls out to plugins.traefik.io on *every* container start — even with a
+      # cached archive, since it revalidates via If-None-Match — and one failed call
+      # makes Traefik disable *all* plugins for the lifetime of the process. The
+      # middleware then resolves as "invalid middleware type or middleware does not
+      # exist" and every route using it breaks, with nothing but a single startup log
+      # line to say why. That fired for real on a cold boot: container DNS pointed
+      # only at MagicDNS, tailscaled wasn't healthy for another ~36s, and the 10s
+      # download timed out. Sources are pinned as a flake input and bind-mounted
+      # below instead, so plugin loading touches the network not at all.
+      - "--experimental.localPlugins.crowdsec-bouncer.moduleName=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
 
       - "--entryPoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
@@ -91,6 +101,11 @@ services:
       # crowdsec stack's dynamicConfig fragment) — a raw secret file, not rendered
       # through this stack's own env template, since it's owned/declared by crowdsec.
       - ${CROWDSEC_WAF_BOUNCER_KEY_PATH}:/run/secrets/crowdsec_waf_bouncer_key:ro
+      # Traefik resolves local plugins at ./plugins-local/src/<go module path>,
+      # relative to its working directory (/ in this image), so the mount point has
+      # to spell the module path out exactly — it is how the plugin is identified,
+      # not an arbitrary location. Read-only: Yaegi only ever reads these sources.
+      - ${CROWDSEC_BOUNCER_PLUGIN_SRC}:/plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin:ro
 
 networks:
   web:

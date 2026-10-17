@@ -205,6 +205,40 @@
   ];
   docker.cadvisor.enable = true;
 
+  # Containers forward to these LAN-routed resolvers instead of inheriting the host's
+  # resolv.conf, which lists only MagicDNS (100.100.100.100). Same two Technitium
+  # servers either way — reaching them over the LAN just drops the dependency on
+  # tailscaled being healthy. That dependency is a real boot race, not a theoretical
+  # one: compose stacks start as soon as network-online.target is reached, which on a
+  # cold boot is ~36s before tailscaled finishes connecting, and until then every
+  # container lookup black-holes. It cost us Traefik's CrowdSec plugin (its startup
+  # download timed out, which disables *all* plugins for the life of the process —
+  # see the localPlugins note in compose/reverse-proxy/docker-compose.yaml) and
+  # crowdsec itself, which exited fatally on "loki is not ready".
+  #
+  # Safe as a full replacement rather than a fallback for containers specifically:
+  # these answer both public names and the internal zones, and the one thing they
+  # can't serve — *.ts.net — is not resolved by anything in any compose stack.
+  # Container-name lookups are unaffected; they're handled by Docker's own embedded
+  # resolver at 127.0.0.11, which is what consults this list for everything else.
+  virtualisation.docker.daemon.settings.dns = [
+    "192.168.1.2"
+    "192.168.1.3"
+  ];
+
+  # The host side of the same boot window. Appended rather than prepended
+  # (name_servers_append, not name_servers) so MagicDNS stays first once tailscaled
+  # is up: unlike the containers, the host does need *.ts.net to resolve — the bulk
+  # NFS mount targets `hypervisor` by its tailnet name. Before tailscaled registers
+  # its resolver these are all resolv.conf has, so early-boot lookups work rather
+  # than hanging; afterwards they sit behind MagicDNS as a genuine fallback. Note
+  # glibc only ever consults the first three nameservers (MAXNS), so once MagicDNS
+  # has added both its v4 and v6 entries, .3 here is a spare that never gets queried
+  # — it is listed for the pre-tailscaled window, where both are reachable.
+  networking.resolvconf.extraConfig = ''
+    name_servers_append="192.168.1.2 192.168.1.3"
+  '';
+
   # Intel iGPU (QuickSync) passthrough for Jellyfin hardware transcoding — see the
   # passthrough plan for the hypervisor/libvirt side (PCI hostdev). Both userspace
   # VAAPI drivers are installed so this one config works unmodified on either the

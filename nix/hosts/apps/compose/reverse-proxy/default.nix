@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  inputs,
   pkgs,
   ...
 }:
@@ -79,19 +80,33 @@ in
       };
     };
 
-    sops.templates."compose-reverse-proxy.env".content = ''
-      MAIN_DOMAIN=${config.domains.main}
-      ACME_EMAIL=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/email"}
-      ACME_CA_SERVER=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/ca_server"}
-      DYNU_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/dynu_api_key"}
-      PORKBUN_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_api_key"}
-      PORKBUN_SECRET_API_KEY=${
-        config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"
-      }
-      # Declared by the crowdsec stack, consumed here as a raw file path — see its
-      # default.nix for why this needs to be a file mount rather than a placeholder.
-      CROWDSEC_WAF_BOUNCER_KEY_PATH=${config.sops.secrets."compose-stacks/crowdsec/waf_bouncer/api_key".path}
-    '';
+    sops.templates."compose-reverse-proxy.env" = {
+      # Matters beyond the usual secret-rotation case: the plugin store path below is
+      # part of this file's content but not of the compose file, so a plugin version
+      # bump changes nothing in the unit's ExecStart, and systemd would otherwise
+      # leave the old Traefik running with the old sources still mounted.
+      restartUnits = [ "compose-reverse-proxy.service" ];
+      content = ''
+        MAIN_DOMAIN=${config.domains.main}
+        ACME_EMAIL=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/email"}
+        ACME_CA_SERVER=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/ca_server"}
+        DYNU_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/dynu_api_key"}
+        PORKBUN_API_KEY=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_api_key"}
+        PORKBUN_SECRET_API_KEY=${
+          config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"
+        }
+        # Declared by the crowdsec stack, consumed here as a raw file path — see its
+        # default.nix for why this needs to be a file mount rather than a placeholder.
+        CROWDSEC_WAF_BOUNCER_KEY_PATH=${
+          config.sops.secrets."compose-stacks/crowdsec/waf_bouncer/api_key".path
+        }
+        # Not a secret — a plain store path, routed through this template only because
+        # the compose file reads it via EnvironmentFile and this is the only such file
+        # the stack has. Pinned in flake.nix; see the localPlugins note in the compose
+        # file for why Traefik reads the plugin off disk instead of fetching it.
+        CROWDSEC_BOUNCER_PLUGIN_SRC=${inputs.crowdsec-bouncer-traefik-plugin}
+      '';
+    };
 
     # argunix is a native process (not a container), reachable from inside the Traefik
     # container via host.docker.internal. Its direct debug port (8080) is retired here —
