@@ -81,8 +81,14 @@ nearest_existing() {
   while [ ! -e "$p" ]; do p="$(dirname "$p")"; done
   printf '%s' "$p"
 }
-df_mount() { df -P --output=target "$(nearest_existing "$1")" | tail -1; }
-df_avail() { echo $(( $(df -P --output=avail "$(nearest_existing "$1")" | tail -1) * 1024 )); }
+# No -P: GNU df rejects it alongside --output ("options -P and --output are mutually
+# exclusive"), and --output already gives one clean column.
+df_mount() { df --output=target "$(nearest_existing "$1")" | tail -1; }
+# -B1 asks for bytes outright rather than scaling df's default 1K blocks. The default
+# unit honours $BLOCK_SIZE/$DF_BLOCK_SIZE from the environment, so a multiplying version
+# would silently misreport free space by whatever factor happened to be set -- in a
+# check whose entire job is deciding whether a restore fits.
+df_avail() { df --output=avail -B1 "$(nearest_existing "$1")" | tail -1; }
 human() { numfmt --to=iec-i --suffix=B "$1"; }
 
 human_duration() {

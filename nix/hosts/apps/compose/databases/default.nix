@@ -67,6 +67,8 @@ let
       jq
       coreutils
       findutils
+      # Used only on the --at path; see the matching note in the backrest module.
+      gawk
     ];
     text = ''
       MANIFEST=${postgresRestoreManifest}

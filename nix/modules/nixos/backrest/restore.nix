@@ -124,6 +124,10 @@ let
         jq
         coreutils
         gnugrep
+        # Used only on the --at path, which is why its absence went unnoticed: NixOS
+        # puts gawk on the system PATH and writeShellApplication keeps that, so it
+        # resolved by luck rather than by declaration.
+        gawk
         systemd
       ];
       text = ''
