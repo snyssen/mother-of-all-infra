@@ -50,7 +50,21 @@ root.
 Shared flags: `--list`, `--dry-run`, `--yes`, and `--at` to restore an older state. The
 restic-backed ones additionally take `--check` (resolve each group's snapshot and verify
 it actually contains every configured path — seconds, no writes, exits non-zero on a
-problem) and `--repo-uri` to read from a different copy of the repository.
+problem), `--repo-uri` to read from a different copy of the repository, and
+`--keep-stopped`.
+
+`--keep-stopped` leaves the units a restore stopped stopped, rather than starting them
+again at the end. Worth reaching for when you want to look at restored data *before* the
+application does — many apps migrate or rewrite their state on first start, which is
+hard to undo — or when running several restores back to back without the stack flapping
+up and down between them. The units are stopped beforehand either way; the command ends
+by naming everything it left down, alongside `backrest.service`, which is never
+restarted automatically:
+
+```text
+Left stopped on purpose: backrest.service compose-monitoring.service
+Verify the restore, then: systemctl start backrest.service compose-monitoring.service
+```
 
 ```sh
 backrest-restore --check                        # the cheap, run-it-often health check

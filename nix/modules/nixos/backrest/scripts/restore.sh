@@ -41,6 +41,12 @@ Groups: ${ALL_GROUPS[*]}
   --dry-run        resolve and size everything, write nothing
   -y, --yes        skip the confirmation prompt
   --force          continue even if the capacity preflight says it will not fit
+  --keep-stopped   leave the units this restore stopped stopped, instead of starting
+                   them again at the end. For looking at restored data before the
+                   application does -- it may migrate or rewrite it on first start --
+                   or for running several restores without the stack flapping between
+                   them. The units are still stopped beforehand either way; what is
+                   named at the end is what to start when you are satisfied.
   --repo-uri URI   override the repository URI, keeping the same credentials -- for
                    falling back to the off-site copy when the on-site server is
                    unreachable
@@ -108,6 +114,7 @@ mode=restore
 dry_run=0
 assume_yes=0
 force=0
+keep_stopped=0
 repo_uri_override=""
 at_arg=""
 selected=()
@@ -120,6 +127,7 @@ while [ "$#" -gt 0 ]; do
     --dry-run) dry_run=1 ;;
     -y|--yes)  assume_yes=1 ;;
     --force)   force=1 ;;
+    --keep-stopped) keep_stopped=1 ;;
     --at)
       [ "$#" -ge 2 ] || { echo "$CMD: --at needs a date or time" >&2; exit 2; }
       at_arg="$2"; shift ;;
@@ -362,6 +370,7 @@ if systemctl is-active --quiet backrest.service; then
 fi
 
 results=()
+left_stopped=(backrest.service)
 status=0
 for g in "${selected[@]}"; do
   snap="${snap_of[$g]:-}"
@@ -374,7 +383,11 @@ for g in "${selected[@]}"; do
     if systemctl is-active --quiet "$u"; then
       echo "  stopping $u"
       systemctl stop "$u"
-      restarts+=("$u")
+      if [ "$keep_stopped" -eq 1 ]; then
+        left_stopped+=("$u")
+      else
+        restarts+=("$u")
+      fi
     fi
   done
 
@@ -406,6 +419,6 @@ done
 echo
 printf '%s\n' ${results[@]+"${results[@]}"}
 echo
-echo "backrest.service was left stopped on purpose."
-echo "Verify the restore, then: systemctl start backrest.service"
+echo "Left stopped on purpose: ${left_stopped[*]}"
+echo "Verify the restore, then: systemctl start ${left_stopped[*]}"
 exit "$status"
