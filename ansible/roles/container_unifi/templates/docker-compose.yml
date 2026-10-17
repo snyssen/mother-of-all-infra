@@ -60,7 +60,7 @@ services:
     depends_on:
       - unifi-db
   unifi-db:
-    image: docker.io/mongo:8.3.11@sha256:d731d77bfd7afd66bd487bdf627b5bf7ce4c3602ec461d635977021db529ebbc
+    image: docker.io/mongo:9.0.2@sha256:f5c6240ae8fccc21cf75acc6462929b3394a7a5a7abd934b6b0e7ada5eb5fe95
     container_name: unifi-db
     volumes:
       - "{{ docker_mounts_directory }}/unifi/mongodb:/data/db"
