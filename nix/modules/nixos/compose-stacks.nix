@@ -19,6 +19,9 @@ in
               type = lib.types.path;
               description = "Path to the docker-compose.yml file. The file is copied into the Nix store at evaluation time; a change in its content produces a new store path and triggers an automatic service restart on nixos-rebuild switch.";
             };
+            autostart = lib.mkEnableOption "start stack on boot" // {
+              default = true;
+            };
             environmentFile = lib.mkOption {
               type = lib.types.nullOr lib.types.path;
               default = null;
@@ -57,8 +60,9 @@ in
         requires = [
           "docker.service"
           "network-online.target"
-        ] ++ dockerNetworkUnits;
-        wantedBy = [ "multi-user.target" ];
+        ]
+        ++ dockerNetworkUnits;
+        wantedBy = [ ] ++ lib.lists.optional stack.autostart "multi-user.target";
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;

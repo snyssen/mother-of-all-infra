@@ -71,10 +71,16 @@ in
     JELLYFIN_PublishedServerUrl=https://streaming.${config.domains.main}
     JELLYFIN_RENDER_GID=${toString config.users.groups.render.gid}
 
-    WIREGUARD_PRIVATE_KEY=${config.sops.placeholder."compose-stacks/streaming/vpn/wireguard_private_key"}
-    HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"${config.sops.placeholder."compose-stacks/streaming/vpn/control_server_api_key"}"}
+    WIREGUARD_PRIVATE_KEY=${
+      config.sops.placeholder."compose-stacks/streaming/vpn/wireguard_private_key"
+    }
+    HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"${
+      config.sops.placeholder."compose-stacks/streaming/vpn/control_server_api_key"
+    }"}
 
-    PEERTUBE_DB_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/peertube"}
+    PEERTUBE_DB_PASSWORD=${
+      config.sops.placeholder."compose-stacks/databases/postgres/passwords/peertube"
+    }
     PEERTUBE_WEBSERVER_HOSTNAME=peertube.${config.domains.main}
     PEERTUBE_SECRET=${config.sops.placeholder."compose-stacks/streaming/peertube/secret"}
     PEERTUBE_SMTP_HOSTNAME=${config.sops.placeholder."smtp/host"}
@@ -84,8 +90,12 @@ in
     PEERTUBE_SMTP_FROM=peertube@${config.domains.main}
     PEERTUBE_ADMIN_EMAIL=${config.sops.placeholder."smtp/to"}
     PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL=https://auth.${config.domains.main}/.well-known/openid-configuration
-    PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID=${config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_id"}
-    PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET=${config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_secret"}
+    PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID=${
+      config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_id"
+    }
+    PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_SECRET=${
+      config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_secret"
+    }
 
     POSTGRES_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/audiomuse"}
   '';
@@ -359,5 +369,6 @@ in
       "mnt-bulk.mount"
       "streaming-storage-dirs.service"
     ];
+    autostart = false; # TODO: re-enable, this was disable post testing to ensure it does not try to delete new files
   };
 }
