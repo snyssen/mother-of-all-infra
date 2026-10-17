@@ -135,6 +135,23 @@
         "type": "github"
       }
     },
+    "crowdsec-bouncer-traefik-plugin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785495936,
+        "narHash": "sha256-hefOKDVsBxn+rCAylPHqbCNfPMbU/vtO4QpiftIPcUU=",
+        "owner": "maxlerebourg",
+        "repo": "crowdsec-bouncer-traefik-plugin",
+        "rev": "bef5dfaadbb07381af02ec4e7391e49214ebf953",
+        "type": "github"
+      },
+      "original": {
+        "owner": "maxlerebourg",
+        "ref": "v1.7.1",
+        "repo": "crowdsec-bouncer-traefik-plugin",
+        "type": "github"
+      }
+    },
     "disko": {
       "inputs": {
         "nixpkgs": [
@@ -519,6 +536,7 @@
         "argunix": "argunix",
         "blueprint": "blueprint",
         "comin": "comin",
+        "crowdsec-bouncer-traefik-plugin": "crowdsec-bouncer-traefik-plugin",
         "disko": "disko",
         "firefox-addons": "firefox-addons",
         "home-manager": "home-manager",
