@@ -1,43 +1,147 @@
 # Backups
 
-## `apps` restore-testing bridge (Backrest)
+## `apps` backups and restores (Backrest)
 
 `apps` (the new NixOS VM, see `docs/hypervisor/apps-migration-plan.md`) runs
 [Backrest](https://github.com/garethgeorge/backrest) as a native NixOS systemd
-service — `nix/modules/nixos/backrest.nix` (reusable module) +
-`nix/hosts/apps/backrest.nix` (this host's actual repo/plan config). Unlike the
+service — `nix/modules/nixos/backrest/` (reusable module: `default.nix` holds the
+options, `service.nix` the service and rendered `config.json`, `restore.nix` the restore
+commands, `scripts/` the shell they run) + `nix/hosts/apps/backrest.nix` (this host's
+actual repo/plan config). Unlike the
 legacy `container_backrest` role below, this one is fully declarative: repos and
 plans are Nix options, rendered into Backrest's `config.json` via `sops.templates`
 (secrets filled in from `nix/hosts/apps/data/secrets.yaml`), not configured by hand
 through its UI.
 
-**Current scope is a restore-testing bridge, not a replacement for autorestic yet.**
-It registers the existing on-site REST-server repo, `backup-snyssen-be`
-(`rest:http://backup.snyssen.be:8000/`, LAN-only, no auth) — the same repo autorestic
-already writes nearly every location to — with **no backup plans** defined against
-it. Backrest indexes a repo's snapshots directly from the repo itself, not just ones
-it created, so registering the repo alone is enough: its UI can browse every snapshot
-autorestic has ever written there and restore any of them, retargeted to any path on
-`apps`, without needing to pre-define what to restore. That's what makes it useful for
-validating migrated stacks against real production data.
+Reached at `https://backrest.${domain}` behind Authelia, and also directly on port 9898
+from the tailnet (`openFirewall = true`) for when the reverse proxy is down. It has its
+own login on top of that, declared as `backrest.users` — Backrest refuses to run a
+genuinely open UI, so the account is declarative rather than clicked in.
 
-`apps`'s own backup plans (and its own off-site repo, reusing the `snyssen-be-autorestic`
-B2 bucket under a separate path/prefix) are deliberately not configured yet — that's
-later, incremental work, once there's real data on `apps` worth protecting on its own
-account. The legacy production box's `autorestic` setup (below) is untouched and keeps
-running until the Phase B cutover.
+### Two repositories, deliberately separate
 
-Reached at `https://backrest.${domain}`, gated by Authelia (same as every other admin
-UI in this migration) — it has no login of its own by design, matching how Prometheus
-and Uptime Kuma are handled in the `monitoring` stack.
+| repo | URI | role |
+| --- | --- | --- |
+| `backup_snyssen_be` | `rest:http://backup.snyssen.be:8000/` | The **live production** repo, registered read-only. No plans, and no prune/forget/check policy — `apps` must never be able to alter production's snapshot set. |
+| `apps` | `rest:http://backup.snyssen.be:8000/apps/` | `apps`'s own backups. A separate repository on the same rest-server (it runs without `--private-repos`, so a subpath is served as its own repo), so retention and pruning here are safely scoped. |
+
+Registering the production repo is what makes restore-testing possible at all: Backrest
+indexes a repo's snapshots directly, not just the ones it created, so every snapshot
+autorestic has ever written is browsable and restorable onto `apps` — retargeted to any
+path — without defining anything.
+
+An off-site copy of `apps`'s own backups (B2, as production has) is still to come. Until
+then the restore commands below take `--repo-uri` for the case where the on-site server
+is unreachable.
+
+### The restore commands
+
+All of these are generated from the Nix config and live on `apps` itself, so a VM
+rebuilt from `nixosConfigurations.apps` has them without any extra setup. All run as
+root.
+
+| command | what it does |
+| --- | --- |
+| `backrest-restore` | Disaster recovery. Derived automatically from `backrest.plans`, so it always covers exactly what is backed up — one selectable group per plan, restoring each path to where it came from. |
+| `postgres-restore` | Loads PostgreSQL dumps back into the cluster with `pg_restore`. `backrest-restore` only puts the dump *files* back; a directory of dumps is not a database. |
+| `prod-import` | Pulls legacy-production data onto `apps` with paths and ownership translated. Transitional — `nix/hosts/apps/prod-import.nix` gets deleted at the Phase B cutover. |
+| `apps-restore` | Thin wrapper: `backrest-restore --all` then `postgres-restore --all`. |
+
+Shared flags: `--list`, `--dry-run`, `--yes`, and `--at` to restore an older state. The
+restic-backed ones additionally take `--check` (resolve each group's snapshot and verify
+it actually contains every configured path — seconds, no writes, exits non-zero on a
+problem) and `--repo-uri` to read from a different copy of the repository.
+
+```sh
+backrest-restore --check                        # the cheap, run-it-often health check
+prod-import --list
+prod-import monitoring streaming-config --dry-run
+prod-import monitoring                          # several groups may be named at once
+backrest-restore --all --at 2026-10-01          # the state as of the 1st
+postgres-restore --from /mnt/bulk/restore/prod-postgres authelia
+```
+
+Before writing anything, they resolve one snapshot per group, size every entry with a
+real `--dry-run` restore, check the total against free space **per filesystem** (`/` and
+`/mnt/bulk` are separate budgets, and both are tight), and print the whole plan for
+confirmation. They also stop `backrest.service` and deliberately leave it stopped — see
+the warning in the DR runbook below.
+
+### Restoring an older state: `--at`
+
+`--at WHEN` restores each group's state **as of** that moment: for every group, the
+newest snapshot at or before it. Anything `date(1)` understands works — `2026-10-01`,
+`"2026-10-01 14:00"`, `"3 days ago"`, `yesterday`. A bare date means the *end* of that
+day, because backups run in the small hours and midnight would quietly hand back the
+previous day's snapshot. The resolved instant is always printed, so it is never guesswork.
+
+The thing to understand: **groups do not all have a snapshot for every date.** Retention
+thins older snapshots out, and a backup can simply have failed that night. Rather than
+inventing a rule for that, the command shows it — each group prints the snapshot it
+landed on and how far before your requested time it is, with a `!` on anything more than
+48 hours off:
+
+```text
+Restoring each group's state as of 2026-09-15 23:59:59 +0200
+Resolving snapshots...
+  ! monitoring           acfcea89  2026-08-31T00:39:10  (15d23h before)
+    streaming-config     1f20c7a3  2026-09-15T00:30:12  (23h0m before)
+```
+
+That first line is a real result from the production repo — mid-September is past the
+daily retention window, so the nearest snapshot is two weeks older. Whether that's
+acceptable is a judgement call, which is why it goes in front of you at the confirmation
+prompt rather than being decided for you.
+
+A group with **no** snapshot at or before the requested time is a hard error naming the
+group and its oldest available snapshot, so you can pick a workable `--at` instead of
+restoring a surprise.
+
+`postgres-restore --at` works the same way and means the same thing, which is why
+`apps-restore` forwards the flag to both halves — restoring files from one date while
+loading databases from another would produce a system state that never existed. It
+picks a dump by mtime across **all four backup tiers** (`last`, `daily`, `weekly`,
+`monthly`) rather than only the newest daily, since the tiers have different depths.
+Against the production dumps that spans half a year, and the `last/` tier gives
+intra-day precision:
+
+```text
+--at "8 hours ago"   ->  last/authelia-20261017-083000.sql.gz     (1h47m before)
+--at 2026-09-20      ->  weekly/authelia-202638.sql.gz               (3h before)
+--at 2026-06-15      ->  monthly/authelia-202605.sql.gz           (15d3h before)
+```
+
+**Granularity varies with age**, and it is worth knowing which band you are asking in.
+Dumps run every four hours (`SCHEDULE: 30 */4 * * *`) and `last/` retains about a day of
+them, so within the last ~24 hours you get four-hourly precision. Beyond that only one
+dump per day survives — each day's *final* run, around 20:30 — so asking for a weekday
+morning three days back lands on the previous evening:
+
+```text
+--at "8 hours ago"      ->  last/…-20261017-083000   08:30 today      (1h47m before)
+--at "30 hours ago"     ->  daily/authelia-20261015  10-15 20:30     (15h47m before)
+--at "2026-10-15 10:00" ->  daily/authelia-20261014  10-14 20:30     (13h30m before)
+```
+
+That is correct "as of" behaviour — there simply is no dump between those two evening
+runs — but the request alone doesn't suggest it, which is what the skew column is for.
+
+A database with **no** dump at all is skipped and reported — that is what lets the
+command run unchanged against a production dump directory full of databases this host
+doesn't have. A database that has dumps but none at or before the requested time is a
+hard error instead, for the same reason as above: restoring the rest while silently
+dropping one would leave the cluster inconsistent.
+
+The legacy production box's `autorestic` setup (below) is untouched and keeps running
+until the Phase B cutover.
 
 ## Current backup system
 
 Backups are orchestrated with **autorestic** (Restic wrapper), configured and deployed by:
 
-- playbook: `/home/runner/work/mother-of-all-infra/mother-of-all-infra/ansible/playbooks/backup-run.ansible.yml`
-- role: `/home/runner/work/mother-of-all-infra/mother-of-all-infra/ansible/roles/setup_backups`
-- generated config template: `/home/runner/work/mother-of-all-infra/mother-of-all-infra/ansible/roles/setup_backups/templates/autorestic_config.yaml`
+- playbook: `ansible/playbooks/backup-run.ansible.yml`
+- role: `ansible/roles/setup_backups`
+- generated config template: `ansible/roles/setup_backups/templates/autorestic_config.yaml`
 
 ### How autorestic is configured
 
@@ -55,7 +159,7 @@ The autorestic config is generated from inventory vars:
 - `autorestic__locations` (what to back up and where)
 
 Those vars are sourced from vault values in:
-`/home/runner/work/mother-of-all-infra/mother-of-all-infra/ansible/hosts/group_vars/apps/vars.yml`.
+`ansible/hosts/group_vars/apps/vars.yml`.
 
 ### Retention and hooks
 
@@ -159,12 +263,69 @@ In case of ransomware, lost data on the bucket can be restored using [this softw
 
 ## Disaster Recovery
 
-For day-to-day restores — and once `apps` is production, the normal case — use
-**Backrest's own web UI** (see above): browse any repo's snapshots and restore files
-or whole snapshots to any target path, without needing a desktop tool or raw CLI
-commands. It's just restic underneath, so this is purely a convenience layer, not a
-dependency: everything below still works identically regardless of whether Backrest
-itself is reachable.
+For individual files — and for anything exploratory — use **Backrest's own web UI**:
+browse any repo's snapshots and restore files or whole snapshots to any target path.
+It's just restic underneath, so this is a convenience layer, not a dependency.
+
+### Rebuilding `apps` from scratch
+
+> [!WARNING]
+> Boot the rebuilt host with `docker.service` and `backrest.service` **masked**, before
+> restoring anything. Otherwise every stack starts against empty data directories: Traefik
+> requests a fresh certificate for ~30 hostnames (Let's Encrypt's weekly limits turn a
+> second failed attempt into days without TLS), and — worse — Backrest's schedules fire and
+> back up the *empty* state over the good snapshots, after which retention starts forgetting
+> the originals. A DR rehearsal would then have destroyed the real backups.
+
+0. **Prerequisites that are in no backup**: this git repository, an age identity that can
+   decrypt `nix/hosts/apps/data/secrets.yaml`, and the hypervisor with `/mnt/bulk/apps`
+   intact. See the key-management warning below — this step is the real single point of
+   failure, not the data.
+1. `just hypervisor-build-vm-images` — note this generates a **new** SSH host key, and
+   therefore a new `root_apps` age key.
+2. Add that key to `.sops.yaml` and run
+   `just sops-update-keys file=nix/hosts/apps/data/secrets.yaml`, then commit. **Not
+   optional**: without it sops-nix fails to decrypt and the restic repository password
+   never appears on the host, so nothing can be restored.
+3. `just hypervisor-provision-vms`.
+4. At the GRUB prompt press `e` and append to the kernel command line:
+
+   ```text
+   systemd.mask=docker.service systemd.mask=backrest.service
+   ```
+
+   Every `compose-*` unit has `requires=docker.service`, so this masks all of them, plus
+   cAdvisor, in one go. They land in `failed` with "Unit docker.service is masked" —
+   harmless; `systemctl reset-failed` afterwards.
+5. Sanity-check: `ls /run/secrets/backrest/repos/`, `tailscale status`, and `ls /mnt/bulk`
+   (which triggers the automount).
+6. Make sure the backup server is awake — it is wake-on-LAN'd and may be powered down.
+   Poll `http://backup.snyssen.be:8000/metrics` for a 200; allow up to ~5 minutes. **Keep
+   its IP and MAC address somewhere outside this repo**: in a real disaster, DNS for
+   `backup.snyssen.be` may be gone along with the production box. Alternatively point
+   `--repo-uri` at the off-site copy.
+7. **In tmux** — a few hundred GB over NFS-over-Tailscale takes hours and an SSH drop
+   would kill the run:
+
+   ```sh
+   backrest-restore --all --dry-run    # review the per-filesystem size table
+   backrest-restore --all
+   ```
+
+8. `systemctl unmask docker.service backrest.service && reboot`. Everything then comes up
+   in dependency order, and `compose-databases` provisions roles and databases via its
+   `ExecStartPost`.
+9. `postgres-restore --all` to load the dumps that step 7 restored.
+10. Smoke-test the services, then `systemctl start backrest.service`.
+
+Steps 7 and 9 together are what `apps-restore` does.
+
+### Testing it without a full rebuild
+
+`backrest-restore --check` resolves every plan's latest snapshot and verifies it actually
+contains each configured path. It takes seconds, writes nothing, and exits non-zero on a
+problem — it is the check worth running regularly. A full rebuild is the fidelity test;
+the Phase B cutover is itself that rehearsal.
 
 ### If Backrest (or `apps` itself) is unavailable
 
@@ -174,11 +335,47 @@ declared (today: ansible-vault for autorestic's repos; for `apps`'s Backrest-man
 repos, the sops-decrypted `nix/hosts/apps/data/secrets.yaml`), then:
 
 ```sh
-export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # or the s3:... URI for B2 repos
+export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # on-site REST server
+# export RESTIC_REPOSITORY="b2:snyssen-be-autorestic"            # off-site; also needs
+# export B2_ACCOUNT_ID=... B2_ACCOUNT_KEY=...
 export RESTIC_PASSWORD="..."
 restic snapshots
 restic restore <snapshot-id> --target /path/to/restore
 ```
+
+To restore a subtree somewhere other than its original path — what `prod-import`
+automates — use restic's `snapshotID:subfolder` syntax, which makes the subfolder the
+root of the restore:
+
+```sh
+restic restore 'latest:/mnt/storage/nextcloud' --target /mnt/bulk/nextcloud \
+  --tag ar:location:nextcloud --host snyssen.be
+```
+
+### Key management: the actual single point of failure
+
+> [!CAUTION]
+> `nix/hosts/apps/data/secrets.yaml` can only be decrypted by the age keys listed in
+> `.sops.yaml` — in practice the SSH host keys of a couple of workstations. The restic
+> repository passwords live *inside* that file. If those machines are lost together with
+> everything else, the backups are intact and unreadable.
+>
+> This cannot be fixed with a backup plan (backing up the key into a repository whose
+> password the key protects is circular). It is a process fix:
+>
+> - Generate a **breakglass SSH keypair**, add its age recipient (`ssh-to-age`, already in
+>   the devshell) to every creation rule in `.sops.yaml`, re-run `just sops-update-keys`
+>   for each secrets file, and keep the private key **only** in a password manager.
+> - Keep the restic repository passwords in that password manager too. Recovering them
+>   through sops requires a git checkout and a working age key; having them directly to
+>   hand is what makes the "nothing but the raw credentials" path below actually work.
+
+Other things no backup covers, worth knowing before relying on one: Docker images are
+pinned by digest, so a recovery with no internet access (or after an upstream digest is
+garbage-collected) leaves stacks that will not start; and Docker **named** volumes are not
+backed up by anything here. Today every named volume in use is disposable (Redis caches,
+scratch audio) — the convention for new stacks is that anything stateful is a bind mount
+under `/var/lib/app-data` or `/mnt/bulk`, never a named volume.
 
 ### If the house burns down — no access to this repo, no Nix, nothing but the raw credentials
 
@@ -186,7 +383,7 @@ There could be a situation where the entire infrastructure is lost, and rebuildi
 
 For such [Restic Browser](https://github.com/emuell/restic-browser) should be our go to solution. The preferred way of using it is on a NixOS machine, which can use the `restic-dr` home-manager module provided in this repository to install both Restic and Restic Browser. Otherwise, Restic Browser being cross-platform, it should be installable on pretty much any machine, and could thus be used anywhere to connect to our Restic repositories.
 
-Restic repositories information can currently be found by decrypting the ansible-vault managed `ansible/hosts/group_vars/apps/vault.yml` file, but note that **this might change in the future and should be kept up to date**. Once connected to the repository, select the esired snapshot and you should be able to browse and download files and directories directly.
+Repository URIs and passwords live in two places today, and this scenario assumes you can reach neither: the legacy autorestic repos in the ansible-vault managed `ansible/hosts/group_vars/apps/vault.yml`, and `apps`'s own in the sops-managed `nix/hosts/apps/data/secrets.yaml`. **That is exactly why the credentials also belong in a password manager** — see the key-management warning above. Once connected to the repository, select the desired snapshot and you should be able to browse and download files and directories directly.
 
 > [!IMPORTANT]
 > Browsing and especially downloading files can be really slow, especially on remote repositories and using a slow Internet connection. Aggravating the issue, Restic Browser is not always explicit about running operations, as it only shows a small, easy to miss, status message at the bottom of the window (see screenshot), and not blocking the UI while the operation is running. **Please be patient!**

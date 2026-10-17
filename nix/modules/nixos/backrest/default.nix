@@ -1,14 +1,23 @@
 {
   lib,
   config,
-  pkgs,
   ...
 }:
+# Backrest (https://github.com/garethgeorge/backrest): a web UI and scheduler wrapped
+# around restic. Split across:
+#
+#   default.nix  — the options describing repos, plans and users (this file)
+#   service.nix  — the systemd service and the config.json rendered from those options
+#   restore.nix  — the restore commands generated from those same options
+#   paths.nix    — the couple of on-disk paths service.nix and restore.nix must agree on
+#
+# Everything is declared here rather than through Backrest's own UI, so the repos and
+# plans in git are the source of truth. Backrest does rewrite config.json at runtime
+# (it injects its own multihost "sync" identity, for instance) — harmless, because a
+# redeploy restarts the service against a freshly rendered file, and the real data
+# lives in the restic repositories, never in this config.
 let
   cfg = config.backrest;
-
-  mkEnvList =
-    env: lib.mapAttrsToList (name: secretPath: "${name}=${config.sops.placeholder.${secretPath}}") env;
 
   repoSubmodule = lib.types.submodule (
     { name, ... }:
@@ -122,41 +131,38 @@ let
           type = lib.types.attrsOf lib.types.anything;
           description = "Backrest schedule object, passed through as-is.";
         };
+        stopUnits = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          description = ''
+            Units the *restore* command stops before rewriting this plan's paths and
+            restarts afterwards. Not used at backup time — Backrest has its own hooks
+            for that. Usually empty: a real disaster recovery runs with everything
+            masked (see the runbook in docs/backups.md), so there is nothing to stop.
+            Set it when restoring onto a live host is a realistic thing to do.
+          '';
+        };
       };
     }
   );
-
-  renderRepo = repo: {
-    inherit (repo) id uri guid;
-    password = config.sops.placeholder.${repo.passwordSecret};
-  }
-  // lib.optionalAttrs (repo.env != { }) { env = mkEnvList repo.env; }
-  // lib.optionalAttrs (repo.prunePolicy != null) { prunePolicy = repo.prunePolicy; }
-  // lib.optionalAttrs (repo.checkPolicy != null) { checkPolicy = repo.checkPolicy; }
-  // lib.optionalAttrs (repo.forgetPolicy != null) { forgetPolicy = repo.forgetPolicy; };
-
-  renderPlan = plan: {
-    inherit (plan) id repo paths retention schedule;
-  }
-  // lib.optionalAttrs (plan.excludes != [ ]) { excludes = plan.excludes; };
-
-  renderUser = user: {
-    inherit (user) name;
-    passwordBcrypt = config.sops.placeholder.${user.passwordHashSecret};
-  };
-
-  dataDir = "/var/lib/backrest/data";
-  configPath = "/var/lib/backrest/config/config.json";
-  bindPort = lib.toInt (lib.last (lib.splitString ":" cfg.bindAddress));
 in
 {
+  imports = [
+    ./service.nix
+    ./restore.nix
+  ];
+
   options.backrest = {
     enable = lib.mkEnableOption "Backrest (web UI and orchestrator for restic)";
 
     instance = lib.mkOption {
       type = lib.types.str;
       default = config.networking.hostName;
-      description = "Backrest's own \"instance\" label (used for its multihost sync feature, unused here).";
+      description = ''
+        Backrest's own "instance" label. It stamps every snapshot it creates with
+        `created-by:<instance>`, which is how the generated restore commands find them,
+        so changing it orphans existing snapshots from this host's point of view.
+      '';
     };
 
     bindAddress = lib.mkOption {
@@ -164,10 +170,8 @@ in
       # Not loopback-only: Traefik reaches host-native services via the docker
       # bridge gateway (host.docker.internal), not 127.0.0.1 — same reasoning as
       # cadvisor's listenAddress default in docker.nix. The NixOS firewall (left
-      # closed here — no networking.firewall.allowedTCPPorts for this port) plus the
-      # existing docker-bridge trust rule in docker.nix (also from cadvisor's
-      # precedent) is what actually restricts reachability to this host's own docker
-      # networks, not the bind address.
+      # closed unless openFirewall) plus the existing docker-bridge trust rule in
+      # docker.nix is what actually restricts reachability, not the bind address.
       default = "0.0.0.0:9898";
       description = "Address Backrest's web server binds to. Reach it through a reverse proxy; left closed on the NixOS firewall.";
     };
@@ -187,7 +191,12 @@ in
     plans = lib.mkOption {
       type = lib.types.attrsOf planSubmodule;
       default = { };
-      description = "Backup plans (what to back up, on what schedule, into which repo).";
+      description = ''
+        Backup plans (what to back up, on what schedule, into which repo). These are
+        also what the generated disaster-recovery command restores — see restore.nix —
+        so a stack with state but no plan is a silent gap in recovery, not just a
+        missing backup.
+      '';
     };
 
     users = lib.mkOption {
@@ -202,74 +211,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    systemd.tmpfiles.rules = [
-      # Backrest's own state (oplog db, restic binary cache) — created once, never
-      # Nix-managed content. Confirmed disposable (Backrest re-indexes snapshot
-      # history straight from the repo on loss), but no reason to churn it.
-      "d ${dataDir} 0700 root root -"
-    ];
-
-    # Backrest treats this file as read-write state, not read-only input: it
-    # rewrites/reformats it on every start (confirmed empirically — e.g. it injects
-    # its own auto-generated multihost "sync" identity block). That's fine: a Nix
-    # redeploy always restarts the service, which re-reads this freshly-rendered file
-    # before Backrest gets another chance to touch it, so Nix stays the actual source
-    # of truth for repos/plans — any bookkeeping Backrest adds between deploys is
-    # harmless churn, not data loss (real backup data lives in the restic repos
-    # themselves, never in this file).
-    sops.templates."backrest-config.json" = {
-      content = builtins.toJSON (
-        {
-          version = 6;
-          instance = cfg.instance;
-          repos = lib.mapAttrsToList (_: renderRepo) cfg.repos;
-        }
-        // lib.optionalAttrs (cfg.plans != { }) {
-          plans = lib.mapAttrsToList (_: renderPlan) cfg.plans;
-        }
-        // lib.optionalAttrs (cfg.users != { }) {
-          auth.users = lib.mapAttrsToList (_: renderUser) cfg.users;
-        }
-      );
-      path = configPath;
-      restartUnits = [ "backrest.service" ];
-    };
-
-    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ bindPort ];
-
-    # Native systemd service, not a compose-stacks container: Backrest needs broad
-    # read access across every stack's data directories, each owned by a different
-    # container's own uid (postgres 999, jellyfin 33, peertube 999, ...) — running it
-    # as root sidesteps bind-mounting every single directory with matching ownership
-    # into a container for zero real isolation benefit. Matches this repo's existing
-    # pragmatic-root precedent (virtualisation.libvirtd.qemu.runAsRoot in libvirtd.nix).
-    systemd.services.backrest = {
-      description = "Backrest (restic backup web UI and orchestrator)";
-      after = [ "network-online.target" ];
-      requires = [ "network-online.target" ];
-      wantedBy = [ "multi-user.target" ];
-      environment = {
-        BACKREST_CONFIG = configPath;
-        BACKREST_DATA = dataDir;
-        BACKREST_PORT = cfg.bindAddress;
-        # systemd services get no $HOME by default, so the restic subprocesses
-        # Backrest spawns can't find a place for their local metadata cache —
-        # "unable to open cache: ... neither $XDG_CACHE_HOME nor $HOME are defined".
-        # Harmless to restore/backup correctness (the cache is a pure performance
-        # optimization; restic verifies content hashes regardless), but it does mean
-        # every operation re-fetches repo metadata from scratch instead of caching it
-        # locally, and — worse — restic prints that warning as plain text before
-        # switching to JSON output, which can desync Backrest's own line-by-line JSON
-        # parser for the rest of that run's output (manifesting as a large bogus
-        # "N errors" count despite the underlying operation actually succeeding).
-        # Reusing dataDir keeps this under the same disposable-state directory as
-        # everything else Backrest itself doesn't need Nix to manage the content of.
-        HOME = dataDir;
-      };
-      serviceConfig = {
-        ExecStart = "${pkgs.backrest}/bin/backrest";
-        Restart = "on-failure";
-      };
-    };
+    assertions =
+      lib.mapAttrsToList (name: plan: {
+        assertion = cfg.repos ? ${plan.repo};
+        message = "backrest.plans.${name}.repo refers to \"${plan.repo}\", which is not declared in backrest.repos.";
+      }) cfg.plans
+      ++ lib.mapAttrsToList (name: repo: {
+        assertion = config.sops.secrets ? ${repo.passwordSecret};
+        message = "backrest.repos.${name}.passwordSecret refers to the sops secret \"${repo.passwordSecret}\", which is not declared in sops.secrets.";
+      }) cfg.repos;
   };
 }

@@ -41,6 +41,40 @@ let
   # compose file's relative bind mounts (./provision.sh, ./hooks) resolve against its
   # sibling files instead of against /nix/store itself.
   composeFile = "${./.}/docker-compose.yaml";
+
+  # Loading the dumps back into the cluster. This is the other half of a restore:
+  # `backrest-restore` puts the dump *files* back, but a directory of dumps is not a
+  # database. Lives here rather than in the backrest module because it's pg_restore,
+  # not restic, and this file already owns dbNames and envVarName.
+  #
+  # Same shape as the backrest module's restore commands: the shell lives in its own
+  # file and everything Nix knows is handed over as a JSON manifest, so the script
+  # stays readable on its own terms instead of as an escaped Nix string.
+  postgresRestoreManifest = pkgs.writeText "postgres-restore-manifest.json" (
+    builtins.toJSON {
+      command = "postgres-restore";
+      composeFile = composeFile;
+      envFile = config.sops.templates."compose-databases.env".path;
+      defaultFrom = "/mnt/bulk/backups/postgres";
+      databases = lib.listToAttrs (map (name: lib.nameValuePair name (envVarName name)) dbNames);
+    }
+  );
+
+  postgresRestore = pkgs.writeShellApplication {
+    name = "postgres-restore";
+    runtimeInputs = with pkgs; [
+      docker
+      jq
+      coreutils
+      findutils
+    ];
+    text = ''
+      MANIFEST=${postgresRestoreManifest}
+      export MANIFEST
+
+    ''
+    + builtins.readFile ./scripts/postgres-restore.sh;
+  };
 in
 {
   systemd.tmpfiles.rules = [
@@ -93,20 +127,20 @@ in
     mode = "0444";
   };
 
-  sops.templates."compose-databases.env".content =
-    ''
-      POSTGRES_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/superuser"}
-      DB_NAMES=${lib.concatStringsSep "," dbNames}
-      PGADMIN_DEFAULT_EMAIL=${config.sops.placeholder."compose-stacks/databases/pgadmin/email"}
-      PGADMIN_DEFAULT_PASSWORD=${config.sops.placeholder."compose-stacks/databases/pgadmin/password"}
-      HEALTHCHECK_ID=${config.sops.placeholder."compose-stacks/databases/pg_dump_healthcheck_id"}
-      PGADMIN_CONFIG_LOCAL_PATH=${config.sops.templates."pgadmin-config_local.py".path}
-    ''
-    + lib.concatMapStringsSep "\n" (
-      name: "${envVarName name}=${
-        config.sops.placeholder."compose-stacks/databases/postgres/passwords/${name}"
-      }"
-    ) dbNames;
+  sops.templates."compose-databases.env".content = ''
+    POSTGRES_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/superuser"}
+    DB_NAMES=${lib.concatStringsSep "," dbNames}
+    PGADMIN_DEFAULT_EMAIL=${config.sops.placeholder."compose-stacks/databases/pgadmin/email"}
+    PGADMIN_DEFAULT_PASSWORD=${config.sops.placeholder."compose-stacks/databases/pgadmin/password"}
+    HEALTHCHECK_ID=${config.sops.placeholder."compose-stacks/databases/pg_dump_healthcheck_id"}
+    PGADMIN_CONFIG_LOCAL_PATH=${config.sops.templates."pgadmin-config_local.py".path}
+  ''
+  + lib.concatMapStringsSep "\n" (
+    name:
+    "${envVarName name}=${
+      config.sops.placeholder."compose-stacks/databases/postgres/passwords/${name}"
+    }"
+  ) dbNames;
 
   # No authelia middleware: pgAdmin is the OIDC relying party itself (see
   # pgadmin-config-local.nix + the Authelia client in auth/authelia-configuration.nix),
@@ -154,4 +188,6 @@ in
   systemd.services.compose-databases.serviceConfig.ExecStartPost = [
     "${pkgs.docker}/bin/docker compose --project-name databases -f ${composeFile} run --rm provision"
   ];
+
+  environment.systemPackages = [ postgresRestore ];
 }

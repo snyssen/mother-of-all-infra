@@ -1,13 +1,55 @@
-{ config, ... }:
+{ config, pkgs, ... }:
+let
+  # Every plan backs up on the same schedule and keeps the same depth. Both match the
+  # legacy autorestic config (daily at 00:30; keep-daily 14 / weekly 4 / monthly 6 /
+  # yearly 1), so retention behaviour doesn't silently change at cutover.
+  #
+  # These two objects are passed through to Backrest's config.json verbatim — the
+  # module types them as free-form, so a misspelled field is accepted here and only
+  # surfaces as a broken config at runtime. Field names below were read out of the
+  # backrest binary itself rather than guessed.
+  schedule = {
+    cron = "30 0 * * *";
+    clock = "CLOCK_LOCAL";
+  };
+  retention.policyTimeBucketed = {
+    daily = 14;
+    weekly = 4;
+    monthly = 6;
+    yearly = 1;
+  };
+
+  mkPlan =
+    { paths, stopUnits }:
+    {
+      inherit
+        paths
+        stopUnits
+        schedule
+        retention
+        ;
+      repo = "apps";
+    };
+in
 {
-  # Restore-testing bridge only (see docs/backups.md and the migration plan's Backups
-  # row): registers the existing production on-site REST-server repo so Backrest's UI
-  # can browse and restore *any* of autorestic's existing snapshots onto `apps`,
-  # retargeted to arbitrary paths — no backup plan needed for that, Backrest indexes a
-  # repo's snapshots directly regardless of what created them. `apps`'s own backup
-  # plans (and its own off-site B2 repo) are a separate, later, incremental piece of
-  # work once there's real data on `apps` worth protecting.
+  # Two repos, deliberately distinct:
+  #
+  # - backup_snyssen_be: the *live production* repo, registered read-only so Backrest's
+  #   UI can browse and restore any of autorestic's existing snapshots onto `apps`
+  #   (Backrest indexes a repo's snapshots directly, regardless of what created them).
+  #   No plans, and no prune/forget/check policy, ever — `apps` must not be able to
+  #   change production's snapshot set.
+  # - apps: `apps`'s own backups, a separate repo on the same rest-server (it runs
+  #   without --private-repos, so a subpath is served as its own repository). Same LAN
+  #   speed, but retention and pruning here can never touch production's snapshots.
+  #
+  # An off-site B2 copy for `apps` is still to come; until then the generated restore
+  # commands take --repo-uri for the "on-site server is unreachable" case.
   sops.secrets."backrest/repos/backup_snyssen_be/password" = {
+    sopsFile = ./data/secrets.yaml;
+    restartUnits = [ "backrest.service" ];
+  };
+  sops.secrets."backrest/repos/apps/password" = {
     sopsFile = ./data/secrets.yaml;
     restartUnits = [ "backrest.service" ];
   };
@@ -34,8 +76,87 @@
       # Generated once with `openssl rand -hex 32`.
       guid = "6498b158e271405733d31947e066cf746e6a6a5b07206075cdb55763f09fb9db";
     };
+    repos.apps = {
+      uri = "rest:http://backup.snyssen.be:8000/apps/";
+      passwordSecret = "backrest/repos/apps/password";
+      guid = "f4fcafc27628201b204cd752d2ce0b080a833fe0554c94e92caa0284f4fc40d4";
+    };
     users.snyssen.passwordHashSecret = "backrest/users/snyssen/password_hash";
+
+    # Plan boundaries mirror the legacy autorestic locations — roughly one per stack,
+    # which is also the unit a restore is selected by (`backrest-restore monitoring
+    # streaming-config`). Only stacks with state worth keeping appear here:
+    #
+    # - no `auth`: lldap lives in Postgres, Authelia's sessions in a disposable volume.
+    # - no `ntfy`, despite prod having a location for it: every user, ACL and token is
+    #   provisioned declaratively from sops (NTFY_AUTH_* in compose/ntfy/default.nix),
+    #   so the auth DB is rebuilt from this repo on any rebuild. The rest is the
+    #   notification cache, which is disposable. A backup would protect nothing that
+    #   isn't already in git.
+    # - no media (/mnt/bulk/streaming/media): empty test data today. Those plans arrive
+    #   with the real media, which — like prod's movies/tv — stays on-site only.
+    plans = {
+      # Dumps only, never the live Postgres data directory: a running cluster's files
+      # aren't consistently snapshottable, and this matches what prod backs up. Also
+      # the only reason `postgres-restore` has anything to read.
+      databases = mkPlan {
+        paths = [ "/mnt/bulk/backups/postgres" ];
+        stopUnits = [ ];
+      };
+      monitoring = mkPlan {
+        # Grafana dashboards and Uptime Kuma's monitor definitions — the hand-made
+        # state. Prometheus/Loki are deliberately absent (as on prod): their TSDBs are
+        # observability history, large and continuously regenerated, not configuration.
+        paths = [
+          "/var/lib/app-data/monitoring/grafana"
+          "/var/lib/app-data/monitoring/uptime"
+        ];
+        stopUnits = [ "compose-monitoring.service" ];
+      };
+      streaming-config = mkPlan {
+        # Mirrors prod's `streaming-config` location: app configuration and libraries,
+        # never the media itself.
+        paths = [
+          "/var/lib/app-data/jellyfin"
+          "/var/lib/app-data/audiobookshelf"
+          "/var/lib/app-data/sonarr/config"
+          "/var/lib/app-data/radarr/config"
+          "/var/lib/app-data/lidarr/config"
+          "/var/lib/app-data/prowlarr/config"
+          "/var/lib/app-data/bazarr/config"
+          "/var/lib/app-data/pinchflat/config"
+          "/var/lib/app-data/lidatube/config"
+          "/var/lib/app-data/lidify/config"
+          "/var/lib/app-data/peertube/config"
+        ];
+        stopUnits = [ "compose-streaming.service" ];
+      };
+      # New relative to prod, which backs this up nowhere: holds the LAPI's machine and
+      # bouncer registrations, so losing it means re-enrolling every bouncer by hand.
+      crowdsec = mkPlan {
+        paths = [
+          "/var/lib/app-data/crowdsec/data"
+          "/var/lib/app-data/crowdsec-web-ui"
+        ];
+        stopUnits = [ "compose-crowdsec.service" ];
+      };
+      # Also new, and tiny: acme.json. Without it a rebuild re-requests a certificate
+      # for every hostname at once, and Let's Encrypt's weekly limits turn a second
+      # failed attempt into days without TLS.
+      reverse-proxy = mkPlan {
+        paths = [ "/var/lib/app-data/reverse-proxy/certs" ];
+        stopUnits = [ "compose-reverse-proxy.service" ];
+      };
+    };
   };
+
+  # Disaster recovery in one command; see scripts/apps-restore.sh for the rationale.
+  environment.systemPackages = [
+    (pkgs.writeShellApplication {
+      name = "apps-restore";
+      text = builtins.readFile ./scripts/apps-restore.sh;
+    })
+  ];
 
   # Defense in depth: Authelia gates this route same as every other admin UI here, on
   # top of Backrest's own login (declared above) — the latter alone is also what
