@@ -85,11 +85,27 @@ services:
     environment:
       - PGADMIN_DEFAULT_EMAIL
       - PGADMIN_DEFAULT_PASSWORD
+      # Both enabled deliberately (legacy prod only lists 'oauth2'): OIDC is the
+      # normal path (see the Authelia client + config_local.py below), but the
+      # PGADMIN_DEFAULT_EMAIL/PASSWORD account must keep working too, for breakglass
+      # access via the direct :8888 publish below if the reverse proxy is ever down.
+      - "PGADMIN_CONFIG_AUTHENTICATION_SOURCES=['oauth2', 'internal']"
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ${PGADMIN_CONFIG_LOCAL_PATH}:/pgadmin4/config_local.py:ro
     networks:
       - db
+      - web
+    # Direct, Traefik/Authelia-independent access — kept exactly as before. The usual
+    # path is now https://pgadmin.${domain} (see reverseProxy.dynamicConfig.pgadmin in
+    # default.nix), gated by pgAdmin's own OIDC login, not Authelia middleware (same
+    # pattern as Grafana/CrowdSec-webui/PeerTube elsewhere in this migration — pgAdmin
+    # is the OIDC relying party itself).
     ports:
       - 8888:80
 
 networks:
+  web:
+    external: true
   db:
     external: true

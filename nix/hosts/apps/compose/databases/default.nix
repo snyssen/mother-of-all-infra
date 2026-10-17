@@ -67,7 +67,31 @@ in
       "compose-stacks/databases/pg_dump_healthcheck_id" = {
         sopsFile = ../../data/secrets.yaml;
       };
+      "compose-stacks/databases/pgadmin/oidc/client_id" = {
+        sopsFile = ../../data/secrets.yaml;
+        restartUnits = [ "compose-databases.service" ];
+      };
+      "compose-stacks/databases/pgadmin/oidc/client_secret" = {
+        sopsFile = ../../data/secrets.yaml;
+        restartUnits = [ "compose-databases.service" ];
+      };
+      # Hashed, for Authelia's own client config — same plaintext/hash split already
+      # used for Grafana/CrowdSec/PeerTube's OIDC clients.
+      "compose-stacks/databases/pgadmin/oidc/client_secret_hash" = {
+        sopsFile = ../../data/secrets.yaml;
+        restartUnits = [ "compose-auth.service" ];
+      };
     };
+
+  # pgAdmin's container runs as uid 5050 internally; no NixOS user maps to that uid
+  # (unlike the crowdsec-web-ui case elsewhere in this migration, where pinning
+  # snyssen's own uid to match was worthwhile). World-readable is the pragmatic
+  # tradeoff here instead, same as that case's own first fallback — acceptable for a
+  # single-operator test VM.
+  sops.templates."pgadmin-config_local.py" = {
+    content = import ./pgadmin-config-local.nix { inherit config; };
+    mode = "0444";
+  };
 
   sops.templates."compose-databases.env".content =
     ''
@@ -76,6 +100,7 @@ in
       PGADMIN_DEFAULT_EMAIL=${config.sops.placeholder."compose-stacks/databases/pgadmin/email"}
       PGADMIN_DEFAULT_PASSWORD=${config.sops.placeholder."compose-stacks/databases/pgadmin/password"}
       HEALTHCHECK_ID=${config.sops.placeholder."compose-stacks/databases/pg_dump_healthcheck_id"}
+      PGADMIN_CONFIG_LOCAL_PATH=${config.sops.templates."pgadmin-config_local.py".path}
     ''
     + lib.concatMapStringsSep "\n" (
       name: "${envVarName name}=${
@@ -83,12 +108,40 @@ in
       }"
     ) dbNames;
 
+  # No authelia middleware: pgAdmin is the OIDC relying party itself (see
+  # pgadmin-config-local.nix + the Authelia client in auth/authelia-configuration.nix),
+  # same pattern as Grafana/CrowdSec-webui/PeerTube elsewhere in this migration — not
+  # gated by Authelia's forwardAuth. The direct :8888 publish in docker-compose.yaml
+  # stays untouched, independent of Traefik entirely.
+  reverseProxy.dynamicConfig.pgadmin = ''
+    http:
+      routers:
+        pgadmin:
+          rule: "Host(`pgadmin.${config.domains.main}`)"
+          entryPoints:
+            - websecure
+          service: pgadmin
+          tls:
+            certResolver: le_main
+      services:
+        pgadmin:
+          loadBalancer:
+            servers:
+              - url: "http://pgadmin:80"
+  '';
+
   compose-stacks.stacks.databases = {
     inherit composeFile;
     environmentFile = config.sops.templates."compose-databases.env".path;
-    dockerNetworks = [ "db" ];
+    dockerNetworks = [
+      "db"
+      "web"
+    ];
     # postgres_backups writes dumps under /mnt/bulk/backups/postgres.
-    extraAfter = [ "mnt-bulk.mount" ];
+    extraAfter = [
+      "mnt-bulk.mount"
+      "reverse-proxy-dynamic-config.service"
+    ];
   };
 
   # Provisioning runs as an ExecStartPost on the same unit that brings up

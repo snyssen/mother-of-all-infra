@@ -166,4 +166,22 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        # Unlike the other clients above, no token_endpoint_auth_method override —
+        # pgAdmin's OAuth2 client correctly uses Authelia's default
+        # (client_secret_basic) on its own, matching the legacy role's own
+        # proven-working client config.
+        - client_name: pgAdmin
+          client_id: "${config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_secret_hash"
+          }"
+          authorization_policy: two_factor
+          redirect_uris:
+            - "https://pgadmin.${config.domains.main}/oauth2/authorize"
+          scopes:
+            - openid
+            - profile
+            - groups
+            - email
+          userinfo_signed_response_alg: none
 ''
