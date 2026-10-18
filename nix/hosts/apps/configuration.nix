@@ -41,6 +41,7 @@
     ./compose/ntfy/default.nix
     ./compose/streaming/default.nix
     ./compose/immich/default.nix
+    ./compose/paperless/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

@@ -90,12 +90,35 @@
       password: "${config.sops.placeholder."smtp/password"}"
       sender: "Authelia <auth@${config.sops.placeholder."smtp/from_domain"}>"
 
-  # deny with zero rules is rejected by Authelia's validator ("when no rules are
-  # specified it must be 'two_factor' or 'one_factor'") — nothing is actually gated
-  # yet anyway, since no access_control.rules or forwardAuth middleware references
-  # this stack yet. two_factor becomes the real default once rules do get added.
+  # two_factor is the real default: it is what every forwardAuth-gated route without
+  # a matching rule below resolves to (prometheus, uptime, the *arr apps, backrest...).
+  #
+  # Rules are first-match-wins, so the order of the two paperless entries matters and
+  # the specific one has to come first. Note that `authelia validate-config` does NOT
+  # check `policy:` values here (verified against 4.39.28: a rule with `policy:
+  # bypasss` validates clean), so a typo in one of these is silent — unlike the same
+  # typo in a client's `authorization_policy`, which is rejected. Together they reproduce the legacy config: the
+  # middleware on paperless' router exists *only* to keep Django's /admin away from
+  # non-sysadmins, and everything else on that host is handed straight through to
+  # Paperless, which does its own OIDC login. Without the bypass, the middleware would
+  # put a second, redundant Authelia login in front of the OIDC flow and break the
+  # mobile/API clients, which have no browser session to offer.
   access_control:
     default_policy: two_factor
+    rules:
+      # Django admin, sysadmins only. `recipes` shares this rule on prod and should be
+      # added here when that stack migrates.
+      - domain:
+          - "paperless.${config.domains.main}"
+        policy: two_factor
+        subject:
+          - ["group:sysadmin"]
+        resources:
+          # IMPORTANT: single quotes -> https://www.authelia.com/configuration/prologue/common/#regular-expressions
+          - '^/admin.*$'
+      - domain:
+          - "paperless.${config.domains.main}"
+        policy: bypass
 
   identity_providers:
     oidc:
@@ -127,6 +150,17 @@
             - policy: one_factor
               subject:
                 - ["group:photos_user"]
+        # Unlike photos_policy, this one keeps the second factor: Paperless is only
+        # ever driven from a real browser, so there is no embedded-webview problem to
+        # work around, and the documents are the most sensitive data on the host.
+        # Carried over from the legacy config unchanged. The group already exists —
+        # see lldap-bootstrap/group-configs/paperless_user.json.
+        paperless_policy:
+          default_policy: deny
+          rules:
+            - policy: two_factor
+              subject:
+                - ["group:paperless_user"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -202,9 +236,7 @@
         # silently — the web UI keeps working, so it would not show up in testing here.
         - client_name: immich
           client_id: "${config.sops.placeholder."compose-stacks/immich/oidc/client_id"}"
-          client_secret: "${
-            config.sops.placeholder."compose-stacks/immich/oidc/client_secret_hash"
-          }"
+          client_secret: "${config.sops.placeholder."compose-stacks/immich/oidc/client_secret_hash"}"
           authorization_policy: photos_policy
           redirect_uris:
             - "app.immich:///oauth-callback"
@@ -214,6 +246,25 @@
             - openid
             - profile
             - email
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
+        # The trailing slash on the redirect URI is load-bearing — it is the exact
+        # callback allauth's openid_connect provider registers for provider_id
+        # `authelia` (see PAPERLESS_SOCIALACCOUNT_PROVIDERS in compose/paperless), and
+        # Authelia matches redirect_uris literally.
+        - client_name: Paperless
+          client_id: "${config.sops.placeholder."compose-stacks/paperless/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/paperless/oidc/client_secret_hash"
+          }"
+          authorization_policy: paperless_policy
+          redirect_uris:
+            - "https://paperless.${config.domains.main}/accounts/oidc/authelia/login/callback/"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
 ''

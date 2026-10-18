@@ -180,6 +180,48 @@ in
       ];
     };
 
+    # Documents, not dumps: these restore straight to the live paths, so Paperless is
+    # stopped while they land rather than left to index a half-written library.
+    #
+    # Prod's `consume` and `redis` directories are deliberately absent — neither is
+    # backed up on prod either (one is a transient inbox, the other a task queue), so
+    # there is nothing to import.
+    paperless = fromLocation "paperless" // {
+      stopUnits = [ "compose-paperless.service" ];
+      paths = [
+        {
+          # 33:100 rather than prod's 33:1000 — same uid, but gid 1000 means something
+          # entirely different on this host (see mediaApps above).
+          from = "/home/snyssen/data/paperless/data";
+          to = "/var/lib/app-data/paperless/data";
+          owner = "33:100";
+        }
+        {
+          from = "/mnt/storage/paperless/media";
+          to = "/mnt/bulk/paperless/media";
+          owner = "33:100";
+        }
+      ];
+    };
+
+    # Its own autorestic location on prod, so its own group here. Roughly doubles what
+    # `paperless` above restores (document_exporter writes a full copy of every
+    # original), which is why it is separately selectable — run it on its own, or skip
+    # it entirely and let the nightly paperless-export timer regenerate it once the
+    # library is in place.
+    # Left as documentation, but I decided to comment it since it brings no value to the migration (data will be rebuilt anyway)
+    # paperless-export = fromLocation "paperless-export" // {
+    #   # Nothing live reads this directory; only the export timer writes it.
+    #   stopUnits = [ ];
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/paperless/export";
+    #       to = "/mnt/bulk/paperless/export";
+    #       owner = "33:100";
+    #     }
+    #   ];
+    # };
+
     # ~88 GB, by far the largest group that is actually enabled here — expect hours
     # over NFS-over-Tailscale, and run it in tmux. Unlike the dump groups this restores
     # straight to the live path: these are the original files Immich serves, not

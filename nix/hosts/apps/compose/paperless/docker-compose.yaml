@@ -1,0 +1,112 @@
+# Mirrors the legacy container_paperless role. Image pins are carried over unchanged
+# and are Renovate's to bump.
+#
+# Service names differ from the legacy role's (`paperless_redis` -> `redis`, etc.):
+# container_name: is dropped here as everywhere in this migration, so compose's own
+# project namespacing (`paperless-redis-1`) is what keeps these distinct from the other
+# stacks' sidecars, and the short names are the DNS aliases on this stack's private
+# `internal` network. Underscores are not valid DNS labels, so the shorter names are
+# also the safer ones.
+services:
+  redis:
+    image: redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - /var/lib/app-data/paperless/redis:/data
+    mem_limit: 12m
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.3.1@sha256:cb91bfb468e63025a9d10c01b54c33665113668eee61b490db96de19b860b9c4
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+      - db
+    depends_on:
+      - redis
+      - gotenberg
+      - tika
+    healthcheck:
+      test:
+        ["CMD", "curl", "-fs", "-S", "--max-time", "2", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - /var/lib/app-data/paperless/data:/usr/src/paperless/data
+      - /mnt/bulk/paperless/media:/usr/src/paperless/media
+      - /mnt/bulk/paperless/export:/usr/src/paperless/export
+      - /mnt/bulk/paperless/consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://redis:6379
+      # The central `databases` stack's PostgreSQL, reached over the shared `db`
+      # network. PAPERLESS_DBUSER/PAPERLESS_DBNAME are left at their defaults, which
+      # are both `paperless` — matching the role provisioned from that stack's dbNames.
+      PAPERLESS_DBHOST: postgres
+      PAPERLESS_DBPASS: ${PAPERLESS_DBPASS}
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      # Paperless specific
+      # uid 33 is the Nextcloud user id: it lets the consume folder be mounted into
+      # Nextcloud and documents ingested straight from it (same reason as the legacy
+      # role). gid 100 is this host's real "users" group, standing in for the legacy
+      # role's `ansible_user_gid` — same convention as the streaming stack.
+      USERMAP_UID: "33"
+      USERMAP_GID: "100"
+      PAPERLESS_URL: ${PAPERLESS_URL}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_TIME_ZONE: Europe/Brussels
+      PAPERLESS_OCR_LANGUAGE: fra
+      PAPERLESS_OCR_USER_ARGS: '{"continue_on_soft_render_error": true, "invalidate_digital_signatures": true}'
+      # OIDC
+      PAPERLESS_DISABLE_REGULAR_LOGIN: "true"
+      PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
+      # Only the three atoms come from the environment file; the JSON structure stays
+      # here. `provider_id: authelia` is load-bearing and must not be renamed — it is
+      # what allauth stores in socialaccount_socialaccount rows, so changing it orphans
+      # every existing user's link to their Authelia identity.
+      PAPERLESS_SOCIALACCOUNT_PROVIDERS: '{"openid_connect":{"APPS":[{"provider_id":"authelia","name":"Authelia","client_id":"${PAPERLESS_OIDC_CLIENT_ID}","secret":"${PAPERLESS_OIDC_CLIENT_SECRET}","settings":{"server_url":"${PAPERLESS_OIDC_SERVER_URL}"}}]}}'
+      # RBAC is done on Authelia side, so only authorized users can actually signup
+      # (the paperless_policy on this stack's Authelia client — see
+      # auth/authelia-configuration.nix — denies anyone outside group:paperless_user).
+      # Direct LDAP would arguably be better and there is a way to enable it
+      # (https://github.com/paperless-ngx/paperless-ngx/discussions/3228), but it is
+      # not an official implementation, so this way is preferred.
+      # Note that users have no permissions after signup, so an admin still has to log
+      # in and grant them.
+      PAPERLESS_SOCIALACCOUNT_AUTO_SIGNUP: "true"
+      PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
+      PAPERLESS_SOCIALACCOUNT_EMAIL_AUTHENTICATION: "true"
+    # Some heavy documents require more RAM for OCR
+    mem_limit: 2g
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.37@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
+    restart: unless-stopped
+    networks:
+      - internal
+    # The gotenberg chromium route is used to convert .eml files. We do not
+    # want to allow external content like tracking pixels or even javascript.
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+      - "--api-timeout=300s"
+    mem_limit: 1g
+
+  tika:
+    image: apache/tika:3.3.1.0@sha256:90b7fa1dc018434075fce9e1d9b88b1e3d0ea6979d0cf86e116c79a8073ae973
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1g
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:

@@ -154,6 +154,29 @@ in
         paths = [ "/mnt/bulk/backups/immich" ];
         stopUnits = [ ];
       };
+      # Two plans, mirroring prod's two autorestic locations rather than collapsing
+      # them. They hold the same documents in two different forms, and that is the
+      # point: `paperless` is the live library (plus the thumbnails/index Paperless
+      # rebuilds around it), while `paperless-export` is the portable
+      # document_exporter output — restorable with neither this Postgres nor this
+      # Paperless version, which is what makes it worth the duplicated bytes.
+      #
+      # Neither covers the database (the central `databases` plan does) nor
+      # /mnt/bulk/paperless/consume, which is a transient inbox, nor the redis dir,
+      # which is a disposable task queue — same exclusions as prod.
+      paperless = mkPlan {
+        paths = [
+          "/var/lib/app-data/paperless/data"
+          "/mnt/bulk/paperless/media"
+        ];
+        stopUnits = [ "compose-paperless.service" ];
+      };
+      paperless-export = mkPlan {
+        # Nothing to stop: the export directory is only ever written by the
+        # paperless-export timer, never read by the running stack.
+        paths = [ "/mnt/bulk/paperless/export" ];
+        stopUnits = [ ];
+      };
       # The photo library itself — irreplaceable user data, and the one plan here whose
       # size is governed by how much is actually stored rather than by configuration
       # (~88 GB on prod today). Empty until the photos are imported, which costs nothing.

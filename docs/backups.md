@@ -117,6 +117,23 @@ to `/mnt/bulk/photos`, since those are the originals Immich serves rather than s
 that needs loading afterwards. Restoring Immich's database without them leaves a library
 whose every asset is missing, so do both or neither.
 
+Paperless is split the same way, for a different reason. `paperless` is the live library
+and `paperless-export` is the nightly `document_exporter` output — the same documents in
+a portable form that can be read back with neither this PostgreSQL nor this Paperless
+version. Both exist as plans and as `prod-import` groups, and the export roughly doubles
+the bytes, so it is worth deciding deliberately rather than reaching for `--all`:
+importing only `paperless` is fine, since the nightly `paperless-export.timer`
+regenerates the export once the library is in place. The database itself is in the
+central cluster, so it comes back with `postgres-restore paperless` like any other.
+
+Mind the order, though: the export runs `document_exporter --delete`, so it mirrors the
+library rather than accumulating — and run against a database that has not been restored
+yet, it finds no documents and clears the export directory. `prod-import paperless`
+restarts the stack when it finishes, so either load the database before the next 22:43 or
+pass `--keep-stopped` and start the stack yourself afterwards. Neither case loses
+anything permanently: the export is in its own snapshots and is regenerable from the
+library.
+
 ### Restoring an older state: `--at`
 
 `--at WHEN` restores each group's state **as of** that moment: for every group, the
