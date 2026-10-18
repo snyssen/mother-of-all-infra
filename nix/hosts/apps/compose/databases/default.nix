@@ -42,41 +42,6 @@ let
   # sibling files instead of against /nix/store itself.
   composeFile = "${./.}/docker-compose.yaml";
 
-  # Loading the dumps back into the cluster. This is the other half of a restore:
-  # `backrest-restore` puts the dump *files* back, but a directory of dumps is not a
-  # database. Lives here rather than in the backrest module because it's pg_restore,
-  # not restic, and this file already owns dbNames and envVarName.
-  #
-  # Same shape as the backrest module's restore commands: the shell lives in its own
-  # file and everything Nix knows is handed over as a JSON manifest, so the script
-  # stays readable on its own terms instead of as an escaped Nix string.
-  postgresRestoreManifest = pkgs.writeText "postgres-restore-manifest.json" (
-    builtins.toJSON {
-      command = "postgres-restore";
-      composeFile = composeFile;
-      envFile = config.sops.templates."compose-databases.env".path;
-      defaultFrom = "/mnt/bulk/backups/postgres";
-      databases = lib.listToAttrs (map (name: lib.nameValuePair name (envVarName name)) dbNames);
-    }
-  );
-
-  postgresRestore = pkgs.writeShellApplication {
-    name = "postgres-restore";
-    runtimeInputs = with pkgs; [
-      docker
-      jq
-      coreutils
-      findutils
-      # Used only on the --at path; see the matching note in the backrest module.
-      gawk
-    ];
-    text = ''
-      MANIFEST=${postgresRestoreManifest}
-      export MANIFEST
-
-    ''
-    + builtins.readFile ./scripts/postgres-restore.sh;
-  };
 in
 {
   systemd.tmpfiles.rules = [
@@ -191,5 +156,18 @@ in
     "${pkgs.docker}/bin/docker compose --project-name databases -f ${composeFile} run --rm provision"
   ];
 
-  environment.systemPackages = [ postgresRestore ];
+  # This stack's own PostgreSQL instance, registered with the shared `postgres-restore`
+  # command. Immich (and later Dawarich and Mobilizon) register theirs the same way, so
+  # one command covers every database on the host regardless of which container serves
+  # it — see nix/modules/nixos/postgres-restore.
+  postgresRestore.instances.databases = {
+    inherit composeFile;
+    envFile = config.sops.templates."compose-databases.env".path;
+    # The dump sidecar: it already has the postgres client tools and sits on the `db`
+    # network, so nothing extra has to be stood up to run pg_restore.
+    service = "postgres_backups";
+    dbHost = "postgres";
+    dumpDir = "/mnt/bulk/backups/postgres";
+    databases = lib.listToAttrs (map (name: lib.nameValuePair name (envVarName name)) dbNames);
+  };
 }

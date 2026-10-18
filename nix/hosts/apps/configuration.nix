@@ -26,6 +26,7 @@
     flake.modules.nixos.compose-stacks
     flake.modules.nixos.domains
     flake.modules.nixos.backrest
+    flake.modules.nixos.postgres-restore
 
     flake.modules.nixos.argunix
 
@@ -39,6 +40,7 @@
     ./compose/crowdsec/default.nix
     ./compose/ntfy/default.nix
     ./compose/streaming/default.nix
+    ./compose/immich/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

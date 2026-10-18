@@ -80,6 +80,25 @@ load_repo_env() {
 
 # --- small helpers ------------------------------------------------------------------
 
+# Anything restored onto /mnt/bulk lands on NFSv4, whose client exposes a synthetic
+# `system.nfs4_acl` extended attribute on every file. Snapshots taken from ordinary
+# filesystems carry no such attribute, so restic sees one present on the target that is
+# absent from the snapshot and tries to remove it -- which NFS refuses, because that
+# attribute is a projection of the mode bits rather than stored metadata:
+#
+#   $ setfattr -x system.nfs4_acl /mnt/bulk/<file>
+#   setfattr: /mnt/bulk/<file>: Invalid argument
+#
+# File contents restore perfectly regardless, but restic counts each one as an error and
+# exits non-zero, so a completely successful restore reports as a failure -- once per
+# file, which for the photo library would be a six-figure error count. Skipping this one
+# attribute leaves everything else intact (verified: byte-identical output, exit 0).
+#
+# The tradeoff, stated rather than hidden: a genuine NFSv4 ACL would not be restored
+# either. Nothing here uses them -- permissions are plain mode bits and the hypervisor
+# export is a standard one -- so there is nothing to lose today.
+XATTR_FLAGS=(--exclude-xattr system.nfs4_acl)
+
 # Targets routinely do not exist yet (restic creates them), so resolve df against the
 # nearest existing ancestor instead.
 nearest_existing() {
@@ -278,7 +297,8 @@ for g in "${selected[@]}"; do
     # it cannot disagree with it), honours the subpath, and writes nothing. `restic
     # stats` looks like the right tool and is not -- it rejects the snapshot:subfolder
     # syntax outright and then reports on the whole snapshot instead.
-    bytes="$(restic restore "$snap:$from" --target "$to" --dry-run --no-lock --json 2>/dev/null \
+    bytes="$(restic restore "$snap:$from" --target "$to" "${XATTR_FLAGS[@]}" \
+               --dry-run --no-lock --json 2>/dev/null \
              | jq -r 'select(.message_type=="summary") | .total_bytes' | tail -1 || true)"
     if [ -z "$bytes" ]; then
       printf '      FAILED to size %s\n' "$from" >&2
@@ -396,7 +416,7 @@ for g in "${selected[@]}"; do
     echo "  restoring $from -> $to"
     # No --delete, ever: it would remove anything in the target that is not in the
     # snapshot, which on a live host is indistinguishable from data loss.
-    if restic restore "$snap:$from" --target "$to" --sparse; then
+    if restic restore "$snap:$from" --target "$to" "${XATTR_FLAGS[@]}" --sparse; then
       if [ -n "$owner" ]; then
         # Recursive on purpose: systemd-tmpfiles `d` rules re-assert the top-level
         # directory's ownership on every activation but never touch its contents, so a

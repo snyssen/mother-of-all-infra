@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 #
-# Loads PostgreSQL dumps back into the cluster.
+# Loads PostgreSQL dumps back into their databases.
 #
 # No shebang and no `set` line: this file is spliced into a writeShellApplication by
 # ../default.nix, which supplies both plus `set -euo pipefail`. Everything the Nix
@@ -9,17 +9,20 @@
 # This is the other half of a restore: `backrest-restore` puts the dump *files* back,
 # but a directory of dumps is not a database.
 #
+# Databases live in more than one PostgreSQL instance — most share the central cluster,
+# but Immich (and later Dawarich and Mobilizon) run their own because they need
+# extensions the central one does not have. That is an implementation detail of those
+# stacks, not something worth making the operator track: a database name selects its
+# instance here, and the command reaches the right container on its own.
+#
 # The manifest's shape:
 #   { "command": "postgres-restore",
-#     "composeFile":  "/nix/store/…/docker-compose.yaml",
-#     "envFile":      "/run/secrets/rendered/…",
-#     "defaultFrom":  "/mnt/bulk/backups/postgres",
-#     "databases":    { "<db>": "PG_PASSWORD_<DB>" } }
+#     "instances": {
+#       "<instance>": { "project":…, "composeFile":…, "envFile":…, "service":…,
+#                       "dbHost":…, "dumpDir":…,
+#                       "databases": { "<db>": "<PASSWORD_ENV_VAR>" } } } }
 
 CMD="$(jq -r '.command' "$MANIFEST")"
-COMPOSE_FILE="$(jq -r '.composeFile' "$MANIFEST")"
-ENV_FILE="$(jq -r '.envFile' "$MANIFEST")"
-mapfile -t ALL_DBS < <(jq -r '.databases | keys[]' "$MANIFEST")
 
 # Tiers prodrigestivill/postgres-backup-local writes into, *least* to most specific —
 # the order doubles as a tie-break rank below. All four are searched rather than just
@@ -28,7 +31,30 @@ mapfile -t ALL_DBS < <(jq -r '.databases | keys[]' "$MANIFEST")
 # reaches back six months.
 TIERS=(monthly weekly last daily)
 
-from="$(jq -r '.defaultFrom' "$MANIFEST")"
+# Two jq passes, then everything is in memory: one for the instances, one for the
+# database -> (instance, password variable) mapping.
+declare -A INST_PROJECT INST_COMPOSE INST_ENV INST_SERVICE INST_DBHOST INST_DUMPDIR
+while IFS=$'\t' read -r name project compose env service dbhost dumpdir; do
+  INST_PROJECT["$name"]="$project"
+  INST_COMPOSE["$name"]="$compose"
+  INST_ENV["$name"]="$env"
+  INST_SERVICE["$name"]="$service"
+  INST_DBHOST["$name"]="$dbhost"
+  INST_DUMPDIR["$name"]="$dumpdir"
+done < <(jq -r '.instances | to_entries[]
+                | [.key, .value.project, .value.composeFile, .value.envFile,
+                   .value.service, .value.dbHost, .value.dumpDir] | @tsv' "$MANIFEST")
+
+declare -A DB_INSTANCE DB_VAR
+while IFS=$'\t' read -r db inst var; do
+  DB_INSTANCE["$db"]="$inst"
+  DB_VAR["$db"]="$var"
+done < <(jq -r '.instances | to_entries[] | .key as $i
+                | .value.databases | to_entries[] | [.key, $i, .value] | @tsv' "$MANIFEST")
+
+mapfile -t ALL_DBS < <(printf '%s\n' "${!DB_INSTANCE[@]}" | sort)
+
+from_override=""
 dry_run=0
 assume_yes=0
 at_arg=""
@@ -38,16 +64,22 @@ usage() {
   cat <<EOF
 Usage: $CMD [--all | <database>...] [options]
 
-Loads PostgreSQL dumps back into the cluster with pg_restore. Databases with no dump in
-the source directory are skipped and reported, so this works unchanged against a dump
-directory holding databases this host does not have.
+Loads PostgreSQL dumps back with pg_restore. Databases with no dump in the source
+directory are skipped and reported, so this works unchanged against a dump directory
+holding databases this host does not have.
+
+Each database knows which PostgreSQL instance it belongs to, so there is nothing to
+select beyond the database itself.
 
 Databases: ${ALL_DBS[*]}
 
   --all            every database listed above
   --list           print the database names, one per line, and exit
-  --from DIR       where to read dumps from (default: $from). Use the staging path a
-                   legacy-prod import wrote to for prod data.
+  --instances      print each instance and the databases it serves, and exit
+  --from DIR       read dumps from DIR instead of each instance's own dump directory.
+                   Applies to every selected database, so it only makes sense when
+                   restoring databases from a single staging directory -- e.g. after
+                   \`prod-import immich\` staged Immich's dumps on their own.
   --at WHEN        restore each database as of WHEN, instead of its newest dump.
                    Accepts anything date(1) understands: 2026-10-01, "2026-10-01 14:00",
                    "3 days ago", yesterday. A bare date means the *end* of that day.
@@ -87,10 +119,10 @@ human_duration() {
 # fractionally newer than the file it points at, so including symlinks would make
 # "newest" always resolve to a link rather than a real dump.
 dump_rows() {
-  local db="$1" tier rank=0
+  local db="$1" dir="$2" tier rank=0
   for tier in "${TIERS[@]}"; do
-    if [ -d "$from/$tier" ]; then
-      find "$from/$tier" -maxdepth 1 -type f -name "$db-*.sql.gz" \
+    if [ -d "$dir/$tier" ]; then
+      find "$dir/$tier" -maxdepth 1 -type f -name "$db-*.sql.gz" \
         -printf "%T@\t$rank\t$tier/%f\n" 2>/dev/null || true
     fi
     rank=$(( rank + 1 ))
@@ -101,9 +133,18 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --all)  selected=("${ALL_DBS[@]}") ;;
     --list) printf '%s\n' "${ALL_DBS[@]}"; exit 0 ;;
+    --instances)
+      for i in $(printf '%s\n' "${!INST_PROJECT[@]}" | sort); do
+        printf '%-12s %s\n' "$i" "$(
+          for d in "${ALL_DBS[@]}"; do
+            [ "${DB_INSTANCE[$d]}" = "$i" ] && printf '%s ' "$d"
+          done
+        )"
+      done
+      exit 0 ;;
     --from)
       [ "$#" -ge 2 ] || { echo "$CMD: --from needs a directory" >&2; exit 2; }
-      from="$2"; shift ;;
+      from_override="$2"; shift ;;
     --at)
       [ "$#" -ge 2 ] || { echo "$CMD: --at needs a date or time" >&2; exit 2; }
       at_arg="$2"; shift ;;
@@ -122,7 +163,7 @@ if [ "${#selected[@]}" -eq 0 ]; then
   exit 2
 fi
 for db in "${selected[@]}"; do
-  if [ "$(jq -r --arg d "$db" '.databases[$d] // empty' "$MANIFEST")" = "" ]; then
+  if [ -z "${DB_INSTANCE[$db]:-}" ]; then
     echo "$CMD: '$db' is not one of this host's databases" >&2
     exit 2
   fi
@@ -151,32 +192,18 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-found_tier=0
-for tier in "${TIERS[@]}"; do
-  [ -d "$from/$tier" ] && found_tier=1
-done
-if [ "$found_tier" -eq 0 ]; then
-  echo "$CMD: no dump tiers (${TIERS[*]}) under $from" >&2
-  exit 1
-fi
-
-# Sourcing the environment file serves two purposes: it gives docker compose the
-# variables its own interpolation needs, and it is where the per-database passwords
-# come from. Same file systemd hands the stack via EnvironmentFile.
-set -a
-# shellcheck disable=SC1090
-. "$ENV_FILE"
-set +a
-
 # Pair each database with the dump it would use before touching anything, so the
 # confirmation below shows the real plan rather than a promise.
-plan_db=(); plan_dump=(); too_old=()
+plan_db=(); plan_dump=(); plan_dir=(); too_old=()
 for db in "${selected[@]}"; do
-  rows="$(dump_rows "$db")"
+  inst="${DB_INSTANCE[$db]}"
+  dir="${from_override:-${INST_DUMPDIR[$inst]}}"
+
+  rows="$(dump_rows "$db" "$dir")"
   if [ -z "$rows" ]; then
     # No dump at all. Expected and fine: this is what lets the command run unchanged
     # against a production dump directory full of databases this host does not have.
-    printf '    %-20s skipped -- no dump under %s\n' "$db" "$from"
+    printf '    %-20s skipped -- no dump under %s\n' "$db" "$dir"
     continue
   fi
 
@@ -210,11 +237,12 @@ for db in "${selected[@]}"; do
     skew=$(( at_epoch - ${epoch%.*} ))
     marker=" "
     [ "$skew" -gt 172800 ] && marker="!"
-    printf '  %s %-20s %s  %-34s (%s before)\n' "$marker" "$db" "$when" "$dump" "$(human_duration "$skew")"
+    printf '  %s %-20s %-10s %s  %-34s (%s before)\n' \
+      "$marker" "$db" "$inst" "$when" "$dump" "$(human_duration "$skew")"
   else
-    printf '    %-20s %s  %s\n' "$db" "$when" "$dump"
+    printf '    %-20s %-10s %s  %s\n' "$db" "$inst" "$when" "$dump"
   fi
-  plan_db+=("$db"); plan_dump+=("$dump")
+  plan_db+=("$db"); plan_dump+=("$dump"); plan_dir+=("$dir")
 done
 
 if [ "${#too_old[@]}" -gt 0 ]; then
@@ -247,34 +275,50 @@ status=0
 for i in "${!plan_db[@]}"; do
   db="${plan_db[$i]}"
   dump="${plan_dump[$i]}"
-  var="$(jq -r --arg d "$db" '.databases[$d]' "$MANIFEST")"
-  pw="${!var:-}"
-  if [ -z "$pw" ]; then
-    echo "  $db: FAILED -- no password in $var" >&2
-    status=1
-    continue
-  fi
+  dir="${plan_dir[$i]}"
+  inst="${DB_INSTANCE[$db]}"
 
-  echo "==> $db ($dump)"
+  echo "==> $db ($inst: $dump)"
+  # Everything below runs in a subshell so each instance's environment file is sourced
+  # in isolation: the files define overlapping names (POSTGRES_PASSWORD and friends),
+  # and leaking one instance's values into another's compose interpolation is exactly
+  # the kind of bug that would only surface as a confusing authentication failure.
+  #
+  # Sourcing serves two purposes at once: it gives docker compose the variables its own
+  # interpolation needs, and it is where the database password comes from -- so the
+  # password is only ever an environment lookup, never an argument.
+  #
   # Connect as the database's own role, not the superuser: with --no-owner every
   # restored object ends up owned by whoever connected, and restoring as postgres would
   # leave the application with no privileges on its own tables.
   #
-  # Goes through `compose run` with an ad-hoc mount rather than `exec` into the running
-  # sidecar: --from may point outside the directory that sidecar has mounted (that is
-  # the whole point of the legacy-prod staging path). Note the containers have no
-  # container_name:, so they can only be addressed through compose anyway.
+  # `compose run` with an ad-hoc mount rather than `exec` into the running sidecar:
+  # --from may point outside the directory that sidecar has mounted (that is the whole
+  # point of the legacy-prod staging paths). The containers have no container_name:
+  # either, so they can only be addressed through compose anyway.
   #
   # The dumps are PostgreSQL custom-format archives despite the .sql.gz name
-  # (POSTGRES_EXTRA_OPTS="--format c"), so pg_restore reads them directly -- there is
-  # nothing to gunzip first.
-  if docker compose --project-name databases -f "$COMPOSE_FILE" run --rm \
-       -v "$from:/restore:ro" \
-       -e "PGPASSWORD=$pw" \
-       --entrypoint pg_restore \
-       postgres_backups \
-       --no-privileges --no-owner --clean --if-exists \
-       -h postgres -U "$db" -d "$db" "/restore/$dump"; then
+  # (POSTGRES_EXTRA_OPTS="--format c"), so pg_restore reads them directly.
+  if (
+    set -a
+    # shellcheck disable=SC1090
+    . "${INST_ENV[$inst]}"
+    set +a
+    var="${DB_VAR[$db]}"
+    pw="${!var:-}"
+    if [ -z "$pw" ]; then
+      echo "  $db: no password in $var" >&2
+      exit 1
+    fi
+    docker compose --project-name "${INST_PROJECT[$inst]}" -f "${INST_COMPOSE[$inst]}" \
+      run --rm \
+      -v "$dir:/restore:ro" \
+      -e "PGPASSWORD=$pw" \
+      --entrypoint pg_restore \
+      "${INST_SERVICE[$inst]}" \
+      --no-privileges --no-owner --clean --if-exists \
+      -h "${INST_DBHOST[$inst]}" -U "$db" -d "$db" "/restore/$dump"
+  ); then
     echo "  $db: ok"
   else
     echo "  $db: pg_restore exited non-zero" >&2

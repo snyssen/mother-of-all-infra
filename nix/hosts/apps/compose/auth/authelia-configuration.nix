@@ -114,6 +114,19 @@
         - key_id: main
           algorithm: RS256
           key: "${config.sops.placeholder."compose-stacks/auth/oidc/issuer_private_key"}"
+      # First named policy on this host. Every client so far has used the built-in
+      # `two_factor`, but Immich needs group-scoped access, which only a custom policy
+      # can express. Carried over from the legacy config unchanged, including the
+      # one_factor: Immich's mobile app drives this same OIDC flow, and a second factor
+      # in that embedded webview is painful enough that prod deliberately does without.
+      # The group itself already exists — see lldap-bootstrap/group-configs/photos_user.json.
+      authorization_policies:
+        photos_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:photos_user"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -184,4 +197,23 @@
             - groups
             - email
           userinfo_signed_response_alg: none
+        # Three redirect URIs, not one: besides the two web routes, `app.immich://` is
+        # the mobile app's custom URL scheme. Dropping it breaks phone login only, and
+        # silently — the web UI keeps working, so it would not show up in testing here.
+        - client_name: immich
+          client_id: "${config.sops.placeholder."compose-stacks/immich/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/immich/oidc/client_secret_hash"
+          }"
+          authorization_policy: photos_policy
+          redirect_uris:
+            - "app.immich:///oauth-callback"
+            - "https://photos.${config.domains.main}/auth/login"
+            - "https://photos.${config.domains.main}/user-settings"
+          scopes:
+            - openid
+            - profile
+            - email
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
 ''

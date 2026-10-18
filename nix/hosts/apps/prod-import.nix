@@ -101,6 +101,7 @@ in
 
     # Media backups, left disabled for now since this is where the bulk of the data is
     # and test VM does not have the storage for it
+    # TODO: re-enable when going to prod
     # audiobooks = fromLocation "audiobooks" // {
     #   paths = [
     #     {
@@ -161,5 +162,42 @@ in
         }
       ];
     };
+
+    # Immich's dumps ride in the same prod location as the central ones (autorestic's
+    # `postgres` covers four dump directories), but they belong to Immich's own
+    # PostgreSQL, so they get their own group and their own staging path. Load them the
+    # same way as any other database — `postgres-restore` knows which instance `immich`
+    # belongs to:
+    #   postgres-restore --from /mnt/bulk/restore/prod-immich immich
+    immich = fromLocation "postgres" // {
+      stopUnits = [ ];
+      paths = [
+        {
+          from = "/mnt/storage/backups/immich";
+          to = "/mnt/bulk/restore/prod-immich";
+          owner = "0:0";
+        }
+      ];
+    };
+
+    # ~88 GB, by far the largest group that is actually enabled here — expect hours
+    # over NFS-over-Tailscale, and run it in tmux. Unlike the dump groups this restores
+    # straight to the live path: these are the original files Immich serves, not
+    # something that needs loading afterwards.
+    #
+    # Immich is stopped while they land so it cannot half-index an incomplete library.
+    # TODO: re-enable when going to prod
+    # photos = fromLocation "photos" // {
+    #   stopUnits = [ "compose-immich.service" ];
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/photos";
+    #       to = "/mnt/bulk/photos";
+    #       # immich-server runs as root in its container, both here and on prod, so this
+    #       # is already an identity mapping — stated rather than left to chance.
+    #       owner = "0:0";
+    #     }
+    #   ];
+    # };
   };
 }

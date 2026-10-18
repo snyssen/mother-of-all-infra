@@ -60,7 +60,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
 | `ntfy` | Push notification server | ✅ Migrate | ✅ Done |
 | `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate | ✅ Done |
-| `immich` | Photo/video management | ✅ Migrate | ⏳ Not started |
+| `immich` | Photo/video management | ✅ Migrate | ✅ Done — keeps its own PostgreSQL (the `vectorchord`/`pgvecto.rs` image Immich's smart-search needs; the central Postgres 18 has neither), so it is deliberately absent from `dbNames` and joins `db` only so pgAdmin can reach it. First host to use a custom Authelia `authorization_policies` entry (`photos_policy`: deny by default, `one_factor` for `group:photos_user`, carried over from prod). `prod-import` gains `immich` (dumps) and `photos` (~88 GB) groups |
 | `paperless` | Document management (OCR) | ✅ Migrate | ⏳ Not started |
 | `nextcloud` | Personal cloud (files, calendar, contacts) | ✅ Migrate | ⏳ Not started |
 | `actual-budget` | Personal finance / budgeting | ✅ Migrate | ⏳ Not started |

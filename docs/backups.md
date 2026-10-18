@@ -43,7 +43,7 @@ root.
 | command | what it does |
 | --- | --- |
 | `backrest-restore` | Disaster recovery. Derived automatically from `backrest.plans`, so it always covers exactly what is backed up — one selectable group per plan, restoring each path to where it came from. |
-| `postgres-restore` | Loads PostgreSQL dumps back into the cluster with `pg_restore`. `backrest-restore` only puts the dump *files* back; a directory of dumps is not a database. |
+| `postgres-restore` | Loads PostgreSQL dumps back with `pg_restore`, across every PostgreSQL instance on the host (see below). `backrest-restore` only puts the dump *files* back; a directory of dumps is not a database. |
 | `prod-import` | Pulls legacy-production data onto `apps` with paths and ownership translated. Transitional — `nix/hosts/apps/prod-import.nix` gets deleted at the Phase B cutover. |
 | `apps-restore` | Thin wrapper: `backrest-restore --all` then `postgres-restore --all`. |
 
@@ -80,6 +80,42 @@ real `--dry-run` restore, check the total against free space **per filesystem** 
 `/mnt/bulk` are separate budgets, and both are tight), and print the whole plan for
 confirmation. They also stop `backrest.service` and deliberately leave it stopped — see
 the warning in the DR runbook below.
+
+### More than one PostgreSQL instance
+
+Most databases share the central cluster, but some stacks must run their own — Immich
+needs the `vectorchord`/`pgvecto.rs` extensions the central Postgres 18 does not have,
+and Dawarich and Mobilizon will want the same when they migrate.
+
+That stays an implementation detail of those stacks rather than something to keep track
+of: a database name selects its instance, so `postgres-restore immich` reaches the right
+container on its own, and `postgres-restore --all` really does mean all. Each instance
+is registered by the stack that owns it (`postgresRestore.instances.<name>`), so a stack
+and its restore path are added and removed together, and a database name claimed by two
+instances fails the build rather than picking one arbitrarily.
+
+```sh
+postgres-restore --instances      # which instance serves what
+#   databases    audiomuse authelia lldap matrix … umami
+#   immich       immich
+```
+
+With no `--from`, each database is read from its own instance's dump directory — which
+is what makes a full recovery a single command. Pass `--from` when restoring out of a
+staging directory instead, as after a `prod-import`:
+
+```sh
+prod-import immich
+postgres-restore --from /mnt/bulk/restore/prod-immich immich
+```
+
+Since `--from` applies to everything selected, use it with databases from one instance
+at a time.
+
+The photo *files* are a separate `prod-import photos` group (~88 GB) restoring straight
+to `/mnt/bulk/photos`, since those are the originals Immich serves rather than something
+that needs loading afterwards. Restoring Immich's database without them leaves a library
+whose every asset is missing, so do both or neither.
 
 ### Restoring an older state: `--at`
 
@@ -360,6 +396,15 @@ restic restore <snapshot-id> --target /path/to/restore
 To restore a subtree somewhere other than its original path — what `prod-import`
 automates — use restic's `snapshotID:subfolder` syntax, which makes the subfolder the
 root of the restore:
+
+> [!NOTE]
+> **Restoring onto `/mnt/bulk` by hand? Add `--exclude-xattr system.nfs4_acl`.**
+> That mount is NFSv4, whose client exposes a synthetic `system.nfs4_acl` attribute on
+> every file. Snapshots from ordinary filesystems don't carry one, so restic tries to
+> remove it and NFS refuses (`setfattr -x` fails the same way — it's derived from the
+> mode bits, not stored). Contents restore perfectly, but restic counts one error per
+> file and exits non-zero, so a clean restore looks like a failure. The generated
+> commands already pass this flag; raw `restic` invocations need it themselves.
 
 ```sh
 restic restore 'latest:/mnt/storage/nextcloud' --target /mnt/bulk/nextcloud \

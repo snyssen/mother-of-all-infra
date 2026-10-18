@@ -147,6 +147,20 @@ in
         paths = [ "/var/lib/app-data/reverse-proxy/certs" ];
         stopUnits = [ "compose-reverse-proxy.service" ];
       };
+      # Immich's dumps, from its own Postgres rather than the central cluster. Separate
+      # from the `databases` plan above so the two can be restored independently — they
+      # belong to different clusters and nothing correlates them.
+      immich = mkPlan {
+        paths = [ "/mnt/bulk/backups/immich" ];
+        stopUnits = [ ];
+      };
+      # The photo library itself — irreplaceable user data, and the one plan here whose
+      # size is governed by how much is actually stored rather than by configuration
+      # (~88 GB on prod today). Empty until the photos are imported, which costs nothing.
+      photos = mkPlan {
+        paths = [ "/mnt/bulk/photos" ];
+        stopUnits = [ "compose-immich.service" ];
+      };
     };
   };
 

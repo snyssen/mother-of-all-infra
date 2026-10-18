@@ -1,0 +1,102 @@
+# Mirrors the legacy container_immich role, which itself tracks Immich's own published
+# compose file. Pins are carried over unchanged and are Renovate's to bump.
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:v3.3.3@sha256:bae7664ff3aa4c2c1fcbdcdd86b40b105643c5f861f3e6a770fc760089f25862
+    restart: unless-stopped
+    environment:
+      DB_USERNAME: immich
+      DB_DATABASE_NAME: immich
+      # DB_HOSTNAME/REDIS_HOSTNAME are left unset deliberately: Immich defaults them to
+      # `database` and `redis`, which are exactly the service names below, so compose's
+      # own DNS resolves them. Same as the legacy role.
+      DB_PASSWORD: ${IMMICH_DB_PASSWORD}
+    volumes:
+      - /mnt/bulk/photos:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - web
+      - internal
+    depends_on:
+      - redis
+      - database
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:v3.3.3@sha256:73915f07e1f4289ba45b174c58443db74cef47ddf502613f475fc5e52458ea42
+    restart: unless-stopped
+    volumes:
+      # The one named volume in this migration, and a deliberate exception to the
+      # "everything stateful is a bind mount" convention in the migration plan: this
+      # holds ML models downloaded on demand, not state. Losing it costs a re-download,
+      # so there is nothing here a backup should be protecting.
+      - model-cache:/cache
+    networks:
+      - internal
+
+  redis:
+    image: redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6
+    restart: unless-stopped
+    networks:
+      - internal
+
+  # Immich's own PostgreSQL, not the central `databases` stack: this image carries the
+  # vectorchord/pgvecto.rs extensions Immich's smart-search needs, which the central
+  # Postgres 18 does not have. It joins the `db` network purely so pgAdmin can reach it.
+  database:
+    image: ghcr.io/immich-app/postgres:16-vectorchord0.4.3-pgvectors0.2.0@sha256:1a078b237c1d9b420b0ee59147386b4aa60d3a07a8e6a402fc84a57e41b043a4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: immich
+      POSTGRES_DB: immich
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
+    volumes:
+      - /var/lib/app-data/immich/postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U immich"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backup:
+    image: prodrigestivill/postgres-backup-local:16@sha256:a0103fbce0c48ccc7693ddbb2a2bfa733048db845354f635efef9e4566de185d
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_USER: immich
+      POSTGRES_DB: immich
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
+      POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
+      TZ: Europe/Brussels
+      HEALTHCHECK_ID: ${IMMICH_DB_DUMP_HEALTHCHECK_ID}
+      SCHEDULE: 30 */4 * * *
+      # Same retention as the central dumps (see compose/databases): these exist for a
+      # quick restore of *recent* data, and anything older belongs in a restic snapshot.
+      # Weeks/months are explicitly disabled rather than left low — the image treats "0"
+      # as "keep none of this tier", not "unlimited".
+      BACKUP_KEEP_DAYS: "7"
+      BACKUP_KEEP_WEEKS: "0"
+      BACKUP_KEEP_MONTHS: "0"
+    volumes:
+      - /mnt/bulk/backups/immich:/backups
+      # The legacy role reached across to ../databases/hooks. Each stack is its own Nix
+      # store directory here, so the shared hook script is passed in by path instead —
+      # see DB_BACKUP_HOOKS_PATH in default.nix. Same file, no copy.
+      - ${DB_BACKUP_HOOKS_PATH}:/hooks:ro
+
+volumes:
+  model-cache:
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  internal:
