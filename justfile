@@ -40,6 +40,10 @@ sops-update file:
 sops-update-keys file:
   sops updatekeys {{file}}
 
+# Rotate SOPS keys for every secret file in the repo, based on rules from `.sops.yaml`
+sops-update-keys-all *flags:
+  scripts/sops-update-keys-all.sh {{flags}}
+
 # Run mkdocs website locally
 run-docs:
   nix run .#docs
