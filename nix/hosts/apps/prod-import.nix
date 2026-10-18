@@ -99,6 +99,49 @@ in
       ];
     };
 
+    # Media backups, left disabled for now since this is where the bulk of the data is
+    # and test VM does not have the storage for it
+    # audiobooks = fromLocation "audiobooks" // {
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/streaming/media/audiobooks";
+    #       to = "/mnt/bulk/streaming/media/audiobooks";
+    #     }
+    #     {
+    #       from = "/mnt/storage/streaming/media/audiobooks_vi";
+    #       to = "/mnt/bulk/streaming/media/audiobooks_vi";
+    #     }
+    #   ];
+    # };
+    # movies = fromLocation "movies" // {
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/streaming/media/movies";
+    #       to = "/mnt/bulk/streaming/media/movies";
+    #     }
+    #   ];
+    # };
+    # tv = fromLocation "tv" // {
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/streaming/media/tv";
+    #       to = "/mnt/bulk/streaming/media/tv";
+    #     }
+    #   ];
+    # };
+    # music = fromLocation "music" // {
+    #   paths = [
+    #     {
+    #       from = "/mnt/storage/streaming/media/music";
+    #       to = "/mnt/bulk/streaming/media/music";
+    #     }
+    #     {
+    #       from = "/mnt/storage/streaming/media/music_vi";
+    #       to = "/mnt/bulk/streaming/media/music_vi";
+    #     }
+    #   ];
+    # };
+
     postgres = fromLocation "postgres" // {
       # Nothing to stop: this writes to a staging directory, not to anything live.
       stopUnits = [ ];
