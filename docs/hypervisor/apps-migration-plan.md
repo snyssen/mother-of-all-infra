@@ -17,7 +17,7 @@ The hypervisor is currently a test-bed running on secondary hardware.
 The migration is therefore **two-phased**:
 
 1. **Phase A (this plan):** Code-complete the `apps` VM config; test iteratively on the current hypervisor with partial data.
-2. **Phase B (future):** Final backup → wipe production server → install hypervisor config on it → recreate all VMs → restore data. *(Tracked in a separate issue.)*
+2. **Phase B (future):** Final backup → wipe production server → install hypervisor config on it → recreate all VMs → restore data. **Has its own document: [apps VM migration — Phase B](apps-migration-phase-b.md)**, which holds the preconditions, the `prod-import` tooling and the cutover checklist. *(Also tracked as a separate issue.)*
 
 ---
 
@@ -62,7 +62,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate | ✅ Done |
 | `immich` | Photo/video management | ✅ Migrate | ✅ Done — keeps its own PostgreSQL (the `vectorchord`/`pgvecto.rs` image Immich's smart-search needs; the central Postgres 18 has neither), so it is deliberately absent from `dbNames` and joins `db` only so pgAdmin can reach it. First host to use a custom Authelia `authorization_policies` entry (`photos_policy`: deny by default, `one_factor` for `group:photos_user`, carried over from prod). `prod-import` gains `immich` (dumps) and `photos` (~88 GB) groups |
 | `paperless` | Document management (OCR) | ✅ Migrate | ✅ Done — database stays in the central cluster (`dbNames`), so `postgres-restore paperless` needs no new instance. Its Authelia forwardAuth is *not* a general gate: the first `access_control.rules` on this host reproduce prod's pair — `two_factor` + `group:sysadmin` on `^/admin.*$`, then `bypass` for the rest of the host, since Paperless does its own OIDC login. Second named `authorization_policies` entry (`paperless_policy`: deny by default, `two_factor` for `group:paperless_user`). The legacy nightly export crontab becomes `paperless-export.timer`, with `--delete` added (prod omits it, so its export accumulates files from deleted documents indefinitely instead of mirroring the library). `prod-import`/`backrest.plans` gain `paperless` (data + media) and `paperless-export` |
-| `nextcloud` | Personal cloud (files, calendar, contacts) | ✅ Migrate | ⏳ Not started |
+| `nextcloud` | Personal cloud (files, calendar, contacts) | ✅ Migrate | ✅ Done — ships with `autostart = false`: its database indexes the file tree, so starting it against an empty `/mnt/bulk/nextcloud` would run the first-run installer and fight the restored dump. Import both halves (`prod-import nextcloud`, ~353 GB, then `postgres-restore nextcloud`) and flip it to true. The `nextcloud_promtail` sidecar is retired: `log_type`/`log_type_audit` are set to `errorlog`, which this image routes to container stderr (mod_php → Apache `ErrorLog` → `/dev/stderr`), so `grafana-alloy.containerlogs` collects it — now enabled host-wide. `extra.config.php` is the load-bearing piece: it is read after the restored `config.php` and is what re-points the DB password, domain and Redis host away from prod's values. Its 5-minute cron becomes `nextcloud-cron.timer`, push to Uptime Kuma included — which also restored the `uptime-push` router the `monitoring` migration had dropped, see below |
 | `actual-budget` | Personal finance / budgeting | ✅ Migrate | ⏳ Not started |
 | `recipes` | Recipe manager (Tandoor) | ✅ Migrate | ⏳ Not started |
 | `speedtest` | Speedtest (Librespeed) | ✅ Migrate | ⏳ Not started |
@@ -170,7 +170,7 @@ Track every secret key/value that must move to SOPS:
 | `streaming` | `peertube__{db_password,secret,oidc_client_secret}`, `audiomuse__db_password`, `vpn__wireguard_pk`, `vpn__control_server_api_key`, `smtp__pass` | Vault/group vars in `templates/docker-compose.yml` | `stacks.streaming.peertube.{db_password,secret,oidc_client_secret}`, `stacks.streaming.audiomuse.db_password`, `stacks.streaming.vpn.{wireguard_private_key,control_server_api_key}`, `stacks.streaming.smtp.password` | Recommended for VPN and app tokens |
 | `immich` | `immich__db_password` | Vault/group vars in `templates/docker-compose.yml` | `stacks.immich.db.password` | No |
 | `paperless` | `paperless__secret_key`, `backbone__authelia__oidc_paperless_client{id,secret,secret_hash}` | Vault/group vars in `templates/docker-compose.yml` | `compose-stacks/paperless/secret_key`, `compose-stacks/paperless/oidc/{client_id,client_secret,client_secret_hash}` | No — all carried over unchanged (the secret key signs existing sessions/tokens; the OIDC client id is what the imported `socialaccount` rows point at). `paperless__postgres_password` is **not** carried over: the role lives in the central cluster, which provisions it from `compose-stacks/databases/postgres/passwords/paperless` |
-| `nextcloud` | `nextcloud__postgres_password`, `nextcloud__nextcloud_password` | Vault/group vars in `templates/docker-compose.yml` | `stacks.nextcloud.db.password`, `stacks.nextcloud.admin.password` | Optional (admin password) |
+| `nextcloud` | `nextcloud__{passwordsalt,secret,instanceid,nextcloud_admin,nextcloud_password}`, `backbone__authelia__oidc_nextcloud_client{id,secret,secret_hash}` | Vault/group vars in `templates/docker-compose.yml` + `extra.config.php` | `compose-stacks/nextcloud/{passwordsalt,secret,instanceid}`, `compose-stacks/nextcloud/admin/{user,password}`, `compose-stacks/nextcloud/oidc/{client_id,client_secret,client_secret_hash}` | **No — `passwordsalt`/`secret`/`instanceid` must be carried over verbatim**; they key every encrypted field and name the instance's `appdata_<id>` directory. Note the legacy template appends a trailing space to `secret`, which is therefore part of its real value. `nextcloud__postgres_password` is not carried over (central cluster provisions it); `nextcloud__{healthcheck_id,postgres_backups_healthcheck_id,ldap_user,ldap_pass}` are declared in `vars.yml` but referenced by no role — dead, dropped |
 | `actual-budget` | `backbone__authelia__oidc_actual_budget_clientsecret` | Vault/group vars in `templates/docker-compose.yml` | `stacks.actual_budget.oidc.client_secret` | Optional |
 | `recipes` | `recipes__secret_key`, `recipes__db_password`, `backbone__authelia__oidc_recipes_clientsecret` | Vault/group vars in `templates/docker-compose.yml` | `stacks.recipes.secret_key`, `stacks.recipes.db.password`, `stacks.recipes.oidc.client_secret` | Optional |
 | `speedtest` | none currently | no secret material in stack templates | n/a | n/a |
@@ -341,6 +341,39 @@ For each stack, the migration consists of:
 - [ ] Add a `backrest.plans.<stack>` entry for whatever state the stack keeps — or note explicitly why it needs none (reconstructed from sops like `ntfy`, or living in Postgres like `auth`). The disaster-recovery command is derived from these, so a missing plan is a silent gap in DR, not just a missing backup.
 - [ ] Verify stack starts cleanly on test VM
 
+### Cron jobs and Uptime Kuma push monitors
+
+Several legacy roles install a root crontab entry that runs a container command and
+then `curl`s an Uptime Kuma *push* URL to prove it ran. On `apps` the command half
+becomes a systemd timer (`paperless-export.timer`, `nextcloud-cron.timer`); the push
+half needs a route that a machine with no browser session can actually reach.
+
+The legacy `container_monitoring` role solves this with **two** Traefik routers on
+`uptime.<domain>`: `uptime-web` (everything, behind `authelia@docker`) and `uptime-api`
+(`PathPrefix(/api)`, behind `lan-whitelist` instead). Traefik's longest-rule-wins
+priority sends the push to the second one. The Authelia `access_control` rule for
+`uptime.<domain>` — `two_factor`, `group:sysadmin` — never sees those requests, because
+the forwardAuth middleware is not on that router.
+
+**The `monitoring` migration dropped the `uptime-api` router**, leaving `apps` with a
+single Authelia-gated router, which would have silently blocked every push. Restored as
+`uptime-push`, narrowed to `PathPrefix(/api/push)` rather than the whole `/api` prefix:
+that is the only part anything calls today, and Uptime Kuma also serves badges and
+status pages under `/api`. Widen it deliberately if a future stack needs one of those —
+the legacy `dashboard` stack is the likely candidate.
+
+The allowlist (`lan-whitelist`, LAN + Docker pool + tailnet) is wider than the
+`tailnet-whitelist` used for metric ingestion, and matches the legacy middleware's own
+`internal_networks_cidr`: the caller is this host's own timer reaching its own Traefik
+by public name, so the source address Traefik sees depends on how that resolves and
+hairpins. The token in the URL is the real capability, which is how Uptime Kuma intends
+push monitors to work.
+
+One property worth keeping: because the route answers 403 rather than redirecting when
+the allowlist does not match, `curl -fsS` fails and the timer fails with it. A plain
+Authelia-gated route would instead answer a 3xx, which `curl -f` treats as success
+without `-L` — the job would report OK while the monitor went red on its own schedule.
+
 ---
 
 ## Testing Strategy
@@ -370,7 +403,7 @@ For each stack, the migration consists of:
    - PeerTube's OIDC client redirect URI is a best-guess based on `peertube-plugin-auth-openid-connect`'s documented callback route, unverified against a live instance — the legacy compose file itself flagged this OIDC env-var config as possibly not actually wired up ("TODO: remove ? ... config can probably only be done through UI"). Check PeerTube's own plugin settings page after deploy if login fails.
    - Peertube/Audiomuse Postgres credentials reuse the already-provisioned declarative-database passwords (`compose-stacks/databases/postgres/passwords/{peertube,audiomuse}`) rather than the legacy vault values, since that new Postgres instance already had them generated as part of the `databases` stack build.
 
-   Next in order: **`nextcloud`**, `actual-budget`, `recipes`, `speedtest`, `dashboard`, `personal_website`, `s-pdf`, `foundryvtt`, `minecraft`, `syncthing` (as a NixOS module, not Compose), `team_wiki`, `rallly`, `speedtest-tracker`, `sharkey`, `dawarich`, `semaphore`, `backrest`, `skyrim_together`, `matrix`, `garage`, `mobilizon`. See the Status column in Current Stack Inventory above for live progress.
+   Next in order: **`actual-budget`**, `recipes`, `speedtest`, `dashboard`, `personal_website`, `s-pdf`, `foundryvtt`, `minecraft`, `syncthing` (as a NixOS module, not Compose), `team_wiki`, `rallly`, `speedtest-tracker`, `sharkey`, `dawarich`, `semaphore`, `backrest`, `skyrim_together`, `matrix`, `garage`, `mobilizon`. See the Status column in Current Stack Inventory above for live progress.
 4. **Partial data restore:** Restore a subset of data from the current apps server for realistic testing (e.g., a small Nextcloud dataset, test Postgres DB).
 5. **No production traffic yet:** All testing happens on the test hypervisor; DNS is not changed until Phase B (production cutover).
 
@@ -379,4 +412,4 @@ For each stack, the migration consists of:
 ## Related Issues
 
 - #153 — Migrate DNS (excluded from this plan; handled separately)
-- Phase B cutover will be tracked in a new epic once Phase A is complete
+- Phase B cutover will be tracked in a new epic once Phase A is complete — see [apps-migration-phase-b.md](apps-migration-phase-b.md) for the plan itself
