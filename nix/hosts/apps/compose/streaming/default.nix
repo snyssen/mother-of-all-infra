@@ -6,6 +6,17 @@
 }:
 let
   composeFile = "${./.}/docker-compose.yaml";
+
+  # TODO: re-enable. Disabled after testing so the *arr apps don't act on media that
+  # isn't there yet (they would treat an empty library as "everything was deleted").
+  autostart = false;
+
+  # Gated on `autostart` for the same reason as compose/nextcloud: sops' restartUnits
+  # are routed through /run/nixos/activation-restart-list, and switch-to-configuration
+  # starts every unit in that list that is not already running — so an unconditional
+  # list would start this stack on the first deploy that touches one of these secrets,
+  # `autostart` notwithstanding.
+  restartStack = lib.optionals autostart [ "compose-streaming.service" ];
 in
 {
   # Local (fast SSD) app-data dirs only — everything under /mnt/bulk is handled by
@@ -37,23 +48,23 @@ in
   sops.secrets = {
     "compose-stacks/streaming/vpn/wireguard_private_key" = {
       sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-streaming.service" ];
+      restartUnits = restartStack;
     };
     "compose-stacks/streaming/vpn/control_server_api_key" = {
       sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-streaming.service" ];
+      restartUnits = restartStack;
     };
     "compose-stacks/streaming/peertube/secret" = {
       sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-streaming.service" ];
+      restartUnits = restartStack;
     };
     "compose-stacks/streaming/peertube/oidc/client_id" = {
       sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-streaming.service" ];
+      restartUnits = restartStack;
     };
     "compose-stacks/streaming/peertube/oidc/client_secret" = {
       sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-streaming.service" ];
+      restartUnits = restartStack;
     };
     "compose-stacks/streaming/peertube/oidc/client_secret_hash" = {
       sopsFile = ../../data/secrets.yaml;
@@ -369,6 +380,6 @@ in
       "mnt-bulk.mount"
       "streaming-storage-dirs.service"
     ];
-    autostart = false; # TODO: re-enable, this was disable post testing to ensure it does not try to delete new files
+    inherit autostart;
   };
 }

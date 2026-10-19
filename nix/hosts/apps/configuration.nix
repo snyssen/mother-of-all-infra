@@ -42,6 +42,7 @@
     ./compose/streaming/default.nix
     ./compose/immich/default.nix
     ./compose/paperless/default.nix
+    ./compose/nextcloud/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix
@@ -139,6 +140,12 @@
     journald.enable = true;
     nodeMetrics.enable = true;
     cadvisorMetrics.enable = true;
+    # Enabled with the nextcloud stack, which logs to its container's stderr rather
+    # than to files (see compose/nextcloud/extra-config.nix) — this is what retires the
+    # promtail sidecar the legacy role ran. Host-wide rather than per-stack by nature,
+    # so every other stack's container output now reaches Loki too, labelled by compose
+    # project/service.
+    containerlogs.enable = true;
     # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
     # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
     loki.endpoints = [

@@ -21,6 +21,24 @@ in
             };
             autostart = lib.mkEnableOption "start stack on boot" // {
               default = true;
+              description = ''
+                Whether to start this stack at boot, by giving its unit a
+                `wantedBy = [ "multi-user.target" ]`.
+
+                This governs *boot only*. It does not stop
+                `switch-to-configuration` from starting the stack during
+                activation: anything listing `compose-<name>.service` in a
+                sops `restartUnits` is routed through
+                `/run/nixos/activation-restart-list`, and
+                switch-to-configuration starts every unit in that list that is
+                not already running ("Start units if they were not active
+                previously"). A dormant stack is therefore started by the first
+                deploy that touches one of its secrets.
+
+                So a stack set to `autostart = false` must also make its sops
+                `restartUnits` conditional on the same flag — see
+                `compose/nextcloud` and `compose/streaming` for the pattern.
+              '';
             };
             environmentFile = lib.mkOption {
               type = lib.types.nullOr lib.types.path;

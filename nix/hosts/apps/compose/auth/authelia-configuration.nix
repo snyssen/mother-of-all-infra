@@ -248,6 +248,21 @@
             - email
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        - client_name: Nextcloud
+          client_id: "${config.sops.placeholder."compose-stacks/nextcloud/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/nextcloud/oidc/client_secret_hash"
+          }"
+          authorization_policy: two_factor
+          redirect_uris:
+            - "https://cloud.${config.domains.main}/apps/user_oidc/code"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
         # The trailing slash on the redirect URI is load-bearing — it is the exact
         # callback allauth's openid_connect provider registers for provider_id
         # `authelia` (see PAPERLESS_SOCIALACCOUNT_PROVIDERS in compose/paperless), and

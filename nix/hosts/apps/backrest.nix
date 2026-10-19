@@ -154,6 +154,19 @@ in
         paths = [ "/mnt/bulk/backups/immich" ];
         stopUnits = [ ];
       };
+      # Mirrors prod's `nextcloud` location exactly: the whole tree, application code
+      # included. Prod has no excludes on it (the nextcloud entries in
+      # snapraid_config_excludes are parity-array settings, not backup ones), and restic
+      # dedupes the PHP tree across snapshots well enough that trimming it is an
+      # optimisation, not a correctness matter — custom_apps/ in particular is real
+      # state and must stay in.
+      #
+      # By far the largest plan here once imported (~353 GB on prod), and the one whose
+      # first run will take hours.
+      nextcloud = mkPlan {
+        paths = [ "/mnt/bulk/nextcloud" ];
+        stopUnits = [ "compose-nextcloud.service" ];
+      };
       # Two plans, mirroring prod's two autorestic locations rather than collapsing
       # them. They hold the same documents in two different forms, and that is the
       # point: `paperless` is the live library (plus the thumbnails/index Paperless

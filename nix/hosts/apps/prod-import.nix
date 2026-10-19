@@ -180,6 +180,29 @@ in
       ];
     };
 
+    # ~353 GB, the largest enabled group by a wide margin — expect hours over
+    # NFS-over-Tailscale, and run it in tmux. The capacity preflight prices it before
+    # anything is written.
+    #
+    # Nextcloud is all-or-nothing in a way the other stacks are not: its database
+    # indexes this tree, so restoring one without the other gives an instance that
+    # boots and then cannot find its own files. Pair it with:
+    #   postgres-restore nextcloud
+    # and leave compose-nextcloud.service stopped until both have landed — the stack
+    # ships with autostart = false for exactly this reason.
+    nextcloud = fromLocation "nextcloud" // {
+      stopUnits = [ "compose-nextcloud.service" ];
+      paths = [
+        {
+          from = "/mnt/storage/nextcloud";
+          to = "/mnt/bulk/nextcloud";
+          # www-data on both sides, so this is already an identity mapping — stated
+          # rather than left to chance, as with immich's photos.
+          owner = "33:33";
+        }
+      ];
+    };
+
     # Documents, not dumps: these restore straight to the live paths, so Paperless is
     # stopped while they land rather than left to index a half-written library.
     #

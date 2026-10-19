@@ -1,0 +1,68 @@
+# Mirrors the legacy container_nextcloud role. Image pins are carried over unchanged
+# and are Renovate's to bump.
+#
+# Two services dropped relative to the legacy role:
+#
+#  - `nextcloud_promtail`, which tailed /var/logs/{nextcloud,audit}.log and shipped them
+#    to the legacy Loki. It carried a `# TODO merge with alloy`; that is done here by
+#    pointing Nextcloud's own logger at stderr instead (log_type/log_type_audit in
+#    extra-config.nix), so grafana-alloy's containerlogs collector picks the lines up
+#    with no second agent, no log volume, and dual-shipping to both Loki endpoints.
+#  - the `monitoring` external network, which the legacy compose declared but attached
+#    to nothing.
+#
+# `nextcloud_redis` is renamed to `redis` for the same reason as the paperless stack:
+# container_name: is dropped throughout this migration, so compose's project
+# namespacing is what separates these, and underscores are not valid DNS labels.
+services:
+  redis:
+    image: redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 32m
+
+  nextcloud:
+    image: nextcloud:34.0.4@sha256:0e5688ba0988b9112cf03f9c6bab53eccb466d278435f6596f16c1f25acacf74
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+      # The central PostgreSQL, and lldap for user auth (configured in Nextcloud's own
+      # database by the LDAP app, so nothing about it appears here).
+      - db
+      - ldap
+    depends_on:
+      - redis
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+      POSTGRES_HOST: postgres
+      # Only consulted by the entrypoint's first-run installer. A host that has had its
+      # data restored never reaches that path, but the variables have to be present or
+      # a genuinely empty install would stop and wait for them.
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      REDIS_HOST: redis
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_TRUSTED_DOMAINS}
+      OVERWRITEPROTOCOL: https
+    volumes:
+      # The whole Nextcloud tree — application code, config and data all live here,
+      # exactly as on prod. This is the ~353 GB that `prod-import nextcloud` moves.
+      - /mnt/bulk/nextcloud:/var/www/html
+      # Mounted so they can be attached as External Storage. The container-side paths
+      # match the legacy role's, which matters: the external storage definitions come
+      # back inside the restored database and point at these paths, not at the host's.
+      - /mnt/bulk/paperless:/paperless
+      - /mnt/bulk/streaming/media:/media
+    mem_limit: 2g
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  ldap:
+    external: true
+  internal:

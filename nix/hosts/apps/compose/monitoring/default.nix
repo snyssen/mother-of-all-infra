@@ -30,12 +30,18 @@ in
     GF_SMTP_USER=${config.sops.placeholder."smtp/user"}
     GF_SMTP_PASSWORD=${config.sops.placeholder."smtp/password"}
     GF_SMTP_FROM_ADDRESS=grafana@${config.domains.main}
-    GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}
-    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret"}
+    GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${
+      config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"
+    }
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${
+      config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret"
+    }
     GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${config.domains.main}/api/oidc/authorization
     GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://auth.${config.domains.main}/api/oidc/token
     GF_AUTH_GENERIC_OAUTH_API_URL=https://auth.${config.domains.main}/api/oidc/userinfo
-    DATABASE_URL=postgresql://umami:${config.sops.placeholder."compose-stacks/databases/postgres/passwords/umami"}@postgres:5432/umami
+    DATABASE_URL=postgresql://umami:${
+      config.sops.placeholder."compose-stacks/databases/postgres/passwords/umami"
+    }@postgres:5432/umami
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
   '';
 
@@ -91,6 +97,28 @@ in
             - authelia
           tls:
             certResolver: le_main
+        # Uptime Kuma's *push* monitors: a job proves it ran by GETting
+        # /api/push/<token>. That is a machine call with no browser session, so it
+        # cannot pass the Authelia gate on the router above — hence a second, more
+        # specific router. Traefik's default longest-rule-wins priority is what routes
+        # /api/push here while everything else stays on `uptime`.
+        #
+        # The legacy container_monitoring role does the same thing but exempts the
+        # whole `/api` prefix; this is narrowed to `/api/push`, which is the only part
+        # anything actually calls. Widen it deliberately if a future stack needs
+        # another endpoint (Uptime Kuma also serves badges and status pages under
+        # /api). The token in the URL is the real capability here — that is how Uptime
+        # Kuma intends push monitors to work — and the allowlist just keeps the
+        # endpoint off the open internet.
+        uptime-push:
+          rule: "Host(`uptime.${config.domains.main}`) && PathPrefix(`/api/push`)"
+          entryPoints:
+            - websecure
+          service: uptime
+          middlewares:
+            - lan-whitelist
+          tls:
+            certResolver: le_main
         umami:
           rule: "Host(`umami.${config.domains.main}`)"
           entryPoints:
@@ -132,6 +160,21 @@ in
         tailnet-whitelist:
           ipAllowList:
             sourceRange:
+              - "100.64.0.0/10"
+        # Deliberately wider than tailnet-whitelist above, and named after the legacy
+        # `lan-whitelist` it replaces. The callers here are this host's own systemd
+        # timers reaching their own Traefik by its public name, so the source address
+        # Traefik ends up seeing depends on how that resolves and hairpins — the LAN
+        # address, a Docker bridge gateway, or the tailnet. The legacy middleware
+        # covers all three (internal_networks_cidr) and is proven in production, so
+        # this does too rather than guessing one. 172.16.0.0/12 is Docker's whole
+        # default pool, replacing the legacy pair of narrower, assignment-dependent
+        # ranges — same reasoning as nextcloud's trusted_proxies.
+        lan-whitelist:
+          ipAllowList:
+            sourceRange:
+              - "192.168.1.0/24"
+              - "172.16.0.0/12"
               - "100.64.0.0/10"
   '';
 
