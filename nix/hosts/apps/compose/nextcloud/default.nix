@@ -1,25 +1,7 @@
-{
-  lib,
-  config,
-  pkgs,
-  ...
-}:
+{ config, pkgs, ... }:
 let
   composeFile = "${./.}/docker-compose.yaml";
 
-  # Dormant until its data is actually here — see compose-stacks.stacks.nextcloud below
-  # for why, and docs/hypervisor/apps-migration-phase-b.md for the import it is waiting
-  # on.
-  autostart = false;
-
-  # `autostart` only governs boot. sops' restartUnits go through
-  # /run/nixos/activation-restart-list, and switch-to-configuration *starts* every unit
-  # in that list that is not already running — so an unconditional
-  # `restartUnits = [ "compose-nextcloud.service" ]` starts this stack on the first
-  # deploy that touches any of the secrets below, `autostart` notwithstanding. That is
-  # not hypothetical: it is what happened on the deploy that first added these secrets.
-  # Gating the list on the same flag keeps the two in step.
-  restartStack = lib.optionals autostart [ "compose-nextcloud.service" ];
 in
 {
   sops.secrets = {
@@ -29,39 +11,32 @@ in
     # the keys for every encrypted field. A fresh value for any of them turns an
     # imported library into an instance that boots but cannot read its own secrets.
     "compose-stacks/nextcloud/passwordsalt" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/instanceid" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/admin/user" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/admin/password" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     # Uptime Kuma push monitor for the cron timer below. Not a credential as such —
     # it is the capability itself, which is why it goes through an allowlisted route
     # rather than an authenticated one. It comes back with the restored Uptime Kuma
     # data, so read it off the "nextcloud background job" monitor there.
     "compose-stacks/nextcloud/uptime_push_token" = {
-      sopsFile = ../../data/secrets.yaml;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/oidc/client_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/oidc/client_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = restartStack;
+      sopsFile = ../../data/nextcloud.yaml;
     };
     # Hashed, for Authelia's own client config — same plaintext/hash split already used
     # for Grafana/CrowdSec/PeerTube/pgAdmin/Immich/Paperless's OIDC clients. The OIDC
@@ -69,8 +44,7 @@ in
     # back with the import, so the plaintext pair above exists to keep that
     # reconfigurable, not because the container reads it at boot.
     "compose-stacks/nextcloud/oidc/client_secret_hash" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/nextcloud.yaml;
     };
   };
 
@@ -92,9 +66,6 @@ in
   # what puts a readable copy where the container can actually see it.
   sops.templates."nextcloud-extra.config.php" = {
     content = import ./extra-config.nix { inherit config; };
-    # nextcloud-config.service is unconditional: it only installs a file, so it is safe
-    # to run whether or not the stack is up.
-    restartUnits = [ "nextcloud-config.service" ] ++ restartStack;
   };
 
   # No authelia middleware: Nextcloud is the OIDC relying party itself (via its
@@ -140,6 +111,13 @@ in
   '';
 
   compose-stacks.stacks.nextcloud = {
+    restartTriggers = [
+      ../../data/nextcloud.yaml
+      ../../data/databases.yaml
+      ../../data/common.yaml
+      config.sops.templates."compose-nextcloud.env".content
+      config.sops.templates."nextcloud-extra.config.php".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-nextcloud.env".path;
     dockerNetworks = [
@@ -156,7 +134,7 @@ in
     # of prod's schema while the freshly-installed files stay behind. Import both
     # halves first (`prod-import nextcloud` + `postgres-restore nextcloud`), then flip
     # this to true.
-    inherit autostart;
+    autostart = false;
     extraAfter = [
       "mnt-bulk.mount"
       "reverse-proxy-dynamic-config.service"
@@ -199,6 +177,15 @@ in
   # visible to a running Nextcloud.
   systemd.services.nextcloud-config = {
     description = "Install extra.config.php for the nextcloud stack";
+    # Same triggers as the stack itself: this unit has to reinstall the file whenever
+    # either the template's text or any secret it renders changes. It is always active
+    # (RemainAfterExit), so a trigger always reaches it.
+    restartTriggers = [
+      ../../data/nextcloud.yaml
+      ../../data/databases.yaml
+      ../../data/common.yaml
+      config.sops.templates."nextcloud-extra.config.php".content
+    ];
     after = [ "nextcloud-storage-dirs.service" ];
     requires = [ "nextcloud-storage-dirs.service" ];
     before = [ "compose-nextcloud.service" ];

@@ -8,7 +8,7 @@ one you are looking at:
 | host | `snyssen.be` (bare-metal Ubuntu) | `apps` (NixOS VM) |
 | tool | [autorestic](https://autorestic.vercel.app/) (restic wrapper) | [Backrest](https://github.com/garethgeorge/backrest) (restic wrapper) |
 | configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps/backrest.nix` |
-| credentials in | ansible-vault | sops (`nix/hosts/apps/data/secrets.yaml`) |
+| credentials in | ansible-vault | sops (`nix/hosts/apps/data/<stack>.yaml`) |
 | writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | `apps` repository (on-site) |
 | restores with | Ansible playbooks | generated on-host commands |
 
@@ -278,7 +278,7 @@ rehearsal.
 > the originals. A DR rehearsal would then have destroyed the real backups.
 
 0. **Prerequisites that are in no backup**: this git repository, an age identity that can
-   decrypt `nix/hosts/apps/data/secrets.yaml`, and the hypervisor with `/mnt/bulk/apps`
+   decrypt `nix/hosts/apps/data/*.yaml`, and the hypervisor with `/mnt/bulk/apps`
    intact. See the [key-management warning](#key-management-the-actual-single-point-of-failure)
    — this step is the real single point of failure, not the data.
 1. `just hypervisor-build-vm-images` — note this generates a **new** SSH host key, and
@@ -418,7 +418,7 @@ Everything below applies to **both** systems — they are both restic repositori
 Any restic repository is directly usable with the plain `restic` CLI — no Backrest, no
 autorestic, no Ansible. Pull the repository URI and password from wherever they are
 declared (ansible-vault for autorestic's repos; the sops-decrypted
-`nix/hosts/apps/data/secrets.yaml` for `apps`'s), then:
+`nix/hosts/apps/data/common.yaml` for `apps`'s), then:
 
 ```sh
 export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # on-site REST server
@@ -454,7 +454,7 @@ stamps `plan:<planID>` and `created-by:<instanceID>`.
 ### Key management: the actual single point of failure
 
 > [!CAUTION]
-> `nix/hosts/apps/data/secrets.yaml` can only be decrypted by the age keys listed in
+> The secrets files under `nix/hosts/apps/data/` can only be decrypted by the age keys listed in
 > `.sops.yaml` — in practice the SSH host keys of a couple of workstations. The restic
 > repository passwords live *inside* that file. If those machines are lost together with
 > everything else, the backups are intact and unreadable.
@@ -493,7 +493,7 @@ at our repositories.
 Repository URIs and passwords live in two places today, and this scenario assumes you
 can reach neither: the legacy autorestic repos in the ansible-vault managed
 `ansible/hosts/group_vars/apps/vault.yml`, and `apps`'s own in the sops-managed
-`nix/hosts/apps/data/secrets.yaml`. **That is exactly why the credentials also belong in
+`nix/hosts/apps/data/common.yaml`. **That is exactly why the credentials also belong in
 a password manager** — see the key-management warning above. Once connected, select the
 desired snapshot and browse and download files and directories directly.
 

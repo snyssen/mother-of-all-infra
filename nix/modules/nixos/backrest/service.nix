@@ -77,7 +77,6 @@ in
         }
       );
       path = configPath;
-      restartUnits = [ "backrest.service" ];
     };
 
     networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ bindPort ];
@@ -88,6 +87,16 @@ in
     # as root sidesteps bind-mounting every single directory with matching ownership
     # into a container for zero real isolation benefit. Matches this repo's existing
     # pragmatic-root precedent (virtualisation.libvirtd.qemu.runAsRoot in libvirtd.nix).
+    # restartTriggers rather than the template's own `restartUnits`: the latter is
+    # routed through /run/nixos/activation-restart-list, which switch-to-configuration
+    # *starts* even for units that were not running. Harmless for backrest, which is
+    # always meant to be up, but the mechanism is deprecated and the repo uses
+    # restartTriggers everywhere else — see nix/modules/nixos/compose-stacks.nix.
+    # The sops file holding the repository passwords is the host's to add.
+    systemd.services.backrest.restartTriggers = [
+      config.sops.templates."backrest-config.json".content
+    ];
+
     systemd.services.backrest = {
       description = "Backrest (restic backup web UI and orchestrator)";
       after = [ "network-online.target" ];

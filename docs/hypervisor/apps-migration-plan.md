@@ -33,7 +33,7 @@ The migration is therefore **two-phased**:
 | `lan` ipvlan network | **Not recreated.** Unifi moves to its own VM (Unifi OS Server); Syncthing drops LAN discovery (relies on Tailscale/global relay instead) |
 | Monitoring | `grafana-alloy` (NixOS module) pushing node + cAdvisor metrics and logs via `remote_write`/Loki push, not `prometheus-node-exporter` pull — converted fleet-wide (`apps`, `ingress`, `technitium-{primary,secondary}`, and workstation hosts `blackfog`/`gaming`/`purplehaze`/`sninful`) so metrics/logs dual-ship to both the legacy Prometheus/Loki and the new `apps` stack during the migration. `cAdvisor` ended up as a `docker.cadvisor.enable` option on the existing `docker` module, not a dedicated module. |
 | Backups | **Backrest** (`pkgs.backrest`, native NixOS systemd service, config declaratively rendered via `sops.templates` — not `services.restic.backups`, and not containerized via `compose-stacks`, since it needs broad read access across every stack's data regardless of which uid owns it). Revised from the original `services.restic.backups` + "optional read-only `backrest` container" split after hands-on production use elsewhere showed Backrest's restore UI is worth making the primary tool, not a passive add-on. Still "just restic" underneath — DR via plain `restic` CLI against any repo URI/password in the (sops-decrypted) config works with zero dependency on Backrest itself. **`apps` backs itself up into its own repo** (`rest://.../apps/`), never into the production one, which stays registered read-only so prod snapshots remain browsable for restore-testing without `apps` being able to alter them. Restores are driven by generated on-host commands rather than an Ansible playbook — the Ansible group named `apps` is the *legacy* box, and the restore list is derived from `backrest.plans` so it cannot drift from what is actually backed up. See `docs/backups.md`. |
-| Secrets | SOPS-encrypted `nix/hosts/apps/data/secrets.yaml`; injected into compose stacks via `environmentFile` |
+| Secrets | SOPS-encrypted, one file per stack under `nix/hosts/apps/data/` (`<stack>.yaml`, plus `common.yaml` for host-wide ones); injected into compose stacks via `environmentFile`. Split per stack so a secret change restarts only its own stack. |
 | VM provisioning | `libvirt_provision` Ansible role (existing pattern) |
 | Iterative testing | Build an MVS (Minimum Viable System), then migrate stacks one-by-one on a test VM |
 | DNS stacks | **Excluded** — DNS migration is tracked separately (see issue #153) |
@@ -93,7 +93,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 
 ### Per-stack inventory
 
-| Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps/data/secrets.yaml`) | Target (`apps` / dedicated VM / retire) |
+| Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps/data/<stack>.yaml`) | Target (`apps` / dedicated VM / retire) |
 |---|---|---|---|---|---|
 | `databases` | `/home/snyssen/data/databases/postgres/data` (size: live measure; PostgreSQL data), `/home/snyssen/data/databases/postgres/{servers.json,config_local.py}` (pgAdmin config) | `/mnt/storage/backups` (shared backup root), `/mnt/storage/backups/postgres` (Postgres dumps) | Uses `db` and `web` networks; `pgadmin` + `postgres_backups` depend on `postgres`; provides shared `postgres` for many stacks | `db__pg_password`, `db__pgadmin_password`, `db__pgadmin_email` | `apps` |
 | `monitoring` | `/home/snyssen/data/monitoring/prometheus` (Prometheus TSDB), `/home/snyssen/data/grafana/data` (Grafana DB), `/home/snyssen/data/monitoring/loki` (logs), `/home/snyssen/data/uptime` (Uptime Kuma state) | `/mnt/storage/prometheus` (Prometheus config/rules) | Uses `web`, `monitoring`, `db`; `umami` connects to `postgres`; consumes ntfy topic for alerts; OIDC via Authelia | `monitoring__umami_db_pass`, `monitoring__umami_app_secret`, `backbone__authelia__oidc_grafana_clientsecret`, `smtp__pass` | `apps` |
@@ -155,7 +155,7 @@ Collect live metrics from current apps host and fill:
 - Reservation target: `192.168.1.10` (DHCP server / static lease reference)
 - Collision check done: ✅
 
-### Secrets migration index (`nix/hosts/apps/data/secrets.yaml`)
+### Secrets migration index (`nix/hosts/apps/data/<stack>.yaml`)
 
 Track every secret key/value that must move to SOPS:
 
@@ -334,7 +334,7 @@ For each stack, the migration consists of:
 - [ ] Copy `docker-compose.yml` from Ansible role to `nix/hosts/apps/compose/<stack>/docker-compose.yaml`
 - [ ] Replace Jinja2 variables: `{{ docker_mounts_directory }}/X` → `/var/lib/app-data/X`, `/mnt/storage/X` → `/mnt/bulk/X`
 - [ ] Remove `lan` network references if present; add regular bridge networks as needed
-- [ ] Extract secrets into `nix/hosts/apps/data/secrets.yaml` (SOPS-encrypted)
+- [ ] Extract secrets into `nix/hosts/apps/data/<stack>.yaml` (SOPS-encrypted; one file per stack, `common.yaml` for host-wide ones)
 - [ ] Add `compose-stacks.stacks.<name>` entry in `configuration.nix`
 - [ ] Add `extraAfter = [ "mnt-bulk.mount" ]` for stacks using `/mnt/bulk`
 - [ ] **Keep all persistent state in bind mounts, never in a Docker named volume.** Backups are path-based (`backrest.plans`), so `/var/lib/docker/volumes` is invisible to them and always will be. Every named volume in use today is deliberately disposable (Redis caches, scratch audio); a stateful one would be silently unprotected.

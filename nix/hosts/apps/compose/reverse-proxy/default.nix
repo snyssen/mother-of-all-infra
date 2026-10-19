@@ -61,22 +61,19 @@ in
 
     sops.secrets = {
       "compose-stacks/reverse-proxy/acme/email" = {
-        sopsFile = ../../data/secrets.yaml;
+        sopsFile = ../../data/reverse-proxy.yaml;
       };
       "compose-stacks/reverse-proxy/acme/ca_server" = {
-        sopsFile = ../../data/secrets.yaml;
+        sopsFile = ../../data/reverse-proxy.yaml;
       };
       "compose-stacks/reverse-proxy/acme/dynu_api_key" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-reverse-proxy.service" ];
+        sopsFile = ../../data/reverse-proxy.yaml;
       };
       "compose-stacks/reverse-proxy/acme/porkbun_api_key" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-reverse-proxy.service" ];
+        sopsFile = ../../data/reverse-proxy.yaml;
       };
       "compose-stacks/reverse-proxy/acme/porkbun_secret_api_key" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-reverse-proxy.service" ];
+        sopsFile = ../../data/reverse-proxy.yaml;
       };
     };
 
@@ -85,7 +82,6 @@ in
       # part of this file's content but not of the compose file, so a plugin version
       # bump changes nothing in the unit's ExecStart, and systemd would otherwise
       # leave the old Traefik running with the old sources still mounted.
-      restartUnits = [ "compose-reverse-proxy.service" ];
       content = ''
         MAIN_DOMAIN=${config.domains.main}
         ACME_EMAIL=${config.sops.placeholder."compose-stacks/reverse-proxy/acme/email"}
@@ -154,6 +150,14 @@ in
       '';
 
     compose-stacks.stacks.reverse-proxy = {
+      restartTriggers = [
+        ../../data/reverse-proxy.yaml
+        # Traefik's CrowdSec plugin reads the WAF bouncer key, which lives in the
+        # crowdsec stack's file — a dependency by path rather than by placeholder,
+        # so it is easy to miss.
+        ../../data/crowdsec.yaml
+        config.sops.templates."compose-reverse-proxy.env".content
+      ];
       inherit composeFile;
       environmentFile = config.sops.templates."compose-reverse-proxy.env".path;
       dockerNetworks = [ "web" ];

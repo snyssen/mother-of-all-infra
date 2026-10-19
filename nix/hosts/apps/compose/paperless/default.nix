@@ -17,22 +17,18 @@ in
 
   sops.secrets = {
     "compose-stacks/paperless/secret_key" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-paperless.service" ];
+      sopsFile = ../../data/paperless.yaml;
     };
     "compose-stacks/paperless/oidc/client_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-paperless.service" ];
+      sopsFile = ../../data/paperless.yaml;
     };
     "compose-stacks/paperless/oidc/client_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-paperless.service" ];
+      sopsFile = ../../data/paperless.yaml;
     };
     # Hashed, for Authelia's own client config — same plaintext/hash split already used
     # for Grafana/CrowdSec/PeerTube/pgAdmin/Immich's OIDC clients.
     "compose-stacks/paperless/oidc/client_secret_hash" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/paperless.yaml;
     };
   };
 
@@ -89,6 +85,11 @@ in
   '';
 
   compose-stacks.stacks.paperless = {
+    restartTriggers = [
+      ../../data/paperless.yaml
+      ../../data/databases.yaml
+      config.sops.templates."compose-paperless.env".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-paperless.env".path;
     dockerNetworks = [

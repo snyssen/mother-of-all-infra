@@ -46,17 +46,19 @@ in
   # An off-site B2 copy for `apps` is still to come; until then the generated restore
   # commands take --repo-uri for the "on-site server is unreachable" case.
   sops.secrets."backrest/repos/backup_snyssen_be/password" = {
-    sopsFile = ./data/secrets.yaml;
-    restartUnits = [ "backrest.service" ];
+    sopsFile = ./data/common.yaml;
   };
   sops.secrets."backrest/repos/apps/password" = {
-    sopsFile = ./data/secrets.yaml;
-    restartUnits = [ "backrest.service" ];
+    sopsFile = ./data/common.yaml;
   };
   sops.secrets."backrest/users/snyssen/password_hash" = {
-    sopsFile = ./data/secrets.yaml;
-    restartUnits = [ "backrest.service" ];
+    sopsFile = ./data/common.yaml;
   };
+
+  # Restart when the repository passwords change. The rendered config's own trigger is
+  # declared by the module (nix/modules/nixos/backrest/service.nix); this adds the file
+  # those passwords come from, which only the host knows.
+  systemd.services.backrest.restartTriggers = [ ./data/common.yaml ];
 
   backrest = {
     enable = true;

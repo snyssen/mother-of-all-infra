@@ -53,34 +53,30 @@ in
       map (name: {
         name = "compose-stacks/databases/postgres/passwords/${name}";
         value = {
-          sopsFile = ../../data/secrets.yaml;
-          restartUnits = [ "compose-databases.service" ];
+          sopsFile = ../../data/databases.yaml;
         };
       }) (dbNames ++ [ "superuser" ])
     ))
     // {
       "compose-stacks/databases/pgadmin/email" = {
-        sopsFile = ../../data/secrets.yaml;
+        sopsFile = ../../data/databases.yaml;
       };
       "compose-stacks/databases/pgadmin/password" = {
-        sopsFile = ../../data/secrets.yaml;
+        sopsFile = ../../data/databases.yaml;
       };
       "compose-stacks/databases/pg_dump_healthcheck_id" = {
-        sopsFile = ../../data/secrets.yaml;
+        sopsFile = ../../data/databases.yaml;
       };
       "compose-stacks/databases/pgadmin/oidc/client_id" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-databases.service" ];
+        sopsFile = ../../data/databases.yaml;
       };
       "compose-stacks/databases/pgadmin/oidc/client_secret" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-databases.service" ];
+        sopsFile = ../../data/databases.yaml;
       };
       # Hashed, for Authelia's own client config — same plaintext/hash split already
       # used for Grafana/CrowdSec/PeerTube's OIDC clients.
       "compose-stacks/databases/pgadmin/oidc/client_secret_hash" = {
-        sopsFile = ../../data/secrets.yaml;
-        restartUnits = [ "compose-auth.service" ];
+        sopsFile = ../../data/databases.yaml;
       };
     };
 
@@ -132,6 +128,11 @@ in
   '';
 
   compose-stacks.stacks.databases = {
+    restartTriggers = [
+      ../../data/databases.yaml
+      config.sops.templates."compose-databases.env".content
+      config.sops.templates."pgadmin-config_local.py".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-databases.env".path;
     dockerNetworks = [

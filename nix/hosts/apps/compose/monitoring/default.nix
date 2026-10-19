@@ -19,8 +19,7 @@ in
 
   sops.secrets = {
     "compose-stacks/monitoring/umami/app_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-monitoring.service" ];
+      sopsFile = ../../data/monitoring.yaml;
     };
   };
 
@@ -179,6 +178,13 @@ in
   '';
 
   compose-stacks.stacks.monitoring = {
+    restartTriggers = [
+      ../../data/monitoring.yaml
+      ../../data/auth.yaml
+      ../../data/common.yaml
+      ../../data/databases.yaml
+      config.sops.templates."compose-monitoring.env".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-monitoring.env".path;
     dockerNetworks = [

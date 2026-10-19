@@ -143,7 +143,7 @@ Example — adding only the `apps` key for a new VM:
           - *snyssen_blackfog   # backup key for manual rotation
 ```
 
-If you have an existing secrets file for the VM (e.g., `nix/hosts/apps/data/secrets.yaml`), the playbook will automatically re-encrypt it after you confirm.
+If you have existing secrets files for the VM (e.g., those under `nix/hosts/apps/data/`), the playbook will automatically re-encrypt them after you confirm.
 
 ### 2c. Confirm and proceed
 
@@ -257,14 +257,14 @@ base64 /var/lib/vm-keys/<vm-name>/luks.key | head -c 40
 
 ### Per-host secrets
 
-Each VM can have encrypted SOPS secrets at `nix/hosts/<vm-name>/data/secrets.yaml`. When you run the build playbook and add the VM's age key to `.sops.yaml`, the playbook automatically re-encrypts any existing secrets files using the new key.
+Each VM can have encrypted SOPS secrets under `nix/hosts/<vm-name>/data/`. Most hosts use a single `secrets.yaml`; `apps` is split into one file per stack (`<stack>.yaml`, plus `common.yaml` for host-wide secrets) so that changing a secret only restarts the stack that owns it. The `.sops.yaml` rules glob the whole directory, so either layout works without extra configuration. When you run the build playbook and add the VM's age key to `.sops.yaml`, the playbook automatically re-encrypts any existing secrets files using the new key.
 
 ### Creating new secrets for a VM
 
 After the playbook runs and `.sops.yaml` is committed, create or edit secrets:
 
 ```sh
-just sops-edit nix/hosts/apps/data/secrets.yaml
+just sops-edit nix/hosts/apps/data/common.yaml
 ```
 
 The editor will automatically use the VM's age key and your backup identity key for encryption.

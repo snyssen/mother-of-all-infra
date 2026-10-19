@@ -19,8 +19,7 @@ in
     # configuration.nix — same key, two consumers, matching the legacy role's
     # "same key on both ends" pattern.
     "compose-stacks/crowdsec/firewall_bouncer/api_key" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-crowdsec.service" ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
     # A separate bouncer identity for the Traefik plugin (see the WAF scope note
     # below) — each bouncer gets its own key, matching the legacy setup's approach.
@@ -31,29 +30,16 @@ in
     # in it would never actually get substituted (the same class of bug already
     # caught once this session for authelia-configuration.yml).
     "compose-stacks/crowdsec/waf_bouncer/api_key" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [
-        "compose-crowdsec.service"
-        "compose-reverse-proxy.service"
-      ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
     "compose-stacks/crowdsec/webui/lapi_user" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [
-        "compose-crowdsec.service"
-        "crowdsec-machine-bootstrap.service"
-      ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
     "compose-stacks/crowdsec/webui/lapi_password" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [
-        "compose-crowdsec.service"
-        "crowdsec-machine-bootstrap.service"
-      ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
     "compose-stacks/crowdsec/oidc/client_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-crowdsec.service" ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
     # Plaintext, referenced directly via a `file:` path by the web UI's own config —
     # see crowdsec-web-ui-configuration.nix. Bind-mounted straight into
@@ -66,16 +52,14 @@ in
     # only cares about the raw uid matching, not which name owns it on which side of
     # the bind mount. No group needed: mode 0400 doesn't grant group access anyway.
     "compose-stacks/crowdsec/oidc/client_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-crowdsec.service" ];
+      sopsFile = ../../data/crowdsec.yaml;
       owner = "snyssen";
       mode = "0400";
     };
     # Hashed, for Authelia's own client config — same plaintext/hash split already
     # used for Grafana's OIDC client.
     "compose-stacks/crowdsec/oidc/client_secret_hash" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/crowdsec.yaml;
     };
   };
 
@@ -84,7 +68,9 @@ in
     BOUNCER_KEY_traefik=${config.sops.placeholder."compose-stacks/crowdsec/waf_bouncer/api_key"}
     CROWDSEC_LAPI_PASSWORD=${config.sops.placeholder."compose-stacks/crowdsec/webui/lapi_password"}
     CROWDSEC_WEBUI_CONFIG_PATH=${config.sops.templates."crowdsec-web-ui-configuration.yml".path}
-    CROWDSEC_OIDC_CLIENT_SECRET_PATH=${config.sops.secrets."compose-stacks/crowdsec/oidc/client_secret".path}
+    CROWDSEC_OIDC_CLIENT_SECRET_PATH=${
+      config.sops.secrets."compose-stacks/crowdsec/oidc/client_secret".path
+    }
   '';
 
   sops.templates."crowdsec-web-ui-configuration.yml" = {
@@ -152,6 +138,11 @@ in
   '';
 
   compose-stacks.stacks.crowdsec = {
+    restartTriggers = [
+      ../../data/crowdsec.yaml
+      config.sops.templates."compose-crowdsec.env".content
+      config.sops.templates."crowdsec-web-ui-configuration.yml".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-crowdsec.env".path;
     dockerNetworks = [
@@ -171,6 +162,8 @@ in
   # re-run on every activation/secret rotation without manual intervention.
   systemd.services.crowdsec-machine-bootstrap = {
     description = "Register crowdsec-web-ui's LAPI machine credential";
+    # Re-register if the LAPI credentials change.
+    restartTriggers = [ ../../data/crowdsec.yaml ];
     after = [ "compose-crowdsec.service" ];
     requires = [ "compose-crowdsec.service" ];
     wantedBy = [ "multi-user.target" ];

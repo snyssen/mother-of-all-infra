@@ -25,21 +25,39 @@ in
                 Whether to start this stack at boot, by giving its unit a
                 `wantedBy = [ "multi-user.target" ]`.
 
-                This governs *boot only*. It does not stop
-                `switch-to-configuration` from starting the stack during
-                activation: anything listing `compose-<name>.service` in a
-                sops `restartUnits` is routed through
-                `/run/nixos/activation-restart-list`, and
-                switch-to-configuration starts every unit in that list that is
-                not already running ("Start units if they were not active
-                previously"). A dormant stack is therefore started by the first
-                deploy that touches one of its secrets.
-
-                So a stack set to `autostart = false` must also make its sops
-                `restartUnits` conditional on the same flag — see
-                `compose/nextcloud` and `compose/streaming` for the pattern.
+                A stack with `autostart = false` stays down until started by
+                hand. Use `restartTriggers` rather than sops' `restartUnits` to
+                react to secret changes: `restartUnits` is routed through
+                `/run/nixos/activation-restart-list`, which
+                switch-to-configuration *starts* even when the unit was not
+                running, so it would defeat this option. `restartTriggers` only
+                acts on units that are already active.
               '';
             };
+
+            restartTriggers = lib.mkOption {
+              type = lib.types.listOf lib.types.anything;
+              default = [ ];
+              description = ''
+                Values that, when changed, restart this stack — the standard
+                NixOS `systemd.services.<name>.restartTriggers` mechanism,
+                surfaced here so everything about a stack stays in one block.
+
+                Two kinds of entry are usually wanted:
+
+                - the path of every sops file the stack reads a secret from
+                  (`../../data/<stack>.yaml`), which covers a secret *value*
+                  changing; and
+                - the `content` of each `sops.templates` entry the stack
+                  consumes, which covers the template's own text changing —
+                  rendered templates live at a stable path, so nothing else
+                  would notice.
+
+                Unlike sops' `restartUnits`, this never starts a stopped stack,
+                which is what makes `autostart = false` trustworthy.
+              '';
+            };
+
             environmentFile = lib.mkOption {
               type = lib.types.nullOr lib.types.path;
               default = null;
@@ -81,6 +99,7 @@ in
         ]
         ++ dockerNetworkUnits;
         wantedBy = [ ] ++ lib.lists.optional stack.autostart "multi-user.target";
+        inherit (stack) restartTriggers;
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;

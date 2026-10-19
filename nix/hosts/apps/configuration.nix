@@ -61,62 +61,62 @@
 
   sops.secrets = {
     "tailscale/authKey" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     "users/snyssen/passwordHash" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       neededForUsers = true;
     };
     "argunix/builder_enrollment/token" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       owner = "argunix";
       group = "argunix";
       mode = "0400";
     };
     "argunix/forges/github/token" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       owner = "argunix";
       group = "argunix";
       mode = "0400";
     };
     "argunix/caches/cache_snyssen_be/signing_key" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       owner = "argunix";
       group = "argunix";
       mode = "0400";
     };
     "argunix/caches/cache_snyssen_be/s3_credentials" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       owner = "argunix";
       group = "argunix";
       mode = "0400";
     };
     "argunix/caches/attic/token" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
       owner = "argunix";
       group = "argunix";
       mode = "0400";
     };
     # Shared across any stack that sends mail, not specific to one stack.
     "smtp/host" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     "smtp/port" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     "smtp/user" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     "smtp/password" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     "smtp/from_domain" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
     # Admin/notification recipient address — used by PeerTube (streaming stack) so
     # far, but shared/global like its smtp/* siblings above, not stack-specific.
     "smtp/to" = {
-      sopsFile = ./data/secrets.yaml;
+      sopsFile = ./data/common.yaml;
     };
   };
 

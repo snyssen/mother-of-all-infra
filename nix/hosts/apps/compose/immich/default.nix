@@ -12,26 +12,21 @@ in
 
   sops.secrets = {
     "compose-stacks/immich/db/password" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-immich.service" ];
+      sopsFile = ../../data/immich.yaml;
     };
     "compose-stacks/immich/db_dump_healthcheck_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-immich.service" ];
+      sopsFile = ../../data/immich.yaml;
     };
     "compose-stacks/immich/oidc/client_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-immich.service" ];
+      sopsFile = ../../data/immich.yaml;
     };
     "compose-stacks/immich/oidc/client_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-immich.service" ];
+      sopsFile = ../../data/immich.yaml;
     };
     # Hashed, for Authelia's own client config — same plaintext/hash split already used
     # for Grafana/CrowdSec/PeerTube/pgAdmin's OIDC clients.
     "compose-stacks/immich/oidc/client_secret_hash" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/immich.yaml;
     };
   };
 
@@ -74,6 +69,10 @@ in
   '';
 
   compose-stacks.stacks.immich = {
+    restartTriggers = [
+      ../../data/immich.yaml
+      config.sops.templates."compose-immich.env".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-immich.env".path;
     dockerNetworks = [

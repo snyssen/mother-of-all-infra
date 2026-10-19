@@ -12,28 +12,22 @@ let
   # base DN defines the structure of the whole directory tree, and changing it later
   # would mean re-provisioning it rather than just re-pointing a hostname.
   ldapBaseDomain = "snyssen.be";
-  ldapBaseDn = lib.concatMapStringsSep "," (part: "dc=${part}") (
-    lib.splitString "." ldapBaseDomain
-  );
+  ldapBaseDn = lib.concatMapStringsSep "," (part: "dc=${part}") (lib.splitString "." ldapBaseDomain);
   ldapBindUserDn = "uid=authelia,ou=people,${ldapBaseDn}";
 in
 {
   sops.secrets = {
     "compose-stacks/auth/authelia/jwt_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/authelia/session_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/authelia/storage_encryption_key" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/oidc/hmac_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     # Value must be stored pre-escaped: the PEM with every real newline replaced by
     # the two literal characters `\n`, wrapped in single quotes when editing via
@@ -43,48 +37,34 @@ in
     # why. Generate the value from an existing PEM file with:
     #   perl -0pe 's/\n/\\n/g' key.pem
     "compose-stacks/auth/oidc/issuer_private_key" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/oidc/grafana/client_id" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/oidc/grafana/client_secret_hash" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     # Plaintext, shared with `monitoring` (Grafana needs the plaintext; Authelia only
     # ever sees/stores the hash above) — single source of truth, referenced from both
     # stacks rather than duplicated.
     "compose-stacks/auth/oidc/grafana/client_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [
-        "compose-auth.service"
-        "compose-monitoring.service"
-      ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/lldap/jwt_secret" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/lldap/key_seed" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     "compose-stacks/auth/lldap/admin_password" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [ "compose-auth.service" ];
+      sopsFile = ../../data/auth.yaml;
     };
     # Shared between lldap (the account's actual password, set via bootstrap.sh) and
     # Authelia (the same password, used to bind as that account) — one secret, two
     # consumers, not duplicated.
     "compose-stacks/auth/ldap_bind/password" = {
-      sopsFile = ../../data/secrets.yaml;
-      restartUnits = [
-        "compose-auth.service"
-        "auth-lldap-bootstrap.service"
-      ];
+      sopsFile = ../../data/auth.yaml;
     };
   };
 
@@ -97,7 +77,9 @@ in
     LLDAP_KEY_SEED=${config.sops.placeholder."compose-stacks/auth/lldap/key_seed"}
     LLDAP_LDAP_USER_PASS=${config.sops.placeholder."compose-stacks/auth/lldap/admin_password"}
     LLDAP_ADMIN_PASSWORD=${config.sops.placeholder."compose-stacks/auth/lldap/admin_password"}
-    LLDAP_DATABASE_URL=postgres://lldap:${config.sops.placeholder."compose-stacks/databases/postgres/passwords/lldap"}@postgres/lldap
+    LLDAP_DATABASE_URL=postgres://lldap:${
+      config.sops.placeholder."compose-stacks/databases/postgres/passwords/lldap"
+    }@postgres/lldap
     LDAP_BIND_PASSWORD_PATH=${config.sops.secrets."compose-stacks/auth/ldap_bind/password".path}
     AUTHELIA_CONFIG_PATH=${config.sops.templates."authelia-configuration.yml".path}
   '';
@@ -152,6 +134,18 @@ in
   '';
 
   compose-stacks.stacks.auth = {
+    restartTriggers = [
+      ../../data/auth.yaml
+      ../../data/databases.yaml
+      ../../data/common.yaml
+      ../../data/crowdsec.yaml
+      ../../data/immich.yaml
+      ../../data/nextcloud.yaml
+      ../../data/paperless.yaml
+      ../../data/streaming.yaml
+      config.sops.templates."compose-auth.env".content
+      config.sops.templates."authelia-configuration.yml".content
+    ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-auth.env".path;
     dockerNetworks = [
@@ -179,6 +173,8 @@ in
   # management.
   systemd.services.auth-lldap-bootstrap = {
     description = "Reconcile lldap's groups and Authelia service account via bootstrap.sh";
+    # Re-reconcile if the bind account's password changes.
+    restartTriggers = [ ../../data/auth.yaml ];
     after = [ "compose-auth.service" ];
     requires = [ "compose-auth.service" ];
     wantedBy = [ "multi-user.target" ];
