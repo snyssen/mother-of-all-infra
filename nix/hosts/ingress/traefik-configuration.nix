@@ -9,28 +9,29 @@ let
   # services.traefik.dynamicConfigOptions.http.routers and
   # services.traefik.dynamicConfigOptions.http.services options below.
   proxiedWebServices = {
-    attic = "attic.snyssen.be";
+    # TODO: re-enable once PHP is fixed
+    # attic = "attic.snyssen.be";
     auth-main = "auth.snyssen.be";
     auth-team = "auth.bigdouf.team";
     dashboard = "dash.snyssen.be";
-    mc-dynmap = "mc.snyssen.be";
-    mc-usw-dynmap = "mc-usw.snyssen.be"; # dynmap for USW server
-    element = "element.snyssen.be";
-    foundryvtt = "dnd.snyssen.be";
-    immich = "photos.snyssen.be";
-    jellyfin = "streaming.snyssen.be";
+    # mc-dynmap = "mc.snyssen.be";
+    # mc-usw-dynmap = "mc-usw.snyssen.be"; # dynmap for USW server
+    # element = "element.snyssen.be";
+    # foundryvtt = "dnd.snyssen.be";
+    # immich = "photos.snyssen.be";
+    # jellyfin = "streaming.snyssen.be";
     matrix-mas = "matrix-mas.snyssen.be";
     matrix = "matrix.snyssen.be";
-    nextcloud = "cloud.snyssen.be";
+    # nextcloud = "cloud.snyssen.be";
     personal-website = "snyssen.be";
-    rallly = "events.bigdouf.team";
-    recipes = "recipes.snyssen.be";
-    pdf = "pdf.snyssen.be";
+    # rallly = "events.bigdouf.team";
+    # recipes = "recipes.snyssen.be";
+    # pdf = "pdf.snyssen.be";
     social = "social.snyssen.be";
-    speedtest = "speedtest.snyssen.be";
-    team = "bigdouf.team";
-    umami = "umami.snyssen.be";
-    dawarich = "location.snyssen.be";
+    # speedtest = "speedtest.snyssen.be";
+    # team = "bigdouf.team";
+    # umami = "umami.snyssen.be";
+    # dawarich = "location.snyssen.be";
 
     # Note: this lives on the apps host
     argunix = "argunix.snyssen.be";
