@@ -79,6 +79,23 @@
       password: "${config.sops.placeholder."compose-stacks/databases/postgres/passwords/authelia"}"
 
   notifier:
+    # Authelia treats a failed provider startup check as FATAL: it logs "Error occurred
+    # running a startup check" and then exits with "One or more providers had fatal
+    # failures performing startup checks". With `restart: unless-stopped` that becomes a
+    # crash loop, so an unreachable SMTP relay takes down *all* authentication on this
+    # host — every forwardAuth-gated route and every OIDC client with it.
+    #
+    # That is a bad dependency for an SSO gateway: a cold boot, or any redeploy, during
+    # a mail-relay outage locks everyone out of everything. It bit us on 2026-10-21 —
+    # the relay had been unreachable for a while, Authelia only noticed because a deploy
+    # restarted it, and auth.${config.domains.main} went down while prod survived purely
+    # because it had not been restarted.
+    #
+    # Skipping the check degrades the failure instead: Authelia serves normally and mail
+    # fails at send time, so password resets and 2FA enrolment break rather than login.
+    # The error is still logged on every send attempt, and container logs are queryable
+    # per-service now (see nix/modules/nixos/grafana-alloy.nix), so it stays visible.
+    disable_startup_check: true
     smtp:
       # submission:// (STARTTLS, port 587) matches the most common self-hosted SMTP
       # relay setup — switch to submissions:// if the actual provider needs implicit
