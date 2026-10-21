@@ -145,6 +145,11 @@
     # promtail sidecar the legacy role ran. Host-wide rather than per-stack by nature,
     # so every other stack's container output now reaches Loki too, labelled by compose
     # project/service.
+    #
+    # Reads the *journal*, not /var/lib/docker/containers: Docker here uses the journald
+    # log driver, so there are no container log files to tail. Enabling this also sets
+    # the daemon's log-opts and lifts docker.service's log rate limit — see the option's
+    # description in nix/modules/nixos/grafana-alloy.nix.
     containerlogs.enable = true;
     # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
     # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.

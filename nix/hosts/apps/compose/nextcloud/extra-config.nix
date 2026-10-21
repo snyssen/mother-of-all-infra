@@ -71,9 +71,10 @@
     // /var/logs/nextcloud.log + audit.log pair, which existed only to give the
     // promtail sidecar something to tail. `errorlog` hands the lines to PHP's
     // error_log(); this image runs mod_php, whose SAPI logger is Apache's ErrorLog,
-    // which the image symlinks to /dev/stderr — so they land in the container log and
-    // are picked up by grafana-alloy's containerlogs collector, already labelled with
-    // compose_project/compose_service.
+    // which the image symlinks to /dev/stderr. Docker's journald log driver puts that
+    // into the systemd journal, where grafana-alloy's containerlogs collector picks it
+    // up and labels it with compose_project/compose_service — see
+    // nix/modules/nixos/grafana-alloy.nix.
     'log_type' => 'errorlog',
     'log_type_audit' => 'errorlog',
     'mail_smtpmode' => 'smtp',

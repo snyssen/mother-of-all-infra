@@ -9,7 +9,24 @@ in
     };
     varlogs.enable = lib.mkEnableOption "/var/log collection";
     journald.enable = lib.mkEnableOption "journald (systemd) collection";
-    containerlogs.enable = lib.mkEnableOption "Docker logs collection";
+    containerlogs.enable = lib.mkEnableOption "Docker logs collection" // {
+      description = ''
+        Collect Docker container logs, labelled `job="containerlogs"` with
+        `compose_project`, `compose_service`, `container_id` and `stream` — the same
+        schema the legacy Ansible pipeline produces, so one Grafana dashboard covers
+        both.
+
+        Implemented on top of the journald collector rather than by tailing
+        `/var/lib/docker/containers`, because Docker here uses the journald log driver.
+        Enabling this also configures Docker to attach the compose labels as journal
+        fields, and lifts systemd's log rate limit on `docker.service` (every container
+        shares that unit's single rate-limit bucket, so one chatty container would
+        otherwise suppress all of them).
+
+        Requires `journald.enable`, `virtualisation.docker.enable`, and the journald log
+        driver; all three are asserted.
+      '';
+    };
     nodeMetrics.enable = lib.mkEnableOption "host metrics collection (embedded node_exporter)";
     cadvisorMetrics.enable = lib.mkEnableOption "container metrics collection (embedded cAdvisor)";
     loki.endpoints = lib.mkOption {
@@ -41,6 +58,69 @@ in
           forward_to            = [loki.write.default.receiver]
         }
       '';
+      # Container logs are read out of the journal, not out of
+      # /var/lib/docker/containers/*/*log: NixOS defaults
+      # virtualisation.docker.logDriver to "journald", so those files do not exist (and
+      # Alloy, running as a DynamicUser, could not read them anyway — /var/lib/docker is
+      # 0710 root:root). Docker's journald driver instead writes every container line
+      # into the journal with CONTAINER_ID/CONTAINER_NAME fields, plus whatever labels
+      # log-opts.labels-regex selects (set below).
+      #
+      # These rules re-label those entries to the schema the legacy Ansible pipeline
+      # produces from the json-file driver — job="containerlogs" with compose_project /
+      # compose_service / container_id — so the same Grafana dashboards work against both
+      # the legacy box and this one throughout the migration.
+      #
+      # Every rule is anchored on __journal_container_id, which only the journald log
+      # driver sets. Prometheus relabelling anchors its regexes and treats a non-matching
+      # `replace` as a no-op, so sshd/kernel/dockerd's own messages fall through
+      # untouched and stay job="journald". That is also why hosts without
+      # containerlogs.enable are completely unaffected.
+      #
+      # Entries are re-labelled, not duplicated: one source, one forward_to. There is
+      # nothing to "drop" from the journald job, because a container line simply stops
+      # being part of it.
+      alloy_containerlogRules = ''
+        rule {
+          source_labels = ["__journal_container_id"]
+          regex         = ".+"
+          target_label  = "job"
+          replacement   = "containerlogs"
+        }
+        rule {
+          source_labels = ["__journal_container_id"]
+          regex         = "(.+)"
+          target_label  = "container_id"
+        }
+        rule {
+          source_labels = ["__journal_com_docker_compose_project"]
+          regex         = "(.+)"
+          target_label  = "compose_project"
+        }
+        rule {
+          source_labels = ["__journal_com_docker_compose_service"]
+          regex         = "(.+)"
+          target_label  = "compose_service"
+        }
+        // Docker's journald driver has no "stream" field; it sends stderr at PRIORITY 3
+        // and stdout at 6. Pairing the priority with container_id is deliberate —
+        // matching on priority alone would put a `stream` label on every ordinary
+        // journal entry and split the existing job="journald" streams by severity.
+        rule {
+          source_labels = ["__journal_container_id", "__journal_priority"]
+          separator     = ";"
+          regex         = ".+;6"
+          target_label  = "stream"
+          replacement   = "stdout"
+        }
+        rule {
+          source_labels = ["__journal_container_id", "__journal_priority"]
+          separator     = ";"
+          regex         = ".+;3"
+          target_label  = "stream"
+          replacement   = "stderr"
+        }
+      '';
       alloy_journald = ''
         loki.relabel "journald" {
           forward_to = []
@@ -48,6 +128,7 @@ in
             source_labels = ["__journal__systemd_unit"]
             target_label  = "unit"
           }
+          ${lib.optionalString cfg.containerlogs.enable alloy_containerlogRules}
         }
 
         loki.source.journal "journald"  {
@@ -58,66 +139,6 @@ in
             job       = "journald",
             host      = "${cfg.hostname}",
           }
-        }
-      '';
-      alloy_containerlogs = ''
-        local.file_match "containerlogs" {
-          path_targets = [{
-            __address__ = "localhost",
-            __path__    = "/var/lib/docker/containers/*/*log",
-            host        = "${cfg.hostname}",
-            job         = "containerlogs",
-          }]
-        }
-
-        loki.process "containerlogs" {
-          forward_to = [loki.write.default.receiver]
-
-          stage.json {
-            expressions = {
-              compose_project    = "attrs.\"com.docker.compose.project\"",
-              compose_service    = "attrs.\"com.docker.compose.service\"",
-              log                = "log",
-              stack_name         = "attrs.\"com.docker.stack.namespace\"",
-              stream             = "stream",
-              swarm_service_name = "attrs.\"com.docker.swarm.service.name\"",
-              swarm_task_name    = "attrs.\"com.docker.swarm.task.name\"",
-              tag                = "attrs.tag",
-              time               = "time",
-            }
-          }
-
-          stage.regex {
-            expression = "^/var/lib/docker/containers/(?P<container_id>.{12}).+/.+-json.log$"
-            source     = "filename"
-          }
-
-          stage.timestamp {
-            source = "time"
-            format = "RFC3339Nano"
-          }
-
-          stage.labels {
-            values = {
-              compose_project    = null,
-              compose_service    = null,
-              container_id       = null,
-              stack_name         = null,
-              stream             = null,
-              swarm_service_name = null,
-              swarm_task_name    = null,
-              tag                = null,
-            }
-          }
-
-          stage.output {
-            source = "log"
-          }
-        }
-
-        loki.source.file "containerlogs" {
-          targets               = local.file_match.containerlogs.targets
-          forward_to            = [loki.process.containerlogs.receiver]
         }
       '';
       alloy_nodeMetrics = ''
@@ -219,18 +240,64 @@ in
       # mkIf blocks, since NixOS's merge behavior for serviceConfig.SupplementaryGroups
       # contributions across multiple module definitions isn't something to rely on
       # here — this is the only place either group gets added.
-      systemd.services.alloy.serviceConfig = lib.mkIf (
-        config.services.traefik.enable || cfg.cadvisorMetrics.enable
-      ) {
-        SupplementaryGroups =
-          lib.optional config.services.traefik.enable "traefik"
-          ++ lib.optional cfg.cadvisorMetrics.enable "docker";
+      systemd.services.alloy.serviceConfig =
+        lib.mkIf (config.services.traefik.enable || cfg.cadvisorMetrics.enable)
+          {
+            SupplementaryGroups =
+              lib.optional config.services.traefik.enable "traefik"
+              ++ lib.optional cfg.cadvisorMetrics.enable "docker";
+          };
+
+      # Make Docker attach the two compose labels to every journal entry, which is what
+      # the containerlog relabel rules above turn into compose_project/compose_service.
+      #
+      # Deliberately narrower than the legacy box's `^.+`: with the json-file driver
+      # that produces one `attrs` object per line, parsed once and mostly discarded,
+      # whereas here every matched label becomes a journal field *stored on every
+      # entry*. These containers carry a lot of long Traefik labels, and Traefik's own
+      # access log is the chattiest stream on the host. Docker also uppercases label
+      # names and maps non-alphanumerics to `_`, so a wide regex can collide unrelated
+      # labels into one field.
+      #
+      # Note the journald driver rejects the json-file driver's max-size/max-file —
+      # journald does its own rotation.
+      virtualisation.docker.daemon.settings = lib.mkIf cfg.containerlogs.enable {
+        log-opts.labels-regex = "^com\\.docker\\.compose\\.(project|service)$";
       };
+
+      # Every container logs through dockerd, so they all share this unit's single
+      # rate-limit bucket (stock: 10000 messages / 30s). Without this, one noisy
+      # container silently suppresses every other container's logs. Per-unit, so the
+      # global limit still applies to everything else.
+      systemd.services.docker.serviceConfig = lib.mkIf cfg.containerlogs.enable {
+        LogRateLimitIntervalSec = 0;
+      };
+
+      # Each of these would otherwise fail silently — producing no containerlogs job at
+      # all, which is exactly how the original file-based implementation went unnoticed.
+      assertions = [
+        {
+          assertion = cfg.containerlogs.enable -> config.virtualisation.docker.enable;
+          message = "grafana-alloy.containerlogs.enable requires virtualisation.docker.enable.";
+        }
+        {
+          # The enum option, not daemon.settings.log-driver, which this module writes.
+          assertion = cfg.containerlogs.enable -> config.virtualisation.docker.logDriver == "journald";
+          message = ''
+            grafana-alloy.containerlogs.enable reads container output out of the journal,
+            so Docker must use the journald log driver
+            (virtualisation.docker.logDriver = "journald", the NixOS default).
+          '';
+        }
+        {
+          assertion = cfg.containerlogs.enable -> cfg.journald.enable;
+          message = "grafana-alloy.containerlogs.enable is implemented on top of grafana-alloy.journald.enable.";
+        }
+      ];
 
       environment.etc."alloy/config.alloy".text = ''
         ${if cfg.varlogs.enable then alloy_varlogs else ""}
         ${if cfg.journald.enable then alloy_journald else ""}
-        ${if cfg.containerlogs.enable then alloy_containerlogs else ""}
         ${if cfg.nodeMetrics.enable then alloy_nodeMetrics else ""}
         ${if cfg.cadvisorMetrics.enable then alloy_cadvisorMetrics else ""}
         ${if cfg.remoteWrite.endpoints != [ ] then alloy_remoteWrite else ""}
