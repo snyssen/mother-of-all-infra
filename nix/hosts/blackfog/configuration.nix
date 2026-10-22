@@ -203,10 +203,13 @@ in
     };
   };
 
+  docker.cadvisor.enable = true;
+
   grafana-alloy = {
     varlogs.enable = true;
     journald.enable = true;
     nodeMetrics.enable = true;
+    cadvisorMetrics.enable = true;
     # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
     # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
     loki.endpoints = [
