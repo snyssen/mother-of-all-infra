@@ -28,7 +28,17 @@ in
       '';
     };
     nodeMetrics.enable = lib.mkEnableOption "host metrics collection (embedded node_exporter)";
-    cadvisorMetrics.enable = lib.mkEnableOption "container metrics collection (embedded cAdvisor)";
+    cadvisorMetrics.enable = lib.mkEnableOption "container metrics collection (scrapes services.cadvisor)";
+    cadvisorPort = lib.mkOption {
+      type = lib.types.port;
+      default = config.services.cadvisor.port;
+      defaultText = lib.literalExpression "config.services.cadvisor.port";
+      description = ''
+        Port the host's cAdvisor listens on. Defaults to whatever
+        `services.cadvisor` is configured with, which on this fleet is set by
+        `docker.cadvisor.port`.
+      '';
+    };
     loki.endpoints = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "https://loki.snyssen.be/loki/api/v1/push" ];
@@ -176,23 +186,33 @@ in
           }
         }
       '';
+      # Scrapes the real cAdvisor (services.cadvisor, port 9200 — see
+      # nix/modules/nixos/docker.nix) rather than Alloy's embedded
+      # prometheus.exporter.cadvisor.
+      #
+      # The embedded exporter cannot do the job here: Alloy runs with
+      # DynamicUser=true, and cAdvisor resolves container names and labels by reading
+      # /var/lib/docker (0710 root:root) as well as the cgroup tree. Granting the
+      # `docker` group only opens the API socket, not those paths, so the embedded
+      # exporter produced a single series for the root cgroup — `id="/"` with no
+      # `name` and no container_label_* at all. Every dashboard panel matching
+      # `name=~".+"` silently returned "No data" as a result.
+      #
+      # services.cadvisor runs as root with the access it needs, and produces the same
+      # label set the legacy box's standalone cAdvisor does (name, image, id,
+      # container_label_com_docker_compose_{project,service}), so one dashboard covers
+      # both hosts.
+      #
+      # `instance` is set on the target rather than left to default from __address__,
+      # which would otherwise label every host's metrics "127.0.0.1:9200". This works
+      # for the same reason job_name does not (see prometheus.scrape "node" above):
+      # prometheus.scrape only fills in a label the target does not already carry.
       alloy_cadvisorMetrics = ''
-        prometheus.exporter.cadvisor "default" {
-          docker_host = "unix:///var/run/docker.sock"
-          // NixOS's docker module runs Docker's own embedded containerd, not a
-          // standalone one — cadvisor's containerd_host default
-          // (/run/containerd/containerd.sock) doesn't exist here, and the real one
-          // (/run/docker/containerd/containerd.sock) is root-only by design (dockerd's
-          // own private socket, not meant for external clients), not something
-          // SupplementaryGroups can grant access to. docker_only skips the
-          // containerd-dependent discovery path entirely, relying only on the Docker
-          // API (docker_host above) instead — everything on this host is Docker
-          // Compose-managed anyway, so nothing is lost.
-          docker_only = true
-        }
-
         prometheus.scrape "cadvisor" {
-          targets         = prometheus.exporter.cadvisor.default.targets
+          targets = [{
+            __address__ = "127.0.0.1:${toString cfg.cadvisorPort}",
+            instance    = "${cfg.hostname}",
+          }]
           forward_to      = [prometheus.relabel.cadvisor.receiver]
           // See the comment on prometheus.scrape "node" above.
           scrape_interval = "15s"
@@ -235,18 +255,13 @@ in
         extraFlags = [ "--disable-reporting" ];
       };
 
-      # Traefik group: read access to its log files. Docker group: cadvisorMetrics
-      # needs /var/run/docker.sock. Computed as one list rather than two separate
-      # mkIf blocks, since NixOS's merge behavior for serviceConfig.SupplementaryGroups
-      # contributions across multiple module definitions isn't something to rely on
-      # here — this is the only place either group gets added.
-      systemd.services.alloy.serviceConfig =
-        lib.mkIf (config.services.traefik.enable || cfg.cadvisorMetrics.enable)
-          {
-            SupplementaryGroups =
-              lib.optional config.services.traefik.enable "traefik"
-              ++ lib.optional cfg.cadvisorMetrics.enable "docker";
-          };
+      # Traefik group: read access to its log files. The `docker` group used to be
+      # added here for cadvisorMetrics, whose embedded exporter needed
+      # /var/run/docker.sock; that exporter is gone (see alloy_cadvisorMetrics above),
+      # so Alloy needs no access to Docker at all any more.
+      systemd.services.alloy.serviceConfig = lib.mkIf config.services.traefik.enable {
+        SupplementaryGroups = [ "traefik" ];
+      };
 
       # Make Docker attach the two compose labels to every journal entry, which is what
       # the containerlog relabel rules above turn into compose_project/compose_service.
@@ -292,6 +307,13 @@ in
         {
           assertion = cfg.containerlogs.enable -> cfg.journald.enable;
           message = "grafana-alloy.containerlogs.enable is implemented on top of grafana-alloy.journald.enable.";
+        }
+        {
+          assertion = cfg.cadvisorMetrics.enable -> config.services.cadvisor.enable;
+          message = ''
+            grafana-alloy.cadvisorMetrics.enable scrapes the host's own cAdvisor, so
+            services.cadvisor must be enabled (on this fleet, via docker.cadvisor.enable).
+          '';
         }
       ];
 
