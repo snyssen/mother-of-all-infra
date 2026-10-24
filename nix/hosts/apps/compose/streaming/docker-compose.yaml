@@ -32,7 +32,7 @@ services:
       - /mnt/bulk/streaming/media:/data/media
 
   audiobookshelf:
-    image: ghcr.io/advplyr/audiobookshelf:2.37.1@sha256:581d68b2a6fc7ebf58d81c878a9f387cbbc0d88ac9d37b298b9cee10168af85b
+    image: ghcr.io/advplyr/audiobookshelf:2.37.2@sha256:b897c33f05972fb1bf484f7487bc878fa91ec8691335c1db6e2929c3a7658efa
     restart: unless-stopped
     networks:
       - web
@@ -254,7 +254,7 @@ services:
       - audiomuse_redis_data:/data
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.3@sha256:301b2d5c280f43c6e79823337455b6b7d575d7b8040a6f150266804350c51eab
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
     restart: unless-stopped
     networks:
       - web
@@ -276,7 +276,7 @@ services:
       - audiomuse_redis
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.3@sha256:301b2d5c280f43c6e79823337455b6b7d575d7b8040a6f150266804350c51eab
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
     restart: unless-stopped
     networks:
       - db
