@@ -1,6 +1,6 @@
 services:
   ntfy:
-    image: binwiederhier/ntfy:v2.30.0@sha256:8563a39da2f5a47360618b2ab9200239c76b37f4145f6d627d9ab4368abd23f0
+    image: binwiederhier/ntfy:v2.34.0@sha256:901e14503d3f605f445be0e68f2ac71f0aa73391897ce6ceb599f8c48d8b3792
     restart: unless-stopped
     command:
       - serve

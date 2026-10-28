@@ -69,7 +69,7 @@ services:
     restart: unless-stopped
 
   dawarich_app:
-    image: freikin/dawarich:1.15.3@sha256:589e3606b11b61c3fa2d9661832cb73645a9b93a9cc7d807a071e2bc6c584498
+    image: freikin/dawarich:1.17.0@sha256:207dc86f8baa8fcf5b585f31186bf81b55added9c102a96f308d640e964ea60f
     container_name: dawarich_app
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
@@ -147,7 +147,7 @@ services:
         condition: service_healthy
         restart: true
   dawarich_sidekiq:
-    image: freikin/dawarich:1.15.3@sha256:589e3606b11b61c3fa2d9661832cb73645a9b93a9cc7d807a071e2bc6c584498
+    image: freikin/dawarich:1.17.0@sha256:207dc86f8baa8fcf5b585f31186bf81b55added9c102a96f308d640e964ea60f
     container_name: dawarich_sidekiq
     volumes:
       - /mnt/storage/dawarich/public:/var/app/public
@@ -181,7 +181,7 @@ services:
 
   #! This is also used by the mobilizon stack (yes, it's a bit dirty...)
   photon:
-    image: rtuszik/photon-docker:2.4.0@sha256:21549c60f9e6488fff3217e40429a652c4b445f374800333fe32859e47cec293
+    image: rtuszik/photon-docker:2.5.0@sha256:c5babeb0ac396b485822036cf3c69e54fb6c79d699328a4e042e11bbd6f73f1a
     container_name: photon
     environment:
       - UPDATE_STRATEGY=PARALLEL
