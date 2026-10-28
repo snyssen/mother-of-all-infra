@@ -1,6 +1,9 @@
 services:
   speedtest:
-    image: adolfintel/speedtest@sha256:1f828fe8337470d2ed5841176bfa6633fd94bda97261a636c35d0bef60a35270
+    # Upstream moved from adolfintel/speedtest to the librespeed org. Same project, but
+    # the old image was last built against PHP 7.4 (EOL, and unpatched for
+    # CVE-2026-109618 / CVE-2026-109619); this one tracks current PHP.
+    image: ghcr.io/librespeed/speedtest:6.3.1@sha256:bc34bf69b6c102b23ab81b6e77beb7cce321fb0d3be33ec6e80edef3e9dd8bab
     restart: unless-stopped
     container_name: speedtest
     environment:
@@ -10,7 +13,8 @@ services:
       - traefik.http.routers.speedtest.entryPoints=websecure
       - traefik.http.routers.speedtest.rule=Host(`speedtest.{{ main_domain }}`)
       - traefik.http.routers.speedtest.service=speedtest
-      - traefik.http.services.speedtest.loadBalancer.server.port=80
+      # This image serves on WEBPORT (default 8080); the old one served on 80.
+      - traefik.http.services.speedtest.loadBalancer.server.port=8080
     networks:
       - web
     mem_limit: 64m
