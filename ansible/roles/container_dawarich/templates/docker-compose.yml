@@ -3,7 +3,11 @@ services:
   dawarich_redis:
     image: redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6
     container_name: dawarich_redis
-    command: redis-server
+    command: >
+      redis-server
+      --save 900 1
+      --save 300 10
+      --appendonly no
     networks:
       - internal
     volumes:
@@ -19,6 +23,7 @@ services:
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine@sha256:894f570c0cf0664ed5576a8fd5d5bfb8fb1b19d592885b686c3a88c8bd90c41f
     container_name: dawarich_db
+    shm_size: 1G
     volumes:
       - "{{ docker_mounts_directory }}/dawarich/postgres:/var/lib/postgresql/data"
       - "{{ docker_mounts_directory }}/dawarich/shared:/var/shared"
@@ -75,6 +80,7 @@ services:
       - /mnt/storage/dawarich/public:/var/app/public
       - /mnt/storage/dawarich/watched:/var/app/tmp/imports/watched
       - /mnt/storage/dawarich/storage:/var/app/storage
+      - "{{ docker_mounts_directory }}/dawarich/postgres:/dawarich_db_data"
     networks:
       - internal
       - web
@@ -94,8 +100,10 @@ services:
     entrypoint: web-entrypoint.sh
     command: ["bin/rails", "server", "-p", "3000", "-b", "::"]
     restart: unless-stopped
-    environment: &dawarich_app_env
-      RAILS_ENV: development
+    stop_grace_period: 60s
+    environment:
+      RAILS_ENV: production
+      RAILS_LOG_TO_STDOUT: "true"
       REDIS_URL: redis://dawarich_redis:6379
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: dawarich
@@ -105,11 +113,11 @@ services:
       APPLICATION_HOSTS: "location.{{ main_domain }}"
       TIME_ZONE: "{{ iana_timezone }}"
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: "false"
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
+      SECRET_KEY_BASE: "{{ dawarich__secret_key_base }}"
       PHOTON_API_HOST: "photon:2322"
       PHOTON_API_USE_HTTPS: "false"
       STORE_GEODATA: "true"
@@ -129,6 +137,8 @@ services:
       SMTP_PASSWORD: "{{ smtp__pass }}"
       SMTP_FROM: "dawarich@{{ main_domain }}"
       SMTP_AUTHENTICATION: "plain"
+      SIDEKIQ_EMBEDDED: 'true'
+      WEB_CONCURRENCY: '0'
     healthcheck:
       test:
         [
@@ -144,38 +154,6 @@ services:
         condition: service_healthy
         restart: true
       dawarich_redis:
-        condition: service_healthy
-        restart: true
-  dawarich_sidekiq:
-    image: freikin/dawarich:1.17.0@sha256:207dc86f8baa8fcf5b585f31186bf81b55added9c102a96f308d640e964ea60f
-    container_name: dawarich_sidekiq
-    volumes:
-      - /mnt/storage/dawarich/public:/var/app/public
-      - /mnt/storage/dawarich/watched:/var/app/tmp/imports/watched
-      - /mnt/storage/dawarich/storage:/var/app/storage
-    networks:
-      - internal
-    stdin_open: true
-    tty: true
-    entrypoint: sidekiq-entrypoint.sh
-    command: ["sidekiq"]
-    restart: unless-stopped
-    environment: *dawarich_app_env
-    healthcheck:
-      test:
-        ["CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}"]
-      interval: 10s
-      retries: 30
-      start_period: 30s
-      timeout: 10s
-    depends_on:
-      dawarich_db:
-        condition: service_healthy
-        restart: true
-      dawarich_redis:
-        condition: service_healthy
-        restart: true
-      dawarich_app:
         condition: service_healthy
         restart: true
 
