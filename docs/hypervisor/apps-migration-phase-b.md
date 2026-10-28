@@ -37,7 +37,7 @@ Nothing here is destructive. All of it has to be true *before* anything is.
 
 - [ ] Every stack marked **Migrate** in the Current Stack Inventory is **Done**, not
       just the ones in daily use.
-- [ ] `nix flake check` passes and Garnix is green on `main`.
+- [ ] `nix flake check` passes and argunix is green on `main`.
 - [ ] `apps` has run for a sustained period on the test hypervisor with no unresolved
       issues.
 - [ ] The DNS migration (issue #153) is either done or has a decided, written plan —
