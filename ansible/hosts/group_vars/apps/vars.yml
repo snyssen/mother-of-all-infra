@@ -580,6 +580,7 @@ sharkey__meili_master_key: "{{ vault_sharkey__meili_master_key }}"
 
 dawarich__db_pass: "{{ vault_dawarich__db_pass }}"
 dawarich__db_dump_hc_id: "{{ vault_dawarich__db_dump_hc_id }}"
+dawarich__secret_key_base: "{{ vault_dawarich__secret_key_base }}"
 
 semaphore__db_pass: "{{ vault_semaphore__db_pass }}"
 semaphore__admin_pass: "{{ vault_semaphore__admin_pass }}"

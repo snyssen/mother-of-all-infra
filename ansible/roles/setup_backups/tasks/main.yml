@@ -44,14 +44,15 @@
   loop: "{{ autorestic__locations }}"
   register: autorestic__push_monitors
 
-- become: true
+- name: Autorestic setup
+  become: true
   block:
     - name: Autorestic setup
       ansible.builtin.include_role:
         name: fuzzymistborn.autorestic
       vars:
-        restic_download_latest_ver: false
-        restic_pinned_ver: 0.18.1
+        autorestic_restic_download_latest_ver: false
+        autorestic_restic_pinned_ver: 0.19.1
         autorestic_download_latest_ver: false
         autorestic_pinned_ver: 1.8.3
         autorestic_config_yaml: "{{ lookup('template', 'autorestic_config.yaml') | from_yaml }}"

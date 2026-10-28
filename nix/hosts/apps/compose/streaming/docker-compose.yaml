@@ -32,7 +32,7 @@ services:
       - /mnt/bulk/streaming/media:/data/media
 
   audiobookshelf:
-    image: ghcr.io/advplyr/audiobookshelf:2.37.1@sha256:581d68b2a6fc7ebf58d81c878a9f387cbbc0d88ac9d37b298b9cee10168af85b
+    image: ghcr.io/advplyr/audiobookshelf:2.37.2@sha256:b897c33f05972fb1bf484f7487bc878fa91ec8691335c1db6e2929c3a7658efa
     restart: unless-stopped
     networks:
       - web
@@ -106,7 +106,7 @@ services:
       - vpn
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:3.1.0@sha256:67887807b13ae025c0fe979da298347c8609969087ab064c81d8e9acc1e06bbf
+    image: lscr.io/linuxserver/lidarr:3.1.6@sha256:9fddcf5c613361edfce390d4e6b7c364282e71e90a40ce7793077fed788f6e63
     restart: unless-stopped
     environment:
       - PUID=33
@@ -121,7 +121,7 @@ services:
       - vpn
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.6.5@sha256:f9151e5bc1025c6d0a630d503210cdcb6bb55a7cc098562609d96a408d838902
+    image: lscr.io/linuxserver/prowlarr:2.7.0@sha256:04be30163fbaf48d6aeee7b5893c9f6614ffbad6d853971df0d6dcdf01c7f104
     restart: unless-stopped
     environment:
       - PUID=33
@@ -164,7 +164,7 @@ services:
       - vpn
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.56@sha256:37bb899c410f5a011582e8037ea7d2294be6c99d5c1fb9932a600bbbc00011a4
+    image: thewicklowwolf/lidatube:0.2.57@sha256:8b794f1510ead292e54ea0d8a2d1c385e04ba13f5efc9e1326c371626f312a0b
     restart: unless-stopped
     environment:
       - PUID=33
@@ -254,7 +254,7 @@ services:
       - audiomuse_redis_data:/data
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.3@sha256:301b2d5c280f43c6e79823337455b6b7d575d7b8040a6f150266804350c51eab
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
     restart: unless-stopped
     networks:
       - web
@@ -276,7 +276,7 @@ services:
       - audiomuse_redis
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.3@sha256:301b2d5c280f43c6e79823337455b6b7d575d7b8040a6f150266804350c51eab
+    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
     restart: unless-stopped
     networks:
       - db
