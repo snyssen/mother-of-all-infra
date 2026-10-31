@@ -46,7 +46,7 @@ services:
       - /var/lib/app-data/audiobookshelf/metadata:/metadata
 
   torrent:
-    image: lscr.io/linuxserver/transmission:4.1.3@sha256:ebefa8cb3e36a8ce667b7739f51b86c24e9fd07f367e9fee9f21df48ea4e6542
+    image: lscr.io/linuxserver/transmission:4.1.4@sha256:5b3c27a96c8a37c878a525ebf377a32032c3a3acfe845ecaa7c3eb10b09c2caa
     restart: unless-stopped
     network_mode: service:vpn
     environment:
@@ -164,7 +164,7 @@ services:
       - vpn
 
   lidatube:
-    image: thewicklowwolf/lidatube:0.2.57@sha256:8b794f1510ead292e54ea0d8a2d1c385e04ba13f5efc9e1326c371626f312a0b
+    image: thewicklowwolf/lidatube:0.2.58@sha256:0941061f6118dc280fff796b8d9d418766c51fab9761d91ea945f456bcc0b192
     restart: unless-stopped
     environment:
       - PUID=33
@@ -254,7 +254,7 @@ services:
       - audiomuse_redis_data:/data
 
   audiomuse_web:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
+    image: ghcr.io/neptunehub/audiomuse-ai:3.7.0@sha256:38ac3c2cdb1a82e89c1bd405e5865e2efe5ad924a53b8373f5989f964a7de110
     restart: unless-stopped
     networks:
       - web
@@ -276,7 +276,7 @@ services:
       - audiomuse_redis
 
   audiomuse_worker:
-    image: ghcr.io/neptunehub/audiomuse-ai:3.6.4@sha256:811f1f0bd0de97a1b4ab6601898297010da18fc957312b1ed3bb62990683630c
+    image: ghcr.io/neptunehub/audiomuse-ai:3.7.0@sha256:38ac3c2cdb1a82e89c1bd405e5865e2efe5ad924a53b8373f5989f964a7de110
     restart: unless-stopped
     networks:
       - db
