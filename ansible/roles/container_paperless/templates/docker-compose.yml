@@ -1,6 +1,6 @@
 services:
   paperless_redis:
-    image: redis:8.10.2@sha256:97ec88159e6d7cfb5ddef9015386087d58a912de80112f06ebdfa78fa5989901
+    image: redis:8.10.3@sha256:298641b35ac51aa999f9bb85707d6681fe635ce59cda51886a0b6adc1da37b8e
     container_name: paperless_redis
     networks:
       - internal
@@ -10,7 +10,7 @@ services:
     mem_limit: 12m
 
   paperless:
-    image: ghcr.io/paperless-ngx/paperless-ngx:3.3.4@sha256:9bc6e8248891bcfa6f52fffe8b81e4ea8cae75790c3ec1b9906961a7ba55c969
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.4.1@sha256:1a08d8dfc2b51a08de09652dd86ad4d0c611c362382f944533ad38b73125fbc4
     container_name: paperless
     restart: unless-stopped
     networks:
@@ -70,7 +70,7 @@ services:
     mem_limit: 2g
 
   paperless_gotenberg:
-    image: docker.io/gotenberg/gotenberg:8.38@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
+    image: docker.io/gotenberg/gotenberg:8.39@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5
     container_name: paperless_gotenberg
     restart: unless-stopped
     networks:
