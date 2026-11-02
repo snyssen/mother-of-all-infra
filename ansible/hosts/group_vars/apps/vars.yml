@@ -287,7 +287,169 @@ autorestic__backends: "{{ vault_autorestic__backends }}"
 #     hooks:
 #       before:
 #         - some command
-autorestic__locations: "{{ vault_autorestic__locations }}"
+autorestic__locations:
+  - name: postgres
+    from:
+      - /mnt/storage/backups/postgres
+      - /mnt/storage/backups/immich
+      - /mnt/storage/backups/dawarich
+      - /mnt/storage/backups/mobilizon
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+    hooks:
+      before:
+        - docker exec postgres_backups /backup.sh || echo "Could not dump
+          database(s) from postgres_backups; continuing anyway."
+        - docker exec immich_db_dumper /backup.sh || echo "Could not dump
+          database(s) from immich_db_dumper; continuing anyway."
+        - docker exec dawarich_db_dumper /backup.sh || echo "Could not dump
+          database(s) from dawarich_db_dumper; continuing anyway."
+        - docker exec mobilizon_db_dumper /backup.sh || echo "Could not dump
+          database(s) from mobilizon_db_dumper; continuing anyway."
+  - name: nextcloud
+    from:
+      - /mnt/storage/nextcloud
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: photos
+    from:
+      - /mnt/storage/photos
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: recipes
+    from:
+      - /mnt/storage/recipes
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: streaming-config
+    from:
+      - "{{ docker_mounts_directory }}/jellyfin"
+      - "{{ docker_mounts_directory }}/audiobookshelf"
+      - "{{ docker_mounts_directory }}/sonarr/config"
+      - "{{ docker_mounts_directory }}/radarr/config"
+      - "{{ docker_mounts_directory }}/lidarr/config"
+      - "{{ docker_mounts_directory }}/prowlarr/config"
+      - "{{ docker_mounts_directory }}/bazarr/config"
+      - "{{ docker_mounts_directory }}/lidatube/config"
+      - "{{ docker_mounts_directory }}/lidify/config"
+      - "{{ docker_mounts_directory }}/pinchflat/config"
+      - "{{ docker_mounts_directory }}/peertube/config"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: audiobooks
+    from:
+      - /mnt/storage/streaming/media/audiobooks
+      - /mnt/storage/streaming/media/audiobooks_vi
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: movies
+    from:
+      - /mnt/storage/streaming/media/movies
+    to:
+      - backup-snyssen-be
+  - name: music
+    from:
+      - /mnt/storage/streaming/media/music
+      - /mnt/storage/streaming/media/music_vi
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: tv
+    from:
+      - /mnt/storage/streaming/media/tv
+    to:
+      - backup-snyssen-be
+  - name: minecraft
+    from:
+      - /mnt/storage/minecraft/data
+      - /mnt/storage/mc-usw/data
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: foundryvtt
+    from:
+      - "{{ docker_mounts_directory }}/foundryvtt"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: monitoring
+    from:
+      - "{{ docker_mounts_directory }}/uptime"
+      - "{{ docker_mounts_directory }}/grafana"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: paperless
+    from:
+      - "{{ docker_mounts_directory }}/paperless/data"
+      - /mnt/storage/paperless/media
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  # backup of export from https://docs.paperless-ngx.com/administration/#exporter
+  # This makes it so we can have all files browsable outside of paperless, useful in case of DR
+  - name: paperless-export
+    from:
+      - /mnt/storage/paperless/export
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: syncthing
+    from:
+      - "{{ docker_mounts_directory }}/syncthing/config"
+      - /mnt/storage/syncthing/data
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: unifi
+    from:
+      - "{{ docker_mounts_directory }}/unifi"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: actual-budget
+    from:
+      - "{{ docker_mounts_directory }}/actual-budget"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: sharkey
+    from:
+      - "{{ docker_mounts_directory }}/sharkey"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: ntfy
+    from:
+      - "{{ docker_mounts_directory }}/ntfy/auth"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: matrix
+    from:
+      - "/mnt/storage/matrix/synapse"
+      - "{{ docker_mounts_directory }}/matrix/maubot/dbs"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: tailscale-dns
+    from:
+      - "{{ docker_mounts_directory }}/ts_dns/dns"
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
+  - name: mobilizon
+    from:
+      - /mnt/storage/mobilizon/uploads
+    to:
+      - backup-snyssen-be
+      - snyssen-be-autorestic
 
 minecraft__forbid_cracked: true
 minecraft__view_distance: 16
