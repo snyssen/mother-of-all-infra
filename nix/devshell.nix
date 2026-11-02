@@ -15,6 +15,7 @@ pkgs.mkShell {
     age
     ssh-to-age
     sops
+    yq-go # scripts/sops-from-vault.sh
     openstackclient
   ];
 

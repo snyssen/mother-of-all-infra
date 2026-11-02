@@ -44,6 +44,10 @@ sops-update-keys file:
 sops-update-keys-all *flags:
   scripts/sops-update-keys-all.sh {{flags}}
 
+# Copy Ansible Vault secrets into a SOPS file without printing them (mappings: vault_var=sops/key/path)
+sops-from-vault file +mappings:
+  scripts/sops-from-vault.sh {{file}} {{mappings}}
+
 # Run mkdocs website locally
 run-docs:
   nix run .#docs
