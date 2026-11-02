@@ -1,0 +1,16 @@
+# Mirrors the legacy container_speedtest role (LibreSpeed). Image pin is carried over
+# unchanged and is Renovate's to bump. The role's .env.j2 (HOSTNAME=) is not carried
+# over: its compose file never loaded it.
+services:
+  speedtest:
+    image: ghcr.io/librespeed/speedtest:6.3.1@sha256:bc34bf69b6c102b23ab81b6e77beb7cce321fb0d3be33ec6e80edef3e9dd8bab
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+    networks:
+      - web
+    mem_limit: 64m
+
+networks:
+  web:
+    external: true

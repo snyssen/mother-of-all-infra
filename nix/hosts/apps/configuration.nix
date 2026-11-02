@@ -45,6 +45,9 @@
     ./compose/nextcloud/default.nix
     ./compose/actual-budget/default.nix
     ./compose/recipes/default.nix
+    ./compose/speedtest/default.nix
+    ./compose/dashboard/default.nix
+    ./compose/personal-website/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

@@ -1,0 +1,13 @@
+# Mirrors the legacy container_personal_website role. Image pin is carried over
+# unchanged and is Renovate's to bump.
+services:
+  personal-website:
+    image: ghcr.io/snyssen/personal-website:2.12.5@sha256:bcf74c03e5e724ac29aba0c788691dbc05133411083b68d6841c3f1743562c87
+    restart: unless-stopped
+    networks:
+      - web
+    mem_limit: 512m
+
+networks:
+  web:
+    external: true

@@ -1,0 +1,22 @@
+# Mirrors the legacy container_dashboard role (webb-launcher). Image pin is carried over
+# unchanged and is Renovate's to bump.
+services:
+  dashboard:
+    image: ghcr.io/snyssen/webb-launcher:3.0.12@sha256:aab14a83e7b8df3856317c4560fbf8432983b8ab7c3df3c39671aab62da2f805
+    restart: unless-stopped
+    networks:
+      - web
+    # SHORTCUTS is a single line of JSON full of double quotes (and one apostrophe), so
+    # it comes from a separate env file read in compose's `raw` format, which takes
+    # every value verbatim. Through the stack's systemd-style environment file, the
+    # quotes would be parsed away before compose ever saw them. See default.nix.
+    env_file:
+      - path: ${DASHBOARD_CONTENT_ENV_FILE}
+        format: raw
+    environment:
+      - OPENWEATHER_API_KEY
+    mem_limit: 48m
+
+networks:
+  web:
+    external: true
