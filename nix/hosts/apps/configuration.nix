@@ -44,6 +44,7 @@
     ./compose/paperless/default.nix
     ./compose/nextcloud/default.nix
     ./compose/actual-budget/default.nix
+    ./compose/recipes/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

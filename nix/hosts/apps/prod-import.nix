@@ -240,6 +240,19 @@ in
       ];
     };
 
+    # Media only — prod's staticfiles are rebuilt by collectstatic on every start, so
+    # there is nothing in them worth importing. Pair with `postgres-restore recipes`.
+    recipes = fromLocation "recipes" // {
+      stopUnits = [ "compose-recipes.service" ];
+      paths = [
+        {
+          from = "/mnt/storage/recipes/mediafiles";
+          to = "/mnt/bulk/recipes/mediafiles";
+          owner = "0:0";
+        }
+      ];
+    };
+
     # Its own autorestic location on prod, so its own group here. Roughly doubles what
     # `paperless` above restores (document_exporter writes a full copy of every
     # original), which is why it is separately selectable — run it on its own, or skip

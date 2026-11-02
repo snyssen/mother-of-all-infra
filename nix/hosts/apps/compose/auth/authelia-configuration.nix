@@ -123,10 +123,11 @@
   access_control:
     default_policy: two_factor
     rules:
-      # Django admin, sysadmins only. `recipes` shares this rule on prod and should be
-      # added here when that stack migrates.
+      # Django admin, sysadmins only — both apps are Django, and both share this pair of
+      # rules on prod too.
       - domain:
           - "paperless.${config.domains.main}"
+          - "recipes.${config.domains.main}"
         policy: two_factor
         subject:
           - ["group:sysadmin"]
@@ -135,6 +136,7 @@
           - '^/admin.*$'
       - domain:
           - "paperless.${config.domains.main}"
+          - "recipes.${config.domains.main}"
         policy: bypass
 
   identity_providers:
@@ -178,6 +180,14 @@
             - policy: two_factor
               subject:
                 - ["group:paperless_user"]
+        # one_factor, carried over from the legacy config unchanged. The group already
+        # exists — see lldap-bootstrap/group-configs/recipes_user.json.
+        recipes_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:recipes_user"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -315,6 +325,22 @@
             - profile
             - groups
             - email
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_basic
+        # Same callback shape as Paperless (both are allauth with provider_id
+        # `authelia`), trailing slash included. client_secret_basic is what the legacy
+        # entry got by leaving the method unset; Tandoor's allauth worked against it.
+        - client_name: Recipes
+          client_id: "${config.sops.placeholder."compose-stacks/recipes/oidc/client_id"}"
+          client_secret: "${config.sops.placeholder."compose-stacks/recipes/oidc/client_secret_hash"}"
+          authorization_policy: recipes_policy
+          redirect_uris:
+            - "https://recipes.${config.domains.main}/accounts/oidc/authelia/login/callback/"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_basic
 ''

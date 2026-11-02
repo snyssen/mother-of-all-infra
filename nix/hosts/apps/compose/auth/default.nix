@@ -143,6 +143,7 @@ in
       ../../data/immich.yaml
       ../../data/nextcloud.yaml
       ../../data/paperless.yaml
+      ../../data/recipes.yaml
       ../../data/streaming.yaml
       config.sops.templates."compose-auth.env".content
       config.sops.templates."authelia-configuration.yml".content

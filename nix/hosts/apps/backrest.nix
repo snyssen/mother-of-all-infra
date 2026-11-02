@@ -205,6 +205,15 @@ in
         paths = [ "/var/lib/app-data/actual-budget" ];
         stopUnits = [ "compose-actual-budget.service" ];
       };
+      # Uploaded recipe images only. Narrower than prod's location, which takes all of
+      # /mnt/storage/recipes: staticfiles is no longer mounted (see
+      # compose/recipes/docker-compose.yaml), and the recipes themselves live in the
+      # central Postgres, covered by `databases`. Nothing to stop: plain image files,
+      # no database, and prod doesn't stop the stack for them either.
+      recipes = mkPlan {
+        paths = [ "/mnt/bulk/recipes/mediafiles" ];
+        stopUnits = [ ];
+      };
     };
   };
 

@@ -1,0 +1,40 @@
+# Mirrors the legacy container_recipes role (Tandoor). Image pin is carried over
+# unchanged and is Renovate's to bump.
+#
+# The legacy /opt/recipes/staticfiles mount is deliberately dropped: boot.sh runs
+# collectstatic on every start, so the directory is rebuilt from the image each time —
+# prod even has to exclude it from snapraid because it churns so much. Left inside the
+# container, it simply follows the image version.
+services:
+  recipes:
+    image: vabene1111/recipes:2.7.1@sha256:10e3d2cef6b4eaa24a9c548a25dc892ce70266fc888bd85d4b349eb5a7143945
+    restart: unless-stopped
+    volumes:
+      - /mnt/bulk/recipes/mediafiles:/opt/recipes/mediafiles
+    networks:
+      - db
+      - web
+    environment:
+      SECRET_KEY: ${RECIPES_SECRET_KEY}
+      TZ: Europe/Brussels
+      ALLOWED_HOSTS: ${RECIPES_HOST}
+      # OIDC. Only the atoms come from the environment file; the JSON structure stays
+      # here. `provider_id: authelia` is load-bearing, exactly as in paperless: it is
+      # what allauth stores in socialaccount_socialaccount rows and what the callback
+      # URL registered with Authelia is built from.
+      SOCIAL_PROVIDERS: allauth.socialaccount.providers.openid_connect
+      SOCIALACCOUNT_PROVIDERS: '{"openid_connect":{"OAUTH_PKCE_ENABLED":true,"APPS":[{"provider_id":"authelia","name":"Authelia","client_id":"${RECIPES_OIDC_CLIENT_ID}","secret":"${RECIPES_OIDC_CLIENT_SECRET}","settings":{"server_url":"${RECIPES_OIDC_SERVER_URL}"}}]}}'
+      # The central `databases` stack's PostgreSQL, reached over the shared `db`
+      # network; role and database are both `recipes`, from that stack's dbNames.
+      DB_ENGINE: django.db.backends.postgresql
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: recipes
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: recipes
+      POSTGRES_PASSWORD: ${RECIPES_DB_PASSWORD}
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
