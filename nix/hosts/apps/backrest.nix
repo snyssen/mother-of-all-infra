@@ -199,6 +199,12 @@ in
         paths = [ "/mnt/bulk/photos" ];
         stopUnits = [ "compose-immich.service" ];
       };
+      # Every budget file plus the server's account/user database, all SQLite — hence
+      # stopping the stack rather than snapshotting files mid-write.
+      actual-budget = mkPlan {
+        paths = [ "/var/lib/app-data/actual-budget" ];
+        stopUnits = [ "compose-actual-budget.service" ];
+      };
     };
   };
 

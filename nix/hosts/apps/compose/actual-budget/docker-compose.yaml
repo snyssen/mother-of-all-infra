@@ -1,0 +1,23 @@
+# Mirrors the legacy container_actual-budget role. Image pin is carried over unchanged
+# and is Renovate's to bump.
+services:
+  actual-budget:
+    image: docker.io/actualbudget/actual-server:26.10.0@sha256:24645e971da6bb1a1f953d6859e307a0b29be1e8b4130a35b3220c209b5b860c
+    restart: unless-stopped
+    environment:
+      - ACTUAL_OPENID_ENFORCE=true
+      # Domain-dependent and secret values are forwarded bare rather than via ${VAR}
+      # compose interpolation, same as ntfy's docker-compose.yaml. The env file
+      # (default.nix) supplies all of these.
+      - ACTUAL_OPENID_DISCOVERY_URL
+      - ACTUAL_OPENID_CLIENT_ID
+      - ACTUAL_OPENID_CLIENT_SECRET
+      - ACTUAL_OPENID_SERVER_HOSTNAME
+    networks:
+      - web
+    volumes:
+      - /var/lib/app-data/actual-budget:/data
+
+networks:
+  web:
+    external: true

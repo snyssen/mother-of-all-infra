@@ -227,6 +227,19 @@ in
       ];
     };
 
+    # A straight prefix swap. root on both sides: the server runs as root in its
+    # container, whatever owner the legacy role gave the directory itself.
+    actual-budget = fromLocation "actual-budget" // {
+      stopUnits = [ "compose-actual-budget.service" ];
+      paths = [
+        {
+          from = "/home/snyssen/data/actual-budget";
+          to = "/var/lib/app-data/actual-budget";
+          owner = "0:0";
+        }
+      ];
+    };
+
     # Its own autorestic location on prod, so its own group here. Roughly doubles what
     # `paperless` above restores (document_exporter writes a full copy of every
     # original), which is why it is separately selectable — run it on its own, or skip

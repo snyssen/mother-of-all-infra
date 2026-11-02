@@ -299,4 +299,22 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        # client_secret_basic, not the client_secret_post most clients here override
+        # to: Actual sets no auth method, so openid-client falls back to its default of
+        # basic — which is also what the legacy client entry used.
+        - client_name: Actual Budget
+          client_id: "${config.sops.placeholder."compose-stacks/actual-budget/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/actual-budget/oidc/client_secret_hash"
+          }"
+          authorization_policy: two_factor
+          redirect_uris:
+            - "https://actual.${config.domains.main}/openid/callback"
+          scopes:
+            - openid
+            - profile
+            - groups
+            - email
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_basic
 ''

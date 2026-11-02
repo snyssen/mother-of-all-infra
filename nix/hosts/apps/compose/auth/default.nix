@@ -135,6 +135,7 @@ in
 
   compose-stacks.stacks.auth = {
     restartTriggers = [
+      ../../data/actual-budget.yaml
       ../../data/auth.yaml
       ../../data/databases.yaml
       ../../data/common.yaml
