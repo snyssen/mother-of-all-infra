@@ -422,6 +422,7 @@ autorestic__locations:
   - name: sharkey
     from:
       - "{{ docker_mounts_directory }}/sharkey"
+      - /mnt/storage/sharkey/files
     to:
       - backup-snyssen-be
       - snyssen-be-autorestic
@@ -435,12 +436,6 @@ autorestic__locations:
     from:
       - "/mnt/storage/matrix/synapse"
       - "{{ docker_mounts_directory }}/matrix/maubot/dbs"
-    to:
-      - backup-snyssen-be
-      - snyssen-be-autorestic
-  - name: tailscale-dns
-    from:
-      - "{{ docker_mounts_directory }}/ts_dns/dns"
     to:
       - backup-snyssen-be
       - snyssen-be-autorestic
