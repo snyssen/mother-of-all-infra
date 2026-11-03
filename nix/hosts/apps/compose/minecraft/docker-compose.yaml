@@ -1,0 +1,102 @@
+# Mirrors the legacy container_minecraft role: two Paper servers behind mc-router, which
+# picks one by the hostname the client connects with. See
+# https://docker-minecraft-server.readthedocs.io/en/latest/. Image pins are carried over
+# unchanged and are Renovate's to bump.
+#
+# Heap sizes and memory limits come from default.nix rather than being written here, so
+# they can follow the hardware (the test VM cannot fit prod's 8G per server).
+services:
+  minecraft:
+    image: itzg/minecraft-server:2026.10.1@sha256:d12aed7e35981dfe259b60fbfee77d23a19b5898a7a31dca298d18b47b7b5776
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+      # Prometheus scrapes the exporter plugin here (minecraft:9940).
+      - monitoring
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.20.2"
+      TYPE: PAPER
+      MEMORY: ${MC_MAIN_MEMORY}
+      ENABLE_AUTOPAUSE: "FALSE" # TODO: Enable once I find a solution. Probably doesn't detect connection because routed through mc-router and listening on wrong interface
+      MAX_TICK_TIME: "-1"
+      MOTD: "Find the Livemap at https://mc.${MAIN_DOMAIN} !"
+      DIFFICULTY: easy
+      WHITELIST: ${WHITELIST}
+      OVERRIDE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      OPS: ${OPS}
+      OVERRIDE_OPS: "TRUE"
+      MAX_PLAYERS: "5"
+      VIEW_DISTANCE: "16"
+      GAMEMODE: survival
+      ONLINE_MODE: "true"
+      SERVER_NAME: mc.${MAIN_DOMAIN}
+      SPAWN_PROTECTION: "0"
+      PLUGINS: |
+        https://cdn.modrinth.com/data/fRQREgAc/versions/QtTWJjW6/Dynmap-3.7-beta-6-spigot.jar
+        https://github.com/sladkoff/minecraft-prometheus-exporter/releases/download/v2.5.0/minecraft-prometheus-exporter-2.5.0.jar
+        https://cdn.modrinth.com/data/E1Bps82F/versions/oMB4fXsl/TimeManager-1.8.2.jar
+    # Kept so `docker attach` reaches the server console.
+    tty: true
+    stdin_open: true
+    volumes:
+      - /mnt/bulk/minecraft/data:/data
+    mem_limit: ${MC_MAIN_MEM_LIMIT}
+
+  mc-usw:
+    image: itzg/minecraft-server:2026.10.1@sha256:d12aed7e35981dfe259b60fbfee77d23a19b5898a7a31dca298d18b47b7b5776
+    restart: unless-stopped
+    networks:
+      - internal
+      - web
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.20.2"
+      TYPE: PAPER
+      MEMORY: ${MC_USW_MEMORY}
+      MAX_TICK_TIME: "-1"
+      MOTD: Ultimate Survival World by Trixy Blox - vanilla
+      DIFFICULTY: normal
+      WHITELIST: ${WHITELIST}
+      OVERRIDE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      OPS: ${OPS}
+      OVERRIDE_OPS: "TRUE"
+      MAX_PLAYERS: "2"
+      VIEW_DISTANCE: "16"
+      SERVER_NAME: usw.${MAIN_DOMAIN}
+      SPAWN_PROTECTION: "0"
+      DATAPACKS: |
+        https://cdn.modrinth.com/data/VHSdL301/versions/eaYoRkOM/KeepSomeInventory-v1.4.2.zip
+      PLUGINS: |
+        https://cdn.modrinth.com/data/fRQREgAc/versions/QtTWJjW6/Dynmap-3.7-beta-6-spigot.jar
+    tty: true
+    stdin_open: true
+    volumes:
+      - /mnt/bulk/mc-usw/data:/data
+    mem_limit: ${MC_USW_MEM_LIMIT}
+
+  # Reached through Traefik's `minecraft` TCP entrypoint, as on prod, so the
+  # reverse-proxy stack stays the one place listing every exposed port. Traefik can't
+  # route the game protocol by name (it isn't TLS), hence HostSNI(`*`) on its side and
+  # mc-router picking the server from the hostname in the handshake.
+  mc-router:
+    image: itzg/mc-router:1.49.0@sha256:76697861c41e7d64880accf0d25e953a3c2d871e6f5f0922d7c830ffcb2b75ab
+    restart: unless-stopped
+    depends_on:
+      - minecraft
+      - mc-usw
+    command: --mapping=mc.${MAIN_DOMAIN}=minecraft:25565,usw.${MAIN_DOMAIN}=mc-usw:25565
+    networks:
+      - internal
+      - web
+    mem_limit: 16m
+
+networks:
+  internal:
+  monitoring:
+    external: true
+  web:
+    external: true

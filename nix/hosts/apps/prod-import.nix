@@ -240,6 +240,24 @@ in
       ];
     };
 
+    # Both worlds, from prod's single `minecraft` location. uid 1000 is the image's
+    # runtime user on both sides.
+    minecraft = fromLocation "minecraft" // {
+      stopUnits = [ "compose-minecraft.service" ];
+      paths = [
+        {
+          from = "/mnt/storage/minecraft/data";
+          to = "/mnt/bulk/minecraft/data";
+          owner = "1000:1000";
+        }
+        {
+          from = "/mnt/storage/mc-usw/data";
+          to = "/mnt/bulk/mc-usw/data";
+          owner = "1000:1000";
+        }
+      ];
+    };
+
     # A straight prefix swap. uid 1000 on both sides — the image's `node` user, which on
     # prod happened to be the deploy user too.
     foundryvtt = fromLocation "foundryvtt" // {

@@ -20,9 +20,14 @@ scrape_configs:
   - job_name: "ntfy"
     static_configs:
       - targets: ["ntfy:9090"]
+  # minecraft-prometheus-exporter plugin on the main server (not mc-usw, which doesn't
+  # run it), reached over the shared `monitoring` network.
+  - job_name: "minecraft"
+    static_configs:
+      - targets: ["minecraft:9940"]
 
   # Deferred until the corresponding host/stack exists on this migration:
-  # minecraft, jellyfin, healthchecks.io, authelia, backup.snyssen.be rest_server,
+  # jellyfin, healthchecks.io, authelia, backup.snyssen.be rest_server,
   # hass. Cross-host metrics/logs (other Nix hosts, the still-live Ubuntu box)
   # are no longer deferred — node/cadvisor metrics arrive via Alloy's remote_write
   # push (see grafana-alloy.nix) from any tailnet host, not scraped here.

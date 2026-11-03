@@ -32,6 +32,11 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
 
+      # Every port this host exposes to the outside goes through an entrypoint here,
+      # even non-HTTP ones, so this file (and the `ports` list below) is the one place
+      # that says what is open. Routers for them live in each stack's dynamicConfig.
+      - "--entryPoints.minecraft.address=:25565"
+
       - "--entryPoints.websecure.address=:443"
       - "--entrypoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust ingress host's tailnet IP
       - "--entrypoints.websecure.http.tls=true"
@@ -90,6 +95,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "25565:25565" # Minecraft, routed to mc-router (compose/minecraft)
     # argunix is a native process on the host, not a container — reachable from
     # inside Traefik via the docker-provided host gateway rather than a docker network.
     extra_hosts:

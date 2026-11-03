@@ -50,6 +50,7 @@
     ./compose/personal-website/default.nix
     ./compose/bentopdf/default.nix
     ./compose/foundryvtt/default.nix
+    ./compose/minecraft/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

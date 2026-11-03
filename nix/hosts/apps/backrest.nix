@@ -216,6 +216,15 @@ in
         paths = [ "/var/lib/app-data/foundryvtt" ];
         stopUnits = [ "compose-foundryvtt.service" ];
       };
+      # Mirrors prod's `minecraft` location: both worlds, dynmap tiles included. Stopped
+      # so region files aren't copied mid-save.
+      minecraft = mkPlan {
+        paths = [
+          "/mnt/bulk/minecraft/data"
+          "/mnt/bulk/mc-usw/data"
+        ];
+        stopUnits = [ "compose-minecraft.service" ];
+      };
       recipes = mkPlan {
         paths = [ "/mnt/bulk/recipes/mediafiles" ];
         stopUnits = [ ];

@@ -243,6 +243,13 @@ setup to be "production" rather than "a test VM":
       (disabled during testing so it would not act on absent media).
 - [ ] `nix/hosts/apps/compose/nextcloud/default.nix` — `autostart = false` back to true,
       once its data and database are both in.
+- [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
+      `memory` binding: 8G heap / 8.2g limit for both servers (shrunk to fit the 8 GiB
+      test VM).
+- [ ] `nix/hosts/ingress/traefik-configuration.nix` — `appsServerIp` is the legacy box's
+      tailnet address, and it is what the TCP proxy (Minecraft, 25565) forwards to.
+      Point it at the new `apps` VM's tailnet IP. The HTTP backends are unaffected: they
+      resolve by hostname, so they follow DNS.
 - [ ] Grafana Alloy dual-shipping: nine configurations currently push to **both** the
       legacy and the new Prometheus/Loki. Drop the `*.snyssen1.xyz` entries when
       `domains.main` flips, and the legacy `*.snyssen.be` entries once the old box is
