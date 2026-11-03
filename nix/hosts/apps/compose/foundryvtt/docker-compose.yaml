@@ -1,0 +1,30 @@
+# Mirrors the legacy container_foundryvtt role (felddy/foundryvtt). Image pin is carried
+# over unchanged and is Renovate's to bump.
+services:
+  foundryvtt:
+    image: felddy/foundryvtt:13@sha256:41d518782f2fabbec887413c56da8ef8175c22fb5a75fde45382661443a8ae6b
+    restart: unless-stopped
+    volumes:
+      # Worlds, modules, systems and the license — plus container_cache, where the
+      # entrypoint keeps the Foundry release it downloads with the account below.
+      - /var/lib/app-data/foundryvtt:/data
+    environment:
+      - FOUNDRY_PROXY_PORT=443
+      - FOUNDRY_PROXY_SSL=true
+      - FOUNDRY_MINIFY_STATIC_FILES=true
+      - FOUNDRY_TELEMETRY=true
+      - TZ=Europe/Brussels
+      # Domain-dependent and secret values are forwarded bare, same as ntfy. The env
+      # file (default.nix) supplies all of these.
+      - FOUNDRY_USERNAME
+      - FOUNDRY_PASSWORD
+      - FOUNDRY_ADMIN_KEY
+      - FOUNDRY_HOSTNAME
+      - FOUNDRY_LOCAL_HOSTNAME
+    networks:
+      - web
+    mem_limit: 256m
+
+networks:
+  web:
+    external: true

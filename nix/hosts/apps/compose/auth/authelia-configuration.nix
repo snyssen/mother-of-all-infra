@@ -141,6 +141,12 @@
       - domain:
           - "pdf.${config.domains.main}"
         policy: one_factor
+      # FoundryVTT, players only. Carried over from prod.
+      - domain:
+          - "dnd.${config.domains.main}"
+        policy: one_factor
+        subject:
+          - ["group:foundry_player"]
       # Admin tools behind forwardAuth. routing is the Traefik dashboard (served from
       # the argunix fragment in compose/reverse-proxy).
       - domain:

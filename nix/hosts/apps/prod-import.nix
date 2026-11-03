@@ -240,6 +240,19 @@ in
       ];
     };
 
+    # A straight prefix swap. uid 1000 on both sides — the image's `node` user, which on
+    # prod happened to be the deploy user too.
+    foundryvtt = fromLocation "foundryvtt" // {
+      stopUnits = [ "compose-foundryvtt.service" ];
+      paths = [
+        {
+          from = "/home/snyssen/data/foundryvtt";
+          to = "/var/lib/app-data/foundryvtt";
+          owner = "1000:1000";
+        }
+      ];
+    };
+
     # Media only — prod's staticfiles are rebuilt by collectstatic on every start, so
     # there is nothing in them worth importing. Pair with `postgres-restore recipes`.
     recipes = fromLocation "recipes" // {
