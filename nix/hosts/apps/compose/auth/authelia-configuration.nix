@@ -107,29 +107,83 @@
       password: "${config.sops.placeholder."smtp/password"}"
       sender: "Authelia <auth@${config.sops.placeholder."smtp/from_domain"}>"
 
-  # two_factor is the real default: it is what every forwardAuth-gated route without
-  # a matching rule below resolves to (prometheus, uptime, the *arr apps, backrest...).
+  # Deny by default, as on prod: a forwardAuth-gated route is reachable only if a rule
+  # below names its host. That makes adding a gated route a two-place change (its
+  # stack's dynamicConfig *and* a rule here), but the failure mode of forgetting is a
+  # route nobody can open, noticed on first use — instead of an admin tool quietly open
+  # to every account in LDAP, which is what a permissive default turns the same
+  # mistake into. Rules for prod hosts not yet migrated (dnd, speedtest-tracker,
+  # garage...) are added with their stacks, not ahead of them.
   #
-  # Rules are first-match-wins, so the order of the two paperless entries matters and
-  # the specific one has to come first. Note that `authelia validate-config` does NOT
-  # check `policy:` values here (verified against 4.39.28: a rule with `policy:
-  # bypasss` validates clean), so a typo in one of these is silent — unlike the same
-  # typo in a client's `authorization_policy`, which is rejected. Together they reproduce the legacy config: the
-  # middleware on paperless' router exists *only* to keep Django's /admin away from
-  # non-sysadmins, and everything else on that host is handed straight through to
-  # Paperless, which does its own OIDC login. Without the bypass, the middleware would
-  # put a second, redundant Authelia login in front of the OIDC flow and break the
-  # mobile/API clients, which have no browser session to offer.
+  # Only forwardAuth goes through these rules. OIDC logins are governed by each
+  # client's own authorization_policy further down — the admin tools that log in that
+  # way (Grafana, pgAdmin, CrowdSec) are restricted there.
+  #
+  # Rules are first-match-wins, so wherever two rules share a host, the narrower one
+  # comes first. Note that `authelia validate-config` does NOT check `policy:` values
+  # here (verified against 4.39.28: a rule with `policy: bypasss` validates clean), so
+  # a typo in one of these is silent — unlike the same typo in a client's
+  # `authorization_policy`, which is rejected.
   access_control:
-    default_policy: two_factor
+    default_policy: deny
+    # The same three ranges as the `lan-whitelist` middleware (compose/monitoring):
+    # LAN, the whole Docker pool, and the tailnet. Authelia sees the real client
+    # address through Traefik's forwarded headers.
+    networks:
+      - name: internal
+        networks:
+          - "192.168.1.0/24"
+          - "172.16.0.0/12"
+          - "100.64.0.0/10"
     rules:
       # Open to any registered user with a single factor, carried over from prod's
       # "general services" rule.
       - domain:
           - "pdf.${config.domains.main}"
         policy: one_factor
-      # Django admin, sysadmins only — both apps are Django, and both share this pair of
-      # rules on prod too.
+      # Admin tools behind forwardAuth. routing is the Traefik dashboard (served from
+      # the argunix fragment in compose/reverse-proxy).
+      - domain:
+          - "routing.${config.domains.main}"
+          - "prometheus.${config.domains.main}"
+          - "uptime.${config.domains.main}"
+          - "backrest.${config.domains.main}"
+          - "crowdsec-ui.${config.domains.main}"
+        policy: two_factor
+        subject:
+          - ["group:sysadmin"]
+      # Machine-to-machine calls from the *arr apps to the download clients, and from
+      # lidatube to lidarr, carry no session — let them through from inside. On this
+      # host most of these share the vpn container's network namespace and never touch
+      # Traefik, but configs restored from prod may still use the public names. Must
+      # come before the rule below, which matches the same hosts.
+      - domain:
+          - "torrent.${config.domains.main}"
+          - "usenet.${config.domains.main}"
+          - "lidarr.${config.domains.main}"
+        policy: bypass
+        networks:
+          - internal
+      - domain:
+          - "torrent.${config.domains.main}"
+          - "usenet.${config.domains.main}"
+          - "sonarr.${config.domains.main}"
+          - "radarr.${config.domains.main}"
+          - "lidarr.${config.domains.main}"
+          - "prowlarr.${config.domains.main}"
+          - "bazarr.${config.domains.main}"
+          - "lidatube.${config.domains.main}"
+          - "lidify.${config.domains.main}"
+          - "yt.${config.domains.main}"
+        policy: two_factor
+        subject:
+          - ["group:sysadmin"]
+          - ["group:media_manager"]
+      # Django admin, sysadmins only, then the rest of the host handed to the app's own
+      # OIDC login. The middleware on these two routers exists *only* for the /admin
+      # rule; without the bypass it would put a second, redundant Authelia login in
+      # front of the OIDC flow and break the mobile/API clients, which have no browser
+      # session to offer.
       - domain:
           - "paperless.${config.domains.main}"
           - "recipes.${config.domains.main}"
@@ -161,13 +215,30 @@
         - key_id: main
           algorithm: RS256
           key: "${config.sops.placeholder."compose-stacks/auth/oidc/issuer_private_key"}"
-      # First named policy on this host. Every client so far has used the built-in
-      # `two_factor`, but Immich needs group-scoped access, which only a custom policy
-      # can express. Carried over from the legacy config unchanged, including the
-      # one_factor: Immich's mobile app drives this same OIDC flow, and a second factor
-      # in that embedded webview is painful enough that prod deliberately does without.
-      # The group itself already exists — see lldap-bootstrap/group-configs/photos_user.json.
+      # Group-scoped policies, each carried over from the legacy config. The built-in
+      # `two_factor` lets in any account in LDAP, so it only suits apps whose own
+      # permissions do the rest (Nextcloud, Actual); anything narrower needs one of
+      # these. Every group named here already exists — see lldap-bootstrap/group-configs/.
       authorization_policies:
+        # The admin tools that log in through OIDC rather than forwardAuth: Grafana,
+        # pgAdmin and CrowdSec's web UI. Same group and factor as the forwardAuth admin
+        # rule in access_control above.
+        sysadmin_policy:
+          default_policy: deny
+          rules:
+            - policy: two_factor
+              subject:
+                - ["group:sysadmin"]
+        # PeerTube and Audiobookshelf.
+        media_policy:
+          default_policy: deny
+          rules:
+            - policy: two_factor
+              subject:
+                - ["group:media_viewer"]
+        # one_factor, deliberately: Immich's mobile app drives this same OIDC flow, and
+        # a second factor in that embedded webview is painful enough that prod does
+        # without.
         photos_policy:
           default_policy: deny
           rules:
@@ -199,7 +270,7 @@
           client_secret: "${
             config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_secret_hash"
           }"
-          authorization_policy: two_factor
+          authorization_policy: sysadmin_policy
           redirect_uris:
             - "https://monitor.${config.domains.main}/login/generic_oauth"
           scopes:
@@ -214,7 +285,7 @@
           client_secret: "${
             config.sops.placeholder."compose-stacks/crowdsec/oidc/client_secret_hash"
           }"
-          authorization_policy: two_factor
+          authorization_policy: sysadmin_policy
           redirect_uris:
             - "https://crowdsec-ui.${config.domains.main}/api/auth/oidc/callback"
           scopes:
@@ -235,7 +306,7 @@
           client_secret: "${
             config.sops.placeholder."compose-stacks/streaming/peertube/oidc/client_secret_hash"
           }"
-          authorization_policy: two_factor
+          authorization_policy: media_policy
           redirect_uris:
             - "https://peertube.${config.domains.main}/plugins/auth-openid-connect/router/code-cb"
           scopes:
@@ -245,6 +316,26 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_post
+        # Carried over from prod, which this host had missed. Two redirect URIs: the web
+        # callback, and the one Audiobookshelf's mobile apps go through. No
+        # token_endpoint_auth_method, so client_secret_basic, as on prod.
+        - client_name: Audiobookshelf
+          client_id: "${
+            config.sops.placeholder."compose-stacks/streaming/audiobookshelf/oidc/client_id"
+          }"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/streaming/audiobookshelf/oidc/client_secret_hash"
+          }"
+          authorization_policy: media_policy
+          redirect_uris:
+            - "https://audiobooks.${config.domains.main}/auth/openid/callback"
+            - "https://audiobooks.${config.domains.main}/auth/openid/mobile-redirect"
+          scopes:
+            - openid
+            - profile
+            - groups
+            - email
+          userinfo_signed_response_alg: none
         # Unlike the other clients above, no token_endpoint_auth_method override —
         # pgAdmin's OAuth2 client correctly uses Authelia's default
         # (client_secret_basic) on its own, matching the legacy role's own
@@ -254,7 +345,7 @@
           client_secret: "${
             config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_secret_hash"
           }"
-          authorization_policy: two_factor
+          authorization_policy: sysadmin_policy
           redirect_uris:
             - "https://pgadmin.${config.domains.main}/oauth2/authorize"
           scopes:

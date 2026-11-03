@@ -54,6 +54,17 @@ in
     "compose-stacks/streaming/peertube/oidc/client_secret_hash" = {
       sopsFile = ../../data/streaming.yaml;
     };
+    # Authelia's side of Audiobookshelf's OIDC client only. Audiobookshelf itself keeps
+    # its OIDC settings in its own database (Settings → Authentication; nothing reads
+    # them from the environment), restored with streaming-config — so the plaintext
+    # `.../audiobookshelf/oidc/client_secret` sits in the sops file undeclared, kept
+    # only so it can be re-entered there if that database is ever lost.
+    "compose-stacks/streaming/audiobookshelf/oidc/client_id" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/audiobookshelf/oidc/client_secret_hash" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
   };
 
   # All six values (plus the Postgres passwords and smtp/* referenced below) are

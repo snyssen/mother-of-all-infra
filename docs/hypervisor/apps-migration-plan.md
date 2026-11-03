@@ -55,7 +55,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 |-------|-------------|-------------|--------|
 | `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate | ✅ Done |
 | `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done |
-| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`) |
+| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`). Authelia's `access_control` was first built with a permissive `two_factor` default, which left every forwardAuth-gated admin tool open to any LDAP account with 2FA; now `deny` by default as on prod, with prod's rules carried over for each gated host that exists here (sysadmin-only admin tools, sysadmin|media_manager for the *arr apps with the internal-network bypass for their m2m calls). OIDC clients aligned too: Grafana and CrowdSec on `sysadmin_policy`, PeerTube on `media_policy`, plus the Audiobookshelf client (`media_policy`) the `streaming` migration had missed — its own side of OIDC lives only in Audiobookshelf's database (no env or file config; only the admin API could set it), so it comes back with the `streaming-config` restore; pgAdmin tightened from prod's plain `two_factor` to `sysadmin_policy`. Adding a forwardAuth-gated route now needs a matching rule, or it denies everyone |
 | `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | n/a |
 | `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
 | `ntfy` | Push notification server | ✅ Migrate | ✅ Done |
