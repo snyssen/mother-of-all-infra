@@ -48,6 +48,10 @@ sops-update-keys-all *flags:
 sops-from-vault file +mappings:
   scripts/sops-from-vault.sh {{file}} {{mappings}}
 
+# Generate a random secret, or with --oidc-client an Authelia client id/secret/hash, into a SOPS file without printing it
+sops-gen-secret +args:
+  scripts/sops-gen-secret.sh {{args}}
+
 # Run mkdocs website locally
 run-docs:
   nix run .#docs

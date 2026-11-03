@@ -48,6 +48,7 @@
     ./compose/speedtest/default.nix
     ./compose/dashboard/default.nix
     ./compose/personal-website/default.nix
+    ./compose/bentopdf/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

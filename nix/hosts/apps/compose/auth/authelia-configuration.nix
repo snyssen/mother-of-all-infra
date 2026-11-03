@@ -123,6 +123,11 @@
   access_control:
     default_policy: two_factor
     rules:
+      # Open to any registered user with a single factor, carried over from prod's
+      # "general services" rule.
+      - domain:
+          - "pdf.${config.domains.main}"
+        policy: one_factor
       # Django admin, sysadmins only — both apps are Django, and both share this pair of
       # rules on prod too.
       - domain:

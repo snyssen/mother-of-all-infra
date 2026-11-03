@@ -1,0 +1,19 @@
+# Replaces the legacy container_s-pdf role (Stirling PDF) with BentoPDF: a static site
+# whose tools all run in the browser (WebAssembly), so documents are never uploaded to
+# this server. Stateless — no volumes, no secrets, no accounts.
+#
+# The `-simple` image is upstream's self-hosting build: every tool, without the
+# marketing pages. Its browser side still fetches some WASM modules (PyMuPDF,
+# Ghostscript, CoherentPDF) and OCR data from jsDelivr; self-hosting those would mean
+# building the image ourselves, which isn't worth it for this tool.
+services:
+  bentopdf:
+    image: ghcr.io/alam00000/bentopdf-simple:2.8.11@sha256:3bbab98791694b77bc70ab03bf1b2ea89e568a75ef172c27d95cbdbdf810038f
+    restart: unless-stopped
+    networks:
+      - web
+    mem_limit: 64m
+
+networks:
+  web:
+    external: true
