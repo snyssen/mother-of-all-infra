@@ -235,6 +235,8 @@ setup to be "production" rather than "a test VM":
 
 - [ ] `nix/hosts/apps/configuration.nix` — `domains.main = "snyssen1.xyz"` becomes
       `"snyssen.be"`.
+- [ ] `nix/hosts/apps/configuration.nix` — `domains.team = "snyssen2.xyz"` becomes
+      `"bigdouf.team"`.
 - [ ] Delete `nix/hosts/apps/prod-import.nix` and its `import` line.
 - [ ] `nix/hosts/apps/compose/reverse-proxy/default.nix` — drop the hardcoded
       `argunix_domain = "snyssen.be"` and restore `config.domains.main` (the commented
@@ -323,6 +325,15 @@ Nothing is lost permanently — the export has its own snapshots and is regenera
 absolute paths and hostnames in their configs. After an import they will be pointing at
 production's layout and domain. Budget time for fixing root folders and indexers rather
 than assuming the import is the end of it.
+
+**Team wiki — database only, then its own settings.** There is no file data, so the
+import is `prod-import postgres` followed by
+`postgres-restore --from /mnt/bulk/restore/prod-postgres team_wiki`. On the test host the restored wiki still names production's domain in
+its own settings, which live in the database: the site URL, and the OIDC strategy's
+authorization, token, userinfo and issuer URLs (all `auth.bigdouf.team`). Edit them in
+the wiki's admin UI to `snyssen2.xyz` to test login. At cutover the domain is
+production's again, so they are right as imported. Keep the strategy itself rather
+than recreating it: its id is part of the redirect URI registered with Authelia.
 
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops

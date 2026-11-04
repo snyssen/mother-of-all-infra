@@ -62,6 +62,12 @@
     cookies:
       - domain: "${config.domains.main}"
         authelia_url: "https://auth.${config.domains.main}"
+      # The team domain's own portal, as on prod: a cookie only ever covers its own
+      # domain, so team-domain apps need a login page under that domain too. It must be
+      # a separate registrable domain, not a subdomain of the main one — Authelia
+      # rejects two cookie domains that share a scope.
+      - domain: "${config.domains.team}"
+        authelia_url: "https://auth.${config.domains.team}"
     name: authelia_session
     same_site: lax
     inactivity: 45m
@@ -270,6 +276,14 @@
             - policy: one_factor
               subject:
                 - ["group:recipes_user"]
+        # one_factor, carried over from the legacy config unchanged. The group already
+        # exists — see lldap-bootstrap/group-configs/team_wiki_member.json.
+        team_wiki_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:team_wiki_member"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -445,4 +459,23 @@
             - groups
           userinfo_signed_response_alg: none
           token_endpoint_auth_method: client_secret_basic
+        # The UUID in the redirect URI is the id of the login strategy inside Wiki.js's
+        # own database, carried over unchanged from prod — so it is only right while
+        # that strategy is the imported one. Recreating it in the wiki's admin UI gives
+        # it a new id, and this URI with it.
+        - client_name: team_wiki
+          client_id: "${config.sops.placeholder."compose-stacks/team-wiki/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/team-wiki/oidc/client_secret_hash"
+          }"
+          authorization_policy: team_wiki_policy
+          redirect_uris:
+            - "https://${config.domains.team}/login/782aa720-97a8-439f-949e-fd75fed1085c/callback"
+          scopes:
+            - openid
+            - profile
+            - groups
+            - email
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
 ''

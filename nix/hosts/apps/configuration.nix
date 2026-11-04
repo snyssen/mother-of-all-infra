@@ -51,6 +51,7 @@
     ./compose/bentopdf/default.nix
     ./compose/foundryvtt/default.nix
     ./compose/minecraft/default.nix
+    ./compose/team-wiki/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix
@@ -278,6 +279,11 @@
   };
 
   domains.main = "snyssen1.xyz";
+  # Test counterpart of bigdouf.team, as snyssen1.xyz is for snyssen.be. Its own
+  # registrable domain rather than a subdomain of the main one, because Authelia refuses
+  # session cookie domains that share a scope (see auth/authelia-configuration.nix).
+  # TODO: back to bigdouf.team at the Phase B cutover.
+  domains.team = "snyssen2.xyz";
 
   # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized
@@ -310,6 +316,7 @@
 
   environment.systemPackages = [
     pkgs.btop
+    pkgs.screen
   ];
 
   # TODO: make this part automatically defined

@@ -73,7 +73,7 @@ services:
       - "--certificatesResolvers.le_argunix.acme.httpChallenge=false"
       - "--certificatesResolvers.le_argunix.acme.httpChallenge.entryPoint=web"
 
-      # Not used by any router yet (no team_domain stack converted) — ready for when one is.
+      # For domains.team: the team wiki and the team-domain Authelia portal.
       - "--certificatesResolvers.le_team.acme.email=${ACME_EMAIL}"
       - "--certificatesResolvers.le_team.acme.storage=/certs/acme-team.json"
       - "--certificatesresolvers.le_team.acme.caserver=${ACME_CA_SERVER}"

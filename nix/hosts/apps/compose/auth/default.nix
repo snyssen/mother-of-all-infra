@@ -99,6 +99,15 @@ in
           service: authelia
           tls:
             certResolver: le_main
+        # Same Authelia, second portal: see the session cookies in
+        # authelia-configuration.nix.
+        authelia-team:
+          rule: "Host(`auth.${config.domains.team}`)"
+          entryPoints:
+            - websecure
+          service: authelia
+          tls:
+            certResolver: le_team
         lldap:
           rule: "Host(`ldap.${config.domains.main}`)"
           entryPoints:
@@ -145,6 +154,7 @@ in
       ../../data/paperless.yaml
       ../../data/recipes.yaml
       ../../data/streaming.yaml
+      ../../data/team-wiki.yaml
       config.sops.templates."compose-auth.env".content
       config.sops.templates."authelia-configuration.yml".content
     ];
