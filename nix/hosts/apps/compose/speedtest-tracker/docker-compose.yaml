@@ -1,0 +1,49 @@
+# Mirrors the legacy container_speedtest-tracker role. Image pin is carried over
+# unchanged and is Renovate's to bump.
+#
+# Results, users and settings are in its `speedtest_tracker` database. /config keeps
+# the image's own runtime files; prod never backed it up, and nor does this host.
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:1.15.1@sha256:8d3c2826b708c18be7fb46c1afebc6bb3b1ab7c519473df1be89f5ecaa8bb31f
+    restart: unless-stopped
+    networks:
+      - web
+      - db
+    volumes:
+      - /var/lib/app-data/speedtest-tracker:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Brussels
+      - APP_KEY
+      - APP_URL
+      - SPEEDTEST_SCHEDULE=30 * * * *
+      # See IDs from https://c.speedtest.net/speedtest-servers-static.php
+      - SPEEDTEST_SERVERS=3242,32582,35058,11611,9913
+      # The central `databases` stack's PostgreSQL; role and database are both
+      # `speedtest_tracker`, from that stack's dbNames.
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=speedtest_tracker
+      - DB_USERNAME=speedtest_tracker
+      - DB_PASSWORD
+      - DISPLAY_TIMEZONE=Europe/Brussels
+      - PRUNE_RESULTS_OLDER_THAN=0
+      - PUBLIC_DASHBOARD=true # Acceptable since locked behind Authelia
+      - MAIL_MAILER=smtp
+      - MAIL_HOST
+      - MAIL_PORT
+      - MAIL_USERNAME
+      - MAIL_PASSWORD
+      - MAIL_ENCRYPTION=tls
+      - MAIL_FROM_ADDRESS
+      - MAIL_FROM_NAME=Speedtest Tracker
+    mem_limit: 256m
+
+networks:
+  web:
+    external: true
+  db:
+    external: true

@@ -339,6 +339,10 @@ than recreating it: its id is part of the redirect URI registered with Authelia.
 rallly`. Its base URL and OIDC endpoints come from the environment, not the database,
 so they follow `domains.team` without editing anything in the app.
 
+**Speedtest Tracker — database only.** `postgres-restore --from
+/mnt/bulk/restore/prod-postgres speedtest_tracker`. Its `APP_KEY` is prod's, so
+whatever the database holds encrypted with it stays readable.
+
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops
 (for example `compose-stacks/nextcloud/uptime_push_token`) must match what the restored
