@@ -214,11 +214,24 @@ in
   # Written as a script rather than a second ExecStart= line so the token is read from
   # its secret file at runtime — an ExecStart would put it in the unit file, which is
   # world-readable in the Nix store.
+  #
+  # Skipped, not failed, while the nextcloud container isn't running — whether the stack
+  # is stopped (autostart = false) or mid-restart during a switch. A timer run landing
+  # in that window used to fail the unit, and with it the whole `nh os switch`. Not a
+  # Requires= on compose-nextcloud: that would make each timer run *start* the stack.
+  # ExecCondition is the way to bail out cleanly: an exit status of 1-254 there leaves
+  # the unit inactive instead of failed. Once the container is up, the one remaining
+  # window — an upgrade in progress — is handled by Nextcloud itself: cron.php skips
+  # and exits 0 in maintenance mode or with an upgrade pending (CronService::run, 34.x).
   systemd.services.nextcloud-cron = {
     description = "Run Nextcloud's background job queue";
     after = [ "compose-nextcloud.service" ];
     serviceConfig = {
       Type = "oneshot";
+      ExecCondition = pkgs.writeShellScript "nextcloud-cron-condition" ''
+        ${pkgs.docker}/bin/docker compose --project-name nextcloud -f ${composeFile} \
+          ps --status running --services | ${pkgs.gnugrep}/bin/grep -qx nextcloud
+      '';
       ExecStart = pkgs.writeShellScript "nextcloud-cron" ''
         set -euo pipefail
         ${pkgs.docker}/bin/docker compose --project-name nextcloud -f ${composeFile} \
