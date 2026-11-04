@@ -275,10 +275,6 @@
       {
         children = [
           {
-            name = "Semaphore";
-            url = "https://semaphore.snyssen.be";
-          }
-          {
             name = "backrest";
             url = "https://backrest.snyssen.be";
           }

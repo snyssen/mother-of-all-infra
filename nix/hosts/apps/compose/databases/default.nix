@@ -23,7 +23,6 @@ let
     "speedtest_tracker"
     "umami"
     "sharkey"
-    "semaphore"
     "matrix"
     "matrix_mas"
     "matrix_discord"

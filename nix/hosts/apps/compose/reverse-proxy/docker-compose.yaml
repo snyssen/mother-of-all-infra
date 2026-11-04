@@ -36,6 +36,7 @@ services:
       # even non-HTTP ones, so this file (and the `ports` list below) is the one place
       # that says what is open. Routers for them live in each stack's dynamicConfig.
       - "--entryPoints.minecraft.address=:25565"
+      - "--entryPoints.skyrim-together.address=:10578/udp"
 
       - "--entryPoints.websecure.address=:443"
       - "--entrypoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust ingress host's tailnet IP
@@ -96,6 +97,7 @@ services:
       - "80:80"
       - "443:443"
       - "25565:25565" # Minecraft, routed to mc-router (compose/minecraft)
+      - "10578:10578/udp" # Skyrim Together (compose/skyrim-together)
     # argunix is a native process on the host, not a container — reachable from
     # inside Traefik via the docker-provided host gateway rather than a docker network.
     extra_hosts:
