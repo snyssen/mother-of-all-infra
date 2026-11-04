@@ -205,11 +205,6 @@ in
         paths = [ "/var/lib/app-data/actual-budget" ];
         stopUnits = [ "compose-actual-budget.service" ];
       };
-      # Uploaded recipe images only. Narrower than prod's location, which takes all of
-      # /mnt/storage/recipes: staticfiles is no longer mounted (see
-      # compose/recipes/docker-compose.yaml), and the recipes themselves live in the
-      # central Postgres, covered by `databases`. Nothing to stop: plain image files,
-      # no database, and prod doesn't stop the stack for them either.
       # Mirrors prod's `foundryvtt` location: the whole data directory. Worlds are
       # LevelDB databases since v11, so the stack is stopped for a consistent copy.
       foundryvtt = mkPlan {
@@ -225,6 +220,21 @@ in
         ];
         stopUnits = [ "compose-minecraft.service" ];
       };
+      # Mirrors prod's `sharkey` location minus its config directory, which is generated
+      # here: the job queues in Redis, and the drive's files. Stopped so Redis's dump and
+      # the drive are copied at rest.
+      sharkey = mkPlan {
+        paths = [
+          "/var/lib/app-data/sharkey/redis"
+          "/mnt/bulk/sharkey/files"
+        ];
+        stopUnits = [ "compose-sharkey.service" ];
+      };
+      # Uploaded recipe images only. Narrower than prod's location, which takes all of
+      # /mnt/storage/recipes: staticfiles is no longer mounted (see
+      # compose/recipes/docker-compose.yaml), and the recipes themselves live in the
+      # central Postgres, covered by `databases`. Nothing to stop: plain image files,
+      # no database, and prod doesn't stop the stack for them either.
       recipes = mkPlan {
         paths = [ "/mnt/bulk/recipes/mediafiles" ];
         stopUnits = [ ];

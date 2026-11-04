@@ -245,6 +245,8 @@ setup to be "production" rather than "a test VM":
       (disabled during testing so it would not act on absent media).
 - [ ] `nix/hosts/apps/compose/nextcloud/default.nix` — `autostart = false` back to true,
       once its data and database are both in.
+- [ ] `nix/hosts/apps/compose/sharkey/default.nix` — `autostart = false` back to true,
+      in the same deploy as `domains.main`, and only after its data and database are in.
 - [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
       `memory` binding: 8G heap / 8.2g limit for both servers (shrunk to fit the 8 GiB
       test VM).
@@ -342,6 +344,20 @@ so they follow `domains.team` without editing anything in the app.
 **Speedtest Tracker — database only.** `postgres-restore --from
 /mnt/bulk/restore/prod-postgres speedtest_tracker`. Its `APP_KEY` is prod's, so
 whatever the database holds encrypted with it stays readable.
+
+**Sharkey — first run is the cutover.** It was never started on `apps`: its `url` is the
+instance's identity on the fediverse, so it only runs under `social.snyssen.be`. The
+restore is therefore also its first test. Order:
+
+```sh
+prod-import sharkey      # Redis + drive files; check the snapshot has files first (--dry-run)
+postgres-restore --from /mnt/bulk/restore/prod-postgres sharkey
+# then deploy with domains.main = snyssen.be and autostart = true, which starts it
+```
+
+Things to check once it is up: log in, timelines load, an existing image displays (the
+drive's files), and a post reaches a remote follower. Redis carries the job queue across,
+so deliveries that were pending at the freeze go out from the new host.
 
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops

@@ -258,6 +258,31 @@ in
       ];
     };
 
+    # Pair with `postgres-restore --from /mnt/bulk/restore/prod-postgres sharkey`: the
+    # notes and accounts are in the database, and the drive's file records point into
+    # `files`. The stack has autostart = false until the cutover (see its default.nix),
+    # so neither half starts it. Prod's config directory is skipped: the config file is
+    # generated here.
+    #
+    # /mnt/storage/sharkey/files only joined prod's `sharkey` location recently, so
+    # snapshots older than that lack it — check with --dry-run first.
+    sharkey = fromLocation "sharkey" // {
+      stopUnits = [ "compose-sharkey.service" ];
+      paths = [
+        {
+          from = "/home/snyssen/data/sharkey/redis";
+          to = "/var/lib/app-data/sharkey/redis";
+          # Prod gave the group to the deploy user (1000), which means nothing here.
+          owner = "999:999";
+        }
+        {
+          from = "/mnt/storage/sharkey/files";
+          to = "/mnt/bulk/sharkey/files";
+          owner = "991:991";
+        }
+      ];
+    };
+
     # A straight prefix swap. uid 1000 on both sides — the image's `node` user, which on
     # prod happened to be the deploy user too.
     foundryvtt = fromLocation "foundryvtt" // {
