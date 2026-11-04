@@ -284,6 +284,14 @@
             - policy: one_factor
               subject:
                 - ["group:team_wiki_member"]
+        # Rallly. one_factor, carried over from the legacy config unchanged. The group
+        # already exists — see lldap-bootstrap/group-configs/team_member.json.
+        team_member_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:team_member"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -477,5 +485,16 @@
             - groups
             - email
           userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
+        - client_name: rallly
+          client_id: "${config.sops.placeholder."compose-stacks/rallly/oidc/client_id"}"
+          client_secret: "${config.sops.placeholder."compose-stacks/rallly/oidc/client_secret_hash"}"
+          authorization_policy: team_member_policy
+          redirect_uris:
+            - "https://events.${config.domains.team}/api/auth/callback/oidc"
+          scopes:
+            - openid
+            - profile
+            - email
           token_endpoint_auth_method: client_secret_post
 ''

@@ -152,6 +152,7 @@ in
       ../../data/immich.yaml
       ../../data/nextcloud.yaml
       ../../data/paperless.yaml
+      ../../data/rallly.yaml
       ../../data/recipes.yaml
       ../../data/streaming.yaml
       ../../data/team-wiki.yaml

@@ -1,0 +1,39 @@
+# Mirrors the legacy container_rallly role. Image pin is carried over unchanged and is
+# Renovate's to bump.
+#
+# Stateless container: polls, users and sessions all live in its `rallly` database.
+services:
+  rallly:
+    image: lukevella/rallly:4.16.2@sha256:78d42dacae328ec505c6be5f934483442f85065830f5a7318961f789cc1b12e4
+    restart: unless-stopped
+    networks:
+      - db
+      - web
+    environment:
+      - DATABASE_URL
+      - SECRET_PASSWORD
+      - NEXT_PUBLIC_BASE_URL
+      - NOREPLY_EMAIL
+      - SUPPORT_EMAIL
+      - SMTP_HOST
+      - SMTP_PORT
+      # Carried over from prod as is.
+      - SMTP_SECURE=true
+      - SMTP_USER
+      - SMTP_PWD
+
+      # Logins go through the team domain's Authelia portal only: no email login and no
+      # self-registration (the route also refuses /register, see default.nix).
+      - OIDC_NAME=Authelia SSO
+      - OIDC_ISSUER_URL
+      - OIDC_DISCOVERY_URL
+      - OIDC_CLIENT_ID
+      - OIDC_CLIENT_SECRET
+      - EMAIL_LOGIN_ENABLED=false
+      - REGISTRATION_ENABLED=false
+
+networks:
+  web:
+    external: true
+  db:
+    external: true

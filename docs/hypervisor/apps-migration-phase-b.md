@@ -335,6 +335,10 @@ the wiki's admin UI to `snyssen2.xyz` to test login. At cutover the domain is
 production's again, so they are right as imported. Keep the strategy itself rather
 than recreating it: its id is part of the redirect URI registered with Authelia.
 
+**Rallly — database only.** `postgres-restore --from /mnt/bulk/restore/prod-postgres
+rallly`. Its base URL and OIDC endpoints come from the environment, not the database,
+so they follow `domains.team` without editing anything in the app.
+
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops
 (for example `compose-stacks/nextcloud/uptime_push_token`) must match what the restored
