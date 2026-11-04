@@ -293,6 +293,14 @@
             - policy: one_factor
               subject:
                 - ["group:team_member"]
+        # one_factor, carried over from the legacy config unchanged. The group already
+        # exists — see lldap-bootstrap/group-configs/dawarich_user.json.
+        dawarich_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:dawarich_user"]
       clients:
         - client_name: Grafana
           client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"}"
@@ -498,4 +506,17 @@
             - profile
             - email
           token_endpoint_auth_method: client_secret_post
+        # No token_endpoint_auth_method, so client_secret_basic, as on prod.
+        - client_name: dawarich
+          client_id: "${config.sops.placeholder."compose-stacks/dawarich/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/dawarich/oidc/client_secret_hash"
+          }"
+          authorization_policy: dawarich_policy
+          redirect_uris:
+            - "https://location.${config.domains.main}/users/auth/openid_connect/callback"
+          scopes:
+            - openid
+            - profile
+            - email
 ''

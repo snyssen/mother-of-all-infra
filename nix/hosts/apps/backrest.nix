@@ -230,6 +230,20 @@ in
         ];
         stopUnits = [ "compose-sharkey.service" ];
       };
+      # Dawarich's dumps, from its own PostGIS rather than the central cluster, so a
+      # plan of their own as for Immich. Plus the uploaded import files and exports in
+      # `storage`, which prod backs up nowhere: the points are all in the database, but
+      # some of those source files (Google Takeout, say) can't be downloaded again.
+      # Nothing to stop: the dumps are written atomically by the sidecar and `storage`
+      # holds plain files. Neither `watched` (an inbox) nor Photon's index (downloaded
+      # again on demand) is included.
+      dawarich = mkPlan {
+        paths = [
+          "/mnt/bulk/backups/dawarich"
+          "/mnt/bulk/dawarich/storage"
+        ];
+        stopUnits = [ ];
+      };
       # Uploaded recipe images only. Narrower than prod's location, which takes all of
       # /mnt/storage/recipes: staticfiles is no longer mounted (see
       # compose/recipes/docker-compose.yaml), and the recipes themselves live in the

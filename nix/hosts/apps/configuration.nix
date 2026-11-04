@@ -55,6 +55,7 @@
     ./compose/rallly/default.nix
     ./compose/speedtest-tracker/default.nix
     ./compose/sharkey/default.nix
+    ./compose/dawarich/default.nix
     ./backrest.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix

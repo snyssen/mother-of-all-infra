@@ -284,9 +284,14 @@ for i in "${!plan_db[@]}"; do
   # and leaking one instance's values into another's compose interpolation is exactly
   # the kind of bug that would only surface as a confusing authentication failure.
   #
-  # Sourcing serves two purposes at once: it gives docker compose the variables its own
-  # interpolation needs, and it is where the database password comes from -- so the
+  # Loading it serves two purposes at once: it gives docker compose the variables its
+  # own interpolation needs, and it is where the database password comes from -- so the
   # password is only ever an environment lookup, never an argument.
+  #
+  # Read line by line and taken literally, never sourced: these are systemd
+  # EnvironmentFiles, where a value is whatever follows the first `=`. Sourcing ran them
+  # through the shell instead, so a secret containing `$` was
+  # expanded -- and with `set -u`, aborted the restore with "unbound variable".
   #
   # Connect as the database's own role, not the superuser: with --no-owner every
   # restored object ends up owned by whoever connected, and restoring as postgres would
@@ -300,10 +305,12 @@ for i in "${!plan_db[@]}"; do
   # The dumps are PostgreSQL custom-format archives despite the .sql.gz name
   # (POSTGRES_EXTRA_OPTS="--format c"), so pg_restore reads them directly.
   if (
-    set -a
-    # shellcheck disable=SC1090
-    . "${INST_ENV[$inst]}"
-    set +a
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in
+        '' | '#'* | ';'*) continue ;;
+      esac
+      export "${line%%=*}=${line#*=}"
+    done <"${INST_ENV[$inst]}"
     var="${DB_VAR[$db]}"
     pw="${!var:-}"
     if [ -z "$pw" ]; then

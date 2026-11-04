@@ -149,6 +149,7 @@ in
       ../../data/databases.yaml
       ../../data/common.yaml
       ../../data/crowdsec.yaml
+      ../../data/dawarich.yaml
       ../../data/immich.yaml
       ../../data/nextcloud.yaml
       ../../data/paperless.yaml

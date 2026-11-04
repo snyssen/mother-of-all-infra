@@ -170,6 +170,14 @@ Every named volume in use today is disposable (Redis caches, Immich's ML model c
 and the convention for new stacks is that anything stateful is a bind mount. Worth
 re-checking at cutover that this is still true.
 
+**Dawarich's uploaded files.** Prod's `/mnt/storage/dawarich/storage` holds the
+original import files (GPX, Google Takeout...) and generated exports, and is in no
+autorestic location, so restic has nothing to import from. The points themselves are in
+the database and do come across. `apps` backs this directory up from now on.
+
+- [ ] Copy it across by hand at cutover (e.g. `rsync` from the legacy box to
+      `/mnt/bulk/dawarich/storage`), or decide the originals aren't needed.
+
 **Docker images.** Pinned by digest. A rebuild with no working internet — or after an
 upstream digest has been garbage-collected — leaves stacks that will not start.
 
@@ -247,6 +255,12 @@ setup to be "production" rather than "a test VM":
       once its data and database are both in.
 - [ ] `nix/hosts/apps/compose/sharkey/default.nix` — `autostart = false` back to true,
       in the same deploy as `domains.main`, and only after its data and database are in.
+- [ ] `nix/hosts/apps/compose/dawarich/default.nix` — `photon.enable = true`, and only
+      once there is room for it. Prod's worldwide index is ~200 GB and grows 10–20 GB a
+      year; its `PARALLEL` update strategy needs twice that while swapping. The VM's
+      whole disk is 300 GB (`disk_gb` in `ansible/hosts/host_vars/hypervisor/vars.yml`).
+      So grow the disk, or pick a smaller `REGION` and/or `UPDATE_STRATEGY` first.
+      Mobilizon also uses it.
 - [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
       `memory` binding: 8G heap / 8.2g limit for both servers (shrunk to fit the 8 GiB
       test VM).
@@ -358,6 +372,16 @@ postgres-restore --from /mnt/bulk/restore/prod-postgres sharkey
 Things to check once it is up: log in, timelines load, an existing image displays (the
 drive's files), and a post reaches a remote follower. Redis carries the job queue across,
 so deliveries that were pending at the freeze go out from the new host.
+
+**Dawarich — database, then the geocoder.** `prod-import dawarich`, then
+`postgres-restore --from /mnt/bulk/restore/prod-dawarich dawarich`, which goes to its own
+PostGIS. Points imported from prod are already geocoded and keep their data. Reverse
+geocoding of new points needs Photon. While it is off, the imported database may still
+name `photon:2322` (Dawarich copies the setting from its environment into its own
+settings), so lookups go to a host that doesn't exist. In 1.17.0 a lookup that errors is
+retried three times and then dropped, leaving the point to catch up once Photon is on.
+Only an *empty* answer marks a point as geocoded for good. That depends on the geocoder
+raising on an unreachable host (read from the code, not tested).
 
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops

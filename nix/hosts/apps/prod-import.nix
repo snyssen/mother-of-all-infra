@@ -180,6 +180,22 @@ in
       ];
     };
 
+    # Same as immich: Dawarich's dumps ride in prod's `postgres` location but belong to
+    # its own PostGIS. Load them with:
+    #   postgres-restore --from /mnt/bulk/restore/prod-dawarich dawarich
+    # Prod's /mnt/storage/dawarich/storage is in no location, so it has no import here
+    # — see "Data that does not come through restic" in the Phase B doc.
+    dawarich = fromLocation "postgres" // {
+      stopUnits = [ ];
+      paths = [
+        {
+          from = "/mnt/storage/backups/dawarich";
+          to = "/mnt/bulk/restore/prod-dawarich";
+          owner = "0:0";
+        }
+      ];
+    };
+
     # ~353 GB, the largest enabled group by a wide margin — expect hours over
     # NFS-over-Tailscale, and run it in tmux. The capacity preflight prices it before
     # anything is written.
