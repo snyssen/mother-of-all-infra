@@ -112,6 +112,17 @@ in
             "remote.autoForwardPortsSource" = "hybrid";
             "resharper.region.region" = "Europe";
             "claudeCode.preferredLocation" = "panel";
+            "json.schemaDownload.trustedDomains" = {
+              "https://developer.microsoft.com/json-schemas/" = true;
+              "https://json-schema.org/" = true;
+              "https://json.schemastore.org/" = true;
+              "https://raw.githubusercontent.com/devcontainers/spec/" = true;
+              "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json" = true;
+              "https://raw.githubusercontent.com/microsoft/vscode/" = true;
+              "https://schemastore.azurewebsites.net/" = true;
+              "https://spec.openapis.org/" = true;
+              "https://www.schemastore.org/" = true;
+            };
           };
           defaultKeybindings = [
             # Browser-like tab navigation, smth that should be the default let's be honest...
