@@ -31,6 +31,10 @@
     - acquis.d/authelia.yaml
     - acquis.d/traefik.yaml
     - acquis.d/traefik-varlogs.yaml
+    - acquis.d/nextcloud.yaml
+    - acquis.d/jellyfin.yaml
+    - acquis.d/immich.yaml
+    - acquis.d/paperless.yaml
     - parsers/s02-enrich/00-whitelist-attic.yaml
 
 - name: Deploy Crowdsec WebUI config file

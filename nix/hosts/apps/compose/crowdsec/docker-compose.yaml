@@ -8,10 +8,16 @@ services:
     volumes:
       - ./crowdsec/config.yaml.local:/etc/crowdsec/config.yaml.local:ro
       - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d:ro
-      # Only the declared static config is mounted read-only — collections/parsers
-      # installed via COLLECTIONS below land in the container's own writable layer,
-      # reinstalled fresh (idempotently) on every start, not a Nix-managed directory.
+      # Only the declared static config is mounted read-only — the enable-symlinks for
+      # collections/parsers installed via COLLECTIONS below land in the container's own
+      # writable layer, reinstalled fresh (idempotently) on every start, not a
+      # Nix-managed directory. The hub files they point to live in the hub volume below.
       - /var/lib/app-data/crowdsec/data:/var/lib/crowdsec/data
+      # Hub content (index + downloaded items) persisted so the entrypoint's own hub
+      # update runs on start — it skips it unless .index.json sits on a volume — and a
+      # recreated container starts from the last fetched content, not the image's.
+      # Seeded from the image's /staging copy on first start (rsync --ignore-existing).
+      - /var/lib/app-data/crowdsec/hub:/etc/crowdsec/hub
     environment:
       # Registers each as a valid bouncer API key with the LAPI at startup — one per
       # bouncer identity (this host's own nftables bouncer, and the Traefik plugin's
@@ -19,7 +25,16 @@ services:
       # bouncer rather than sharing one across bouncer types.
       - BOUNCER_KEY_firewall
       - BOUNCER_KEY_traefik
-      - COLLECTIONS=LePresidente/authelia crowdsecurity/traefik
+      # crowdsecurity/linux brings sshd + whitelist-good-actors; crowdsecurity/traefik
+      # brings base-http-scenarios + http-cve. The app collections each need a
+      # matching acquis.d entry whose `type` label equals the parser's program name.
+      # crowdsecurity/nextcloud is deliberately absent: this host's Nextcloud logs via
+      # Apache's ErrorLog (see nextcloud/extra-config.nix), whose prefix breaks the
+      # parser's JsonExtract on the raw line.
+      - COLLECTIONS=crowdsecurity/linux crowdsecurity/traefik LePresidente/authelia LePresidente/jellyfin gauth-fr/immich andreasbrett/paperless-ngx crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
+      # Never ban RFC1918 sources — a safety net for app logs that report the proxy's
+      # docker IP instead of the real client when trusted proxies are misconfigured.
+      - PARSERS=crowdsecurity/whitelists
 
   crowdsec-web-ui:
     image: ghcr.io/theduffman85/crowdsec-web-ui:2026.10.11@sha256:20333d6bc218f274a4cdaabc2e79716d7e203c0a23446c75f6aa6ccfc59a1431

@@ -10,6 +10,7 @@ in
 {
   systemd.tmpfiles.rules = [
     "d /var/lib/app-data/crowdsec/data 0755 root root -"
+    "d /var/lib/app-data/crowdsec/hub 0755 root root -"
     "d /var/lib/app-data/crowdsec-web-ui 0755 root root -"
   ];
 
@@ -135,6 +136,11 @@ in
               # above for why. Bind-mounted directly into the Traefik container by
               # reverse-proxy/docker-compose.yaml at this fixed path.
               crowdsecLapiKeyFile: "/run/secrets/crowdsec_waf_bouncer_key"
+              # WAF: forward each request to the AppSec listener declared in
+              # crowdsec/acquis.d/appsec.yaml. The plugin reuses the LAPI key above
+              # when no AppSec key is given, and fails closed if AppSec is unreachable.
+              crowdsecAppsecEnabled: true
+              crowdsecAppsecHost: "crowdsec:7422"
   '';
 
   compose-stacks.stacks.crowdsec = {
@@ -184,6 +190,43 @@ in
         echo "crowdsec machine bootstrap failed after retries" >&2
         exit 1
       '';
+    };
+  };
+
+  # Keeps scenarios/parsers/AppSec rules current — that is how new CVE detections and
+  # virtual patches reach this instance. The entrypoint already updates the hub on
+  # every start (see the hub volume in docker-compose.yaml), but the container can run
+  # for weeks between starts. SIGHUP reloads crowdsec in place (it is PID 1 via the
+  # entrypoint's exec) rather than restarting it, which would briefly fail-close every
+  # crowdsec-waf route.
+  systemd.services.crowdsec-hub-upgrade = {
+    description = "Update and upgrade crowdsec hub content";
+    after = [ "compose-crowdsec.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecCondition = pkgs.writeShellScript "crowdsec-hub-upgrade-condition" ''
+        ${pkgs.docker}/bin/docker compose --project-name crowdsec -f ${composeFile} \
+          ps --status running --services | ${pkgs.gnugrep}/bin/grep -qx crowdsec
+      '';
+      ExecStart = pkgs.writeShellScript "crowdsec-hub-upgrade" ''
+        set -euo pipefail
+        compose() {
+          ${pkgs.docker}/bin/docker compose --project-name crowdsec -f ${composeFile} "$@"
+        }
+        compose exec -T crowdsec cscli hub update
+        compose exec -T crowdsec cscli hub upgrade
+        compose kill -s SIGHUP crowdsec
+      '';
+    };
+  };
+
+  systemd.timers.crowdsec-hub-upgrade = {
+    description = "Daily crowdsec hub update";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "daily";
+      RandomizedDelaySec = "1h";
+      Persistent = true;
     };
   };
 }

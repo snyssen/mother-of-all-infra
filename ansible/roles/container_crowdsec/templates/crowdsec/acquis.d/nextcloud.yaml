@@ -1,0 +1,6 @@
+source: loki
+url: http://loki:3100
+query: |
+  {job="nextcloud",filename="/var/logs/nextcloud.log"}
+labels:
+  type: nextcloud

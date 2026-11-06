@@ -19,7 +19,8 @@ services:
       - traefik.http.services.crowdsec.loadBalancer.server.port=8080
     environment:
       BOUNCER_KEY_firewall: "{{ crowdsec__firewall_bouncer__api_key }}"
-      COLLECTIONS: "LePresidente/authelia crowdsecurity/traefik"
+      COLLECTIONS: "crowdsecurity/linux crowdsecurity/traefik LePresidente/authelia crowdsecurity/nextcloud LePresidente/jellyfin gauth-fr/immich andreasbrett/paperless-ngx"
+      PARSERS: "crowdsecurity/whitelists"
 
   crowdsec-web-ui:
     image: ghcr.io/theduffman85/crowdsec-web-ui:2026.10.11@sha256:20333d6bc218f274a4cdaabc2e79716d7e203c0a23446c75f6aa6ccfc59a1431
