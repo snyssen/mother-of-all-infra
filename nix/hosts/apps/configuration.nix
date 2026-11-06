@@ -23,6 +23,7 @@
     flake.modules.nixos.tailscale
     flake.modules.nixos.crowdsec-firewall-bouncer
     flake.modules.nixos.grafana-alloy
+    flake.modules.nixos.syncthing
     flake.modules.nixos.docker
     flake.modules.nixos.nfs-mounts
     flake.modules.nixos.compose-stacks
@@ -62,6 +63,7 @@
     ./compose/matrix/default.nix
     ./compose/garage/default.nix
     ./backrest.nix
+    ./syncthing.nix
     # Transitional: delete this line along with the file at the Phase B cutover.
     ./prod-import.nix
   ];
@@ -224,7 +226,7 @@
     dependsOn.tailscale = true;
   };
   systemd.tmpfiles.rules = [
-    "d /var/lib/app-data 0755 snyssen snyssen -"
+    "d /var/lib/app-data 0755 snyssen users -"
   ];
 
   docker.networks = [

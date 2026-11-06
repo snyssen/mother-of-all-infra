@@ -411,6 +411,21 @@ recent messages and media load — without acting as prod anywhere. Logging in n
 Authelia's database to be prod's too: MAS links each user to Authelia's `sub` for them,
 which is per-instance.
 
+**Syncthing — synced, not imported.** There is no `prod-import syncthing`: apps is a new
+device (its own ID, in `nix/data/syncthing.nix`), and it fills its folders from its
+peers. Restoring prod's files under it first would only invite `.sync-conflict` copies
+wherever they differ from the peers' current versions. What has to happen on the other
+devices instead:
+
+- The Nix hosts learn the `apps` device from `nix/data/syncthing.nix` on their next
+  rebuild, but only share a folder with it once `apps` is in that folder's `devices`.
+- The Pixel (and any other device not managed here) has to accept apps by hand, with
+  address `tcp://apps:22000` if discovery doesn't find it.
+- Apps' folders list the devices that carry each one, plus prod's own `sync.snyssen.be`
+  on every folder until the cutover, so apps gets a full copy from it. Remove it from
+  those lists and from `nix/data/syncthing.nix` once prod is gone (TODO in
+  `nix/hosts/apps/syncthing.nix`).
+
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops
 (for example `compose-stacks/nextcloud/uptime_push_token`) must match what the restored

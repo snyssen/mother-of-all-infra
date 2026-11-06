@@ -113,16 +113,11 @@ in
 
   syncthing = {
     username = "snyssen";
+    identity.sopsFile = ./data/syncthing.yaml;
     devices = syncthingData.devices;
     folders = {
       Notes = {
         path = "/home/snyssen/Notes";
-        devices = [
-          "sync.snyssen.be"
-          "Pixel 8 Pro"
-          "gaming"
-          "purplehaze"
-        ];
       };
       PrismLauncher = {
         path = "/home/snyssen/.local/share/PrismLauncher";

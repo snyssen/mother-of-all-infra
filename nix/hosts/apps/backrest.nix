@@ -257,6 +257,14 @@ in
         ];
         stopUnits = [ "compose-matrix.service" ];
       };
+      # The synced folders, as prod's `syncthing` location. Not its config directory, the
+      # other half of that location: the device identity now comes from sops (see
+      # syncthing.nix), and the rest is Syncthing's index database, which it rebuilds by
+      # rescanning. Stopped so no folder is copied mid-sync.
+      syncthing = mkPlan {
+        paths = [ "/mnt/bulk/syncthing" ];
+        stopUnits = [ "syncthing.service" ];
+      };
       # Uploaded recipe images only. Narrower than prod's location, which takes all of
       # /mnt/storage/recipes: staticfiles is no longer mounted (see
       # compose/recipes/docker-compose.yaml), and the recipes themselves live in the

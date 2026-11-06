@@ -37,6 +37,9 @@ services:
       # that says what is open. Routers for them live in each stack's dynamicConfig.
       - "--entryPoints.minecraft.address=:25565"
       - "--entryPoints.skyrim-together.address=:10578/udp"
+      # The one exception: Syncthing runs on the host, not in a container, and opens
+      # its own ports there — 22000 (TCP and UDP) and 21027/udp — since Traefik could
+      # only pass its end-to-end TLS through. See apps/syncthing.nix.
 
       - "--entryPoints.websecure.address=:443"
       - "--entrypoints.websecure.forwardedHeaders.trustedIPs=100.120.249.84" # Trust ingress host's tailnet IP

@@ -48,6 +48,10 @@ sops-update-keys-all *flags:
 sops-from-vault file +mappings:
   scripts/sops-from-vault.sh {{file}} {{mappings}}
 
+# Store stdin as one key of a SOPS file without printing it (e.g. `ssh host cat key.pem | just sops-set-stdin <file> <key/path>`)
+sops-set-stdin file key:
+  scripts/sops-set-stdin.sh {{file}} {{key}}
+
 # Generate a random secret, or with --oidc-client an Authelia client id/secret/hash, into a SOPS file without printing it
 sops-gen-secret +args:
   scripts/sops-gen-secret.sh {{args}}
