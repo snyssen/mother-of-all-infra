@@ -2,6 +2,7 @@
   inputs,
   flake,
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -82,6 +83,31 @@
       sopsFile = ./data/common.yaml;
       neededForUsers = true;
     };
+    # Shared across any stack that sends mail, not specific to one stack.
+    "smtp/host" = {
+      sopsFile = ./data/common.yaml;
+    };
+    "smtp/port" = {
+      sopsFile = ./data/common.yaml;
+    };
+    "smtp/user" = {
+      sopsFile = ./data/common.yaml;
+    };
+    "smtp/password" = {
+      sopsFile = ./data/common.yaml;
+    };
+    "smtp/from_domain" = {
+      sopsFile = ./data/common.yaml;
+    };
+    # Admin/notification recipient address — used by PeerTube (streaming stack) so
+    # far, but shared/global like its smtp/* siblings above, not stack-specific.
+    "smtp/to" = {
+      sopsFile = ./data/common.yaml;
+    };
+  }
+  # Only while argunix is: their owner is the `argunix` user, which exists only then, and
+  # sops-install-secrets fails the whole activation on an owner it cannot resolve.
+  // lib.optionalAttrs config.argunix.enable {
     "argunix/builder_enrollment/token" = {
       sopsFile = ./data/common.yaml;
       owner = "argunix";
@@ -111,27 +137,6 @@
       owner = "argunix";
       group = "argunix";
       mode = "0400";
-    };
-    # Shared across any stack that sends mail, not specific to one stack.
-    "smtp/host" = {
-      sopsFile = ./data/common.yaml;
-    };
-    "smtp/port" = {
-      sopsFile = ./data/common.yaml;
-    };
-    "smtp/user" = {
-      sopsFile = ./data/common.yaml;
-    };
-    "smtp/password" = {
-      sopsFile = ./data/common.yaml;
-    };
-    "smtp/from_domain" = {
-      sopsFile = ./data/common.yaml;
-    };
-    # Admin/notification recipient address — used by PeerTube (streaming stack) so
-    # far, but shared/global like its smtp/* siblings above, not stack-specific.
-    "smtp/to" = {
-      sopsFile = ./data/common.yaml;
     };
   };
 
@@ -295,6 +300,7 @@
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized
   # Traefik instance that replaces this host's previous native one.
 
+  argunix.enable = false; # TODO: re-enable once we have more RAM available
   argunix.mode = "both";
   argunix.coordinator = {
     # Only reached through reverse-proxy now (see its argunix dynamic-config

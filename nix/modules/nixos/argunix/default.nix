@@ -30,10 +30,10 @@ in
 
   config = {
     argunix = {
-      builder = lib.mkIf (cfg.mode == "builder" || cfg.mode == "both") {
+      builder = lib.mkIf (cfg.enable && (cfg.mode == "builder" || cfg.mode == "both")) {
         enable = true;
       };
-      coordinator = lib.mkIf (cfg.mode == "coordinator" || cfg.mode == "both") {
+      coordinator = lib.mkIf (cfg.enable && (cfg.mode == "coordinator" || cfg.mode == "both")) {
         enable = true;
       };
     };
