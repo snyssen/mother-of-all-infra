@@ -161,6 +161,7 @@
           - "uptime.${config.domains.main}"
           - "speedtest-tracker.${config.domains.main}"
           - "backrest.${config.domains.main}"
+          - "garage.${config.domains.main}"
           - "crowdsec-ui.${config.domains.main}"
         policy: two_factor
         subject:

@@ -160,7 +160,8 @@ services:
         restart: true
 
   # Reverse geocoder. Only started when the `photon` profile is active, which
-  # default.nix controls. On `web` as on prod, because Mobilizon uses it too.
+  # default.nix controls. Internal only: prod also put it on `web` for Mobilizon, which
+  # was retired rather than migrated, so Dawarich is its only client.
   photon:
     image: rtuszik/photon-docker:2.5.0@sha256:c5babeb0ac396b485822036cf3c69e54fb6c79d699328a4e042e11bbd6f73f1a
     profiles:
@@ -173,7 +174,6 @@ services:
     restart: unless-stopped
     networks:
       - internal
-      - web
 
 networks:
   web:

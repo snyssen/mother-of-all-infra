@@ -267,7 +267,6 @@ setup to be "production" rather than "a test VM":
       year; its `PARALLEL` update strategy needs twice that while swapping. The VM's
       whole disk is 300 GB (`disk_gb` in `ansible/hosts/host_vars/hypervisor/vars.yml`).
       So grow the disk, or pick a smaller `REGION` and/or `UPDATE_STRATEGY` first.
-      Mobilizon also uses it.
 - [ ] `nix/hosts/apps/compose/matrix/default.nix` — `live = true`, in the same deploy as
       `domains.main`: federation and push back on, and the bridges and maubot started.
       Only after prod's Synapse and bridges are stopped for good — two copies of the
