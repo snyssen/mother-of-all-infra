@@ -151,6 +151,7 @@ in
       ../../data/crowdsec.yaml
       ../../data/dawarich.yaml
       ../../data/immich.yaml
+      ../../data/matrix.yaml
       ../../data/nextcloud.yaml
       ../../data/paperless.yaml
       ../../data/rallly.yaml

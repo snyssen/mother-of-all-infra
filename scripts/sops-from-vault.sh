@@ -6,6 +6,7 @@
 # carries some of its vault values over to nix/hosts/apps/data/<stack>.yaml.
 #
 # Usage: ./scripts/sops-from-vault.sh [--vault FILE] [--force] [--join SEP] <sops-file> <vault_var>=<sops/key/path>...
+#        ./scripts/sops-from-vault.sh --file [--force] <sops-file> <vault-encrypted-file>=<sops/key/path>...
 #
 #   just sops-from-vault nix/hosts/apps/data/actual-budget.yaml \
 #     vault_backbone__authelia__oidc_actual_budget_clientid=compose-stacks/actual-budget/oidc/client_id
@@ -18,6 +19,11 @@
 # --join SEP stores each vault *list* as a single string, its items joined with SEP —
 # for values a container takes as one delimited environment variable, since sops-nix
 # only exposes string leaves. Every mapping in that call must then be a list.
+#
+# --file copies whole files encrypted with `ansible-vault encrypt` (keys a role ships
+# as templates of their own, rather than as vault variables) instead: each mapping's
+# left side is then the path of such a file, and its whole content becomes the value,
+# final newline included.
 #
 # Values travel decrypted vault -> shell variable -> pipe -> `sops set --value-stdin`,
 # and are compared back the same way, so the only output is key names and verdicts.
@@ -32,22 +38,26 @@ NC='\033[0m'
 
 usage() {
   echo "Usage: $0 [--vault FILE] [--force] [--join SEP] <sops-file> <vault_var>=<sops/key/path>..." >&2
+  echo "       $0 --file [--force] <sops-file> <vault-encrypted-file>=<sops/key/path>..." >&2
   exit 2
 }
 
 VAULT_FILE=ansible/hosts/group_vars/apps/vault.yml
 FORCE=0
 JOIN=
+FILES=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --vault) [ $# -ge 2 ] || usage; VAULT_FILE=$2; shift 2 ;;
     --force) FORCE=1; shift ;;
     --join) [ $# -ge 2 ] || usage; JOIN=$2; shift 2 ;;
+    --file) FILES=1; shift ;;
     -*) usage ;;
     *) break ;;
   esac
 done
 [ $# -ge 2 ] || usage
+[ "$FILES" -eq 0 ] || [ -z "$JOIN" ] || { echo "--join does not apply to --file" >&2; exit 2; }
 SOPS_FILE=$1
 shift
 
@@ -60,7 +70,7 @@ done
   echo "ANSIBLE_VAULT_PASSPHRASE is not set — run 'just ansible-vault-setup' first." >&2
   exit 1
 }
-[ -f "$VAULT_FILE" ] || { echo "No vault at $VAULT_FILE." >&2; exit 1; }
+[ "$FILES" -eq 1 ] || [ -f "$VAULT_FILE" ] || { echo "No vault at $VAULT_FILE." >&2; exit 1; }
 
 # Parse every mapping up front, so a typo fails before anything is written.
 VARS=()
@@ -72,7 +82,15 @@ for mapping in "$@"; do
   esac
   var=${mapping%%=*}
   path=${mapping#*=}
-  [[ "$var" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Invalid vault variable name: $var" >&2; exit 2; }
+  if [ "$FILES" -eq 1 ]; then
+    [ -f "$var" ] || { echo "No such file: $var" >&2; exit 2; }
+    case "$(head -n1 "$var")" in
+      "\$ANSIBLE_VAULT;"*) ;;
+      *) echo "Not an ansible-vault encrypted file: $var" >&2; exit 2 ;;
+    esac
+  else
+    [[ "$var" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Invalid vault variable name: $var" >&2; exit 2; }
+  fi
   [[ "$path" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$ ]] || { echo "Invalid sops key path: $path" >&2; exit 2; }
   index=""
   IFS=/ read -ra segments <<<"$path"
@@ -84,12 +102,21 @@ done
 # Decrypted once, held only in this variable (never exported, so no child process
 # inherits it in its environment) and fed to yq through a pipe from the printf
 # builtin, which leaves nothing in any process's argv.
-VAULT_JSON=$(ansible-vault view --vault-password-file ansible/vault-passphrase-client.sh "$VAULT_FILE" | yq -o=json -I=0 '.')
+#
+# Not done at all in --file mode, where each file is decrypted on demand instead and
+# streamed straight into yq — load_str reads it whole, as one JSON string.
+if [ "$FILES" -eq 1 ]; then
+  VAULT_JSON='{}'
+else
+  VAULT_JSON=$(ansible-vault view --vault-password-file ansible/vault-passphrase-client.sh "$VAULT_FILE" | yq -o=json -I=0 '.')
+fi
 trap 'unset VAULT_JSON' EXIT
 
 # Separator passed to yq through the environment rather than spliced into the
 # expression, so no separator can break the quoting.
-if [ -n "$JOIN" ]; then
+if [ "$FILES" -eq 1 ]; then
+  vault_value() { ansible-vault view --vault-password-file ansible/vault-passphrase-client.sh "$1" | yq -n -o=json -I=0 'load_str("/dev/stdin")'; }
+elif [ -n "$JOIN" ]; then
   vault_value() { printf '%s' "$VAULT_JSON" | SEP="$JOIN" yq -p=json -o=json -I=0 ".[\"$1\"] | join(strenv(SEP))"; }
 else
   vault_value() { printf '%s' "$VAULT_JSON" | yq -p=json -o=json -I=0 ".[\"$1\"]"; }
@@ -100,7 +127,7 @@ fi
 sops_value() { sops decrypt --output-type json "$SOPS_FILE" | yq -p=json -o=json -I=0 ".$1"; }
 
 missing=0
-for var in "${VARS[@]}"; do
+[ "$FILES" -eq 0 ] && for var in "${VARS[@]}"; do
   if [ "$(printf '%s' "$VAULT_JSON" | yq -p=json ".[\"$var\"] | (. != null)")" != "true" ]; then
     echo -e "${RED}✗${NC} $var is not set in $VAULT_FILE" >&2
     missing=1

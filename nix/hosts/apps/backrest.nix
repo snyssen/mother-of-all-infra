@@ -244,6 +244,19 @@ in
         ];
         stopUnits = [ ];
       };
+      # Prod's `matrix` location minus what is generated here: Synapse's media store, and
+      # maubot's plugin SQLite databases. Plus maubot's uploaded plugins, which prod
+      # backs up nowhere: without them, every bot instance stays disabled until they are
+      # uploaded again. Everything else — homeserver state, MAS, every bridge — is in the
+      # central Postgres, covered by `databases`. Stopped for maubot's SQLite files.
+      matrix = mkPlan {
+        paths = [
+          "/mnt/bulk/matrix/synapse/media_store"
+          "/var/lib/app-data/matrix/maubot/dbs"
+          "/var/lib/app-data/matrix/maubot/plugins"
+        ];
+        stopUnits = [ "compose-matrix.service" ];
+      };
       # Uploaded recipe images only. Narrower than prod's location, which takes all of
       # /mnt/storage/recipes: staticfiles is no longer mounted (see
       # compose/recipes/docker-compose.yaml), and the recipes themselves live in the

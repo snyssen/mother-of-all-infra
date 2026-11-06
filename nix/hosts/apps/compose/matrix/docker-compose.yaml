@@ -1,0 +1,131 @@
+# Mirrors the legacy container_matrix role. Image pins are carried over unchanged and
+# are Renovate's to bump.
+#
+# Service names are prod's exactly, dashes and underscores mixed: the configs address
+# each other by them (bridges reach http://synapse:8008, Synapse pushes to
+# http://matrix-signal:29328...), and those configs are prod's, rendered unchanged.
+#
+# The bridges and maubot are in the `live` profile, which default.nix only activates
+# once this host *is* matrix.snyssen.be — see `live` there for why.
+services:
+  synapse:
+    image: matrixdotorg/synapse:v1.163.2@sha256:c3c21919a322f74d177a43bce8031adc81ef839ddd117a8dd03cfec350e76e02
+    restart: unless-stopped
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+    volumes:
+      # The only state on disk: uploaded and cached media. Everything else on prod's
+      # /data was config this host generates (default.nix), mounted file by file below.
+      - /mnt/bulk/matrix/synapse/media_store:/data/media_store
+      - ${SYNAPSE_CONFIG_PATH}:/data/homeserver.yaml:ro
+      - ${SYNAPSE_LOG_CONFIG_PATH}:/data/log.config:ro
+      - ${SYNAPSE_SIGNING_KEY_PATH}:/data/signing.key:ro
+      - ${SYNAPSE_AS_DOUBLEPUPPET_PATH}:/data/app_services/doublepuppet.yaml:ro
+      - ${SYNAPSE_AS_DISCORD_PATH}:/data/app_services/matrix_discord.yaml:ro
+      - ${SYNAPSE_AS_SIGNAL_PATH}:/data/app_services/matrix_signal.yaml:ro
+      - ${SYNAPSE_AS_WHATSAPP_PATH}:/data/app_services/matrix_whatsapp.yaml:ro
+      - ${SYNAPSE_AS_META_PATH}:/data/app_services/matrix_meta.yaml:ro
+    networks:
+      - web
+      - db
+      - bridges
+
+  # Matrix Authentication Service. All of its state is in its database.
+  matrix_mas:
+    image: ghcr.io/element-hq/matrix-authentication-service:1.28.0@sha256:494c67f08ee8344368f4ed336611dea02b26c4e058bf37a212d090d50b612659
+    restart: unless-stopped
+    environment:
+      MAS_CONFIG: /config/mas_config.yaml
+    volumes:
+      - ${MAS_CONFIG_PATH}:/config/mas_config.yaml:ro
+      - ${MAS_KEY_ONE_PATH}:/config/keys/one.key:ro
+      - ${MAS_KEY_TWO_PATH}:/config/keys/two.key:ro
+      - ${MAS_KEY_THREE_PATH}:/config/keys/three.key:ro
+      - ${MAS_KEY_FOUR_PATH}:/config/keys/four.key:ro
+    networks:
+      - web
+      - db
+
+  element:
+    image: vectorim/element-web:v1.12.32@sha256:f8700633d4336258af7a05b53865a4f479e0d628cf2d9ca83d28b5939314d4ce
+    restart: unless-stopped
+    volumes:
+      - ${ELEMENT_CONFIG_PATH}:/app/config.json:ro
+    networks:
+      - web
+
+  ###########
+  # Bridges #
+  ###########
+  # Their /data holds the config and registration that matrix-config installs there
+  # (default.nix): their entrypoints edit config.yaml in place and generate a
+  # registration.yaml if there is none, so neither can be a read-only mount. Everything
+  # else they keep is in their databases.
+  matrix-discord:
+    image: dock.mau.dev/mautrix/discord:v0.7.7@sha256:065405ca2f961b2687ca577c4eb65592c139d641342a9611d98b5394f30cf84a
+    profiles:
+      - live
+    restart: unless-stopped
+    volumes:
+      - /var/lib/app-data/matrix/discord:/data
+    networks:
+      - bridges
+      - db
+
+  matrix-signal:
+    image: dock.mau.dev/mautrix/signal:v26.10@sha256:39afa721aa69472b2e91c75bd7d81a739e47f7e480fc0ff5ac8247af28eb2d0a
+    profiles:
+      - live
+    restart: unless-stopped
+    volumes:
+      - /var/lib/app-data/matrix/signal:/data
+    networks:
+      - bridges
+      - db
+
+  matrix-whatsapp:
+    image: dock.mau.dev/mautrix/whatsapp:v26.10@sha256:c807054cb015d0f5c90d20d85aac216d062b4a6f4ae834b931fd5e7f03e27391
+    profiles:
+      - live
+    restart: unless-stopped
+    volumes:
+      - /var/lib/app-data/matrix/whatsapp:/data
+    networks:
+      - bridges
+      - db
+
+  matrix-meta:
+    image: dock.mau.dev/mautrix/meta:v26.10@sha256:22bfa54084b6855188f5146b325ee007a298443a9617caead06cc5fc0ba0d687
+    profiles:
+      - live
+    restart: unless-stopped
+    volumes:
+      - /var/lib/app-data/matrix/meta:/data
+    networks:
+      - bridges
+      - db
+
+  ###########
+  #  Bots   #
+  ###########
+  # Same reason for a writable /data as the bridges: its entrypoint edits config.yaml,
+  # and maubot itself rewrites it to hash the admin password. Also holds the uploaded
+  # plugins and their SQLite databases (dbs/).
+  maubot:
+    image: dock.mau.dev/maubot/maubot:v0.6.0@sha256:6968ddea1e08aa7f8ac70ac7a706663fe8d7b4d6f96cd7a6bb8548637fb8cd17
+    profiles:
+      - live
+    restart: unless-stopped
+    volumes:
+      - /var/lib/app-data/matrix/maubot:/data
+    networks:
+      - bridges
+      - db
+      - web
+
+networks:
+  web:
+    external: true
+  db:
+    external: true
+  bridges:

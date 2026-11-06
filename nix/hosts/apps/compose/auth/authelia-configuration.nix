@@ -293,6 +293,14 @@
             - policy: one_factor
               subject:
                 - ["group:team_member"]
+        # Matrix, through MAS. one_factor, carried over from the legacy config unchanged.
+        # The group already exists — see lldap-bootstrap/group-configs/matrix_user.json.
+        matrix_policy:
+          default_policy: deny
+          rules:
+            - policy: one_factor
+              subject:
+                - ["group:matrix_user"]
         # one_factor, carried over from the legacy config unchanged. The group already
         # exists — see lldap-bootstrap/group-configs/dawarich_user.json.
         dawarich_policy:
@@ -519,4 +527,31 @@
             - openid
             - profile
             - email
+        # MAS's upstream provider, so Synapse's logins go through Authelia. The last
+        # path segment of the redirect URI is the provider's id in mas-config.yaml
+        # (matrix__mas__oidc_id on prod), fixed because MAS links users to it.
+        - client_name: Synapse
+          client_id: "${config.sops.placeholder."compose-stacks/matrix/mas/oidc/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/matrix/mas/oidc/client_secret_hash"
+          }"
+          public: false
+          authorization_policy: matrix_policy
+          require_pkce: true
+          pkce_challenge_method: S256
+          redirect_uris:
+            - "https://matrix-mas.${config.domains.main}/upstream/callback/01K8GGKK57BWVMVQ0C46QP5Z6Y"
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          response_types:
+            - code
+          grant_types:
+            - refresh_token
+            - authorization_code
+          access_token_signed_response_alg: none
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
 ''

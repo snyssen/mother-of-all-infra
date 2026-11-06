@@ -180,6 +180,28 @@ in
       ];
     };
 
+    # Pair with `postgres-restore --from /mnt/bulk/restore/prod-postgres` for matrix,
+    # matrix_mas and the bridges' and maubot's databases: that is where nearly all of
+    # the state is. These are the files beside them. Prod's location also covers the
+    # rest of /mnt/storage/matrix/synapse, which is config generated here — the signing
+    # key included, which comes from sops instead. maubot's plugins are in no location;
+    # see "Data that does not come through restic" in the Phase B doc.
+    matrix = fromLocation "matrix" // {
+      stopUnits = [ "compose-matrix.service" ];
+      paths = [
+        {
+          from = "/mnt/storage/matrix/synapse/media_store";
+          to = "/mnt/bulk/matrix/synapse/media_store";
+          owner = "991:991";
+        }
+        {
+          from = "/home/snyssen/data/matrix/maubot/dbs";
+          to = "/var/lib/app-data/matrix/maubot/dbs";
+          owner = "1337:1337";
+        }
+      ];
+    };
+
     # Same as immich: Dawarich's dumps ride in prod's `postgres` location but belong to
     # its own PostGIS. Load them with:
     #   postgres-restore --from /mnt/bulk/restore/prod-dawarich dawarich

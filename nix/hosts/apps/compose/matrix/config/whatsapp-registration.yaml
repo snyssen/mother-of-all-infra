@@ -1,0 +1,15 @@
+id: whatsapp
+url: http://matrix-whatsapp:29318
+as_token: "@WHATSAPP_AS_TOKEN@"
+hs_token: "@WHATSAPP_HS_TOKEN@"
+sender_localpart: "@WHATSAPP_SENDER_LOCALPART@"
+rate_limited: false
+namespaces:
+  users:
+    - regex: ^@whatsappbot:matrix\.snyssen\.be$
+      exclusive: true
+    - regex: ^@whatsapp_.*:matrix\.snyssen\.be$
+      exclusive: true
+de.sorunome.msc2409.push_ephemeral: true
+receive_ephemeral: true
+io.element.msc4190: true

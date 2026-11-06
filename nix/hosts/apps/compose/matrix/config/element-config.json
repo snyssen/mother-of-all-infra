@@ -1,0 +1,17 @@
+{
+    "default_server_config": {
+        "m.homeserver": {
+            "base_url": "https://matrix.@MAIN_DOMAIN@",
+            "server_name": "matrix.snyssen.be"
+        }
+    },
+    "disable_custom_urls": true,
+    "disable_guests": true,
+    "brand": "matrix.snyssen.be",
+    "default_theme": "light",
+    "roomDirectory": {
+        "servers": [
+            "matrix.snyssen.be"
+        ]
+    }
+}

@@ -178,6 +178,13 @@ the database and do come across. `apps` backs this directory up from now on.
 - [ ] Copy it across by hand at cutover (e.g. `rsync` from the legacy box to
       `/mnt/bulk/dawarich/storage`), or decide the originals aren't needed.
 
+**maubot's plugins.** Prod's `/mnt/storage/matrix/maubot/plugins` (the uploaded `.mbp`
+files) is in no autorestic location. Without them every bot instance stays disabled
+until they are uploaded again. `apps` backs them up from now on.
+
+- [ ] Copy them across by hand at cutover (into `/var/lib/app-data/matrix/maubot/plugins`,
+      owner 1337), or re-download them from their releases.
+
 **Docker images.** Pinned by digest. A rebuild with no working internet — or after an
 upstream digest has been garbage-collected — leaves stacks that will not start.
 
@@ -261,6 +268,10 @@ setup to be "production" rather than "a test VM":
       whole disk is 300 GB (`disk_gb` in `ansible/hosts/host_vars/hypervisor/vars.yml`).
       So grow the disk, or pick a smaller `REGION` and/or `UPDATE_STRATEGY` first.
       Mobilizon also uses it.
+- [ ] `nix/hosts/apps/compose/matrix/default.nix` — `live = true`, in the same deploy as
+      `domains.main`: federation and push back on, and the bridges and maubot started.
+      Only after prod's Synapse and bridges are stopped for good — two copies of the
+      same server, or of the same bridge session, must never run at once.
 - [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
       `memory` binding: 8G heap / 8.2g limit for both servers (shrunk to fit the 8 GiB
       test VM).
@@ -382,6 +393,24 @@ settings), so lookups go to a host that doesn't exist. In 1.17.0 a lookup that e
 retried three times and then dropped, leaving the point to catch up once Photon is on.
 Only an *empty* answer marks a point as geocoded for good. That depends on the geocoder
 raising on an unreachable host (read from the code, not tested).
+
+**Matrix — database collation first.** Synapse refuses a database whose collation isn't
+`C`, and a restore can't change it: it comes from `CREATE DATABASE`. The databases stack
+now creates `matrix` that way (`cLocaleDbNames`), but only if it doesn't exist yet. If
+its provisioning logs `WARNING: database matrix has collation/ctype ...`, the database
+predates that: drop it (pgAdmin, or `DROP DATABASE matrix;` as the superuser) and restart
+`compose-databases` to recreate it. Then:
+
+```sh
+prod-import postgres matrix
+postgres-restore --from /mnt/bulk/restore/prod-postgres matrix matrix_mas matrix_discord matrix_signal matrix_whatsapp matrix_meta maubot
+```
+
+On the test host it runs in restore-test mode: no federation, no push, no bridges, no
+maubot. That is enough to check that the restore is whole — log in through Element,
+recent messages and media load — without acting as prod anywhere. Logging in needs
+Authelia's database to be prod's too: MAS links each user to Authelia's `sub` for them,
+which is per-instance.
 
 **`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
 Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops

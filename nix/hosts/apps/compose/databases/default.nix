@@ -34,6 +34,12 @@ let
     "audiomuse"
   ];
 
+  # Databases created with the C collation and ctype instead of the cluster default
+  # (en_US.utf8 in the postgres image). Synapse refuses any other locale, since a
+  # collation change under its indexes can corrupt them. Takes effect only when the
+  # database is created — see provision.sh.
+  cLocaleDbNames = [ "matrix" ];
+
   envVarName = name: "PG_PASSWORD_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}";
 
   # Copy the whole directory (not just docker-compose.yaml) into the store so the
@@ -92,6 +98,7 @@ in
   sops.templates."compose-databases.env".content = ''
     POSTGRES_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/superuser"}
     DB_NAMES=${lib.concatStringsSep "," dbNames}
+    DB_NAMES_C_LOCALE=${lib.concatStringsSep "," cLocaleDbNames}
     PGADMIN_DEFAULT_EMAIL=${config.sops.placeholder."compose-stacks/databases/pgadmin/email"}
     PGADMIN_DEFAULT_PASSWORD=${config.sops.placeholder."compose-stacks/databases/pgadmin/password"}
     HEALTHCHECK_ID=${config.sops.placeholder."compose-stacks/databases/pg_dump_healthcheck_id"}
