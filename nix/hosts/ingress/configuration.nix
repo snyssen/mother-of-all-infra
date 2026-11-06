@@ -88,6 +88,14 @@
     ];
   };
 
+  # The only host exposed to the Internet: key-only SSH, stated here rather than left
+  # to openstack-config.nix's mkDefault. PasswordAuthentication alone is not enough —
+  # with PAM, keyboard-interactive would still prompt for snyssen's password.
+  services.openssh.settings = {
+    PasswordAuthentication = false;
+    KbdInteractiveAuthentication = false;
+  };
+
   environment.systemPackages = [
     pkgs.btop
   ];

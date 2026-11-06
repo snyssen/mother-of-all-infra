@@ -15,6 +15,9 @@
       vars:
         security_autoupdate_mail_to: "{{ smtp__to }}"
         security_fail2ban_enabled: false
+        # Already the role's defaults, but stated so a role bump can't silently flip them
+        security_ssh_password_authentication: "no"
+        security_ssh_challenge_response_auth: "no"
 
 - name: Remove old packages
   become: true
