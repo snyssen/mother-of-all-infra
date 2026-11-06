@@ -26,6 +26,7 @@
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.openssh
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.grafana-alloy
@@ -104,13 +105,6 @@
   networking.firewall.allowedTCPPorts = [
     53
   ];
-
-  services.openssh = {
-    enable = true;
-    openFirewall = true;
-    settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = "no";
-  };
 
   users = {
     mutableUsers = false;

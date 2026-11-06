@@ -29,6 +29,7 @@
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.openssh
 
     # flake.modules.nixos.docker
     flake.modules.nixos.tailscale
@@ -86,14 +87,6 @@
       "https://prometheus.snyssen.be/api/v1/write"
       "https://prometheus.snyssen1.xyz/api/v1/write"
     ];
-  };
-
-  # The only host exposed to the Internet: key-only SSH, stated here rather than left
-  # to openstack-config.nix's mkDefault. PasswordAuthentication alone is not enough —
-  # with PAM, keyboard-interactive would still prompt for snyssen's password.
-  services.openssh.settings = {
-    PasswordAuthentication = false;
-    KbdInteractiveAuthentication = false;
   };
 
   environment.systemPackages = [

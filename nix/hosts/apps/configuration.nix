@@ -18,6 +18,7 @@
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.openssh
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.crowdsec-firewall-bouncer
@@ -181,13 +182,6 @@
       "http://127.0.0.1:9090/api/v1/write"
       "https://prometheus.snyssen.be/api/v1/write"
     ];
-  };
-
-  services.openssh = {
-    enable = true;
-    openFirewall = true;
-    settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = "no";
   };
 
   users = {

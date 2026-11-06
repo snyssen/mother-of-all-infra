@@ -25,6 +25,7 @@
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.openssh
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.prometheus-node-exporter
@@ -167,13 +168,6 @@
         ];
       };
     };
-  };
-
-  services.openssh = {
-    enable = true;
-    openFirewall = true;
-    settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = "no";
   };
 
   libvirtd = {

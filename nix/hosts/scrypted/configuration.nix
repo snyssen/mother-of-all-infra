@@ -23,6 +23,7 @@
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
+    flake.modules.nixos.openssh
 
     flake.modules.nixos.tailscale
     flake.modules.nixos.nfs-mounts
@@ -77,13 +78,6 @@
     scrypted = {
       composeFile = ./compose/scrypted/docker-compose.yaml;
     };
-  };
-
-  services.openssh = {
-    enable = true;
-    openFirewall = true;
-    settings.PasswordAuthentication = false;
-    settings.PermitRootLogin = "no";
   };
 
   users = {
