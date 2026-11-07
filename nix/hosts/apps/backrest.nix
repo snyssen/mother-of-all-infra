@@ -85,6 +85,11 @@ in
     };
     users.snyssen.passwordHashSecret = "backrest/users/snyssen/password_hash";
 
+    # `stopUnits` only applies to *restores* (the generated restore commands stop and
+    # restart them around writing a plan's paths). Backups copy everything live, as
+    # prod's autorestic always has: no stack is stopped at backup time. Databases are
+    # the exception that matters, and they are backed up as dumps, never as files.
+    #
     # Plan boundaries mirror the legacy autorestic locations — roughly one per stack,
     # which is also the unit a restore is selected by (`backrest-restore monitoring
     # streaming-config`). Only stacks with state worth keeping appear here:
@@ -200,19 +205,19 @@ in
         stopUnits = [ "compose-immich.service" ];
       };
       # Every budget file plus the server's account/user database, all SQLite — hence
-      # stopping the stack rather than snapshotting files mid-write.
+      # stopping the stack while restoring over them.
       actual-budget = mkPlan {
         paths = [ "/var/lib/app-data/actual-budget" ];
         stopUnits = [ "compose-actual-budget.service" ];
       };
       # Mirrors prod's `foundryvtt` location: the whole data directory. Worlds are
-      # LevelDB databases since v11, so the stack is stopped for a consistent copy.
+      # LevelDB databases since v11, so the stack is stopped while restoring them.
       foundryvtt = mkPlan {
         paths = [ "/var/lib/app-data/foundryvtt" ];
         stopUnits = [ "compose-foundryvtt.service" ];
       };
       # Mirrors prod's `minecraft` location: both worlds, dynmap tiles included. Stopped
-      # so region files aren't copied mid-save.
+      # while restoring, so a running server can't overwrite the restored region files.
       minecraft = mkPlan {
         paths = [
           "/mnt/bulk/minecraft/data"
@@ -221,8 +226,8 @@ in
         stopUnits = [ "compose-minecraft.service" ];
       };
       # Mirrors prod's `sharkey` location minus its config directory, which is generated
-      # here: the job queues in Redis, and the drive's files. Stopped so Redis's dump and
-      # the drive are copied at rest.
+      # here: the job queues in Redis, and the drive's files. Stopped while restoring, so
+      # a running Redis can't write its old dump over the restored one.
       sharkey = mkPlan {
         paths = [
           "/var/lib/app-data/sharkey/redis"
@@ -248,7 +253,8 @@ in
       # maubot's plugin SQLite databases. Plus maubot's uploaded plugins, which prod
       # backs up nowhere: without them, every bot instance stays disabled until they are
       # uploaded again. Everything else — homeserver state, MAS, every bridge — is in the
-      # central Postgres, covered by `databases`. Stopped for maubot's SQLite files.
+      # central Postgres, covered by `databases`. Stopped while restoring, for maubot's
+      # SQLite files.
       matrix = mkPlan {
         paths = [
           "/mnt/bulk/matrix/synapse/media_store"
@@ -260,7 +266,8 @@ in
       # The synced folders, as prod's `syncthing` location. Not its config directory, the
       # other half of that location: the device identity now comes from sops (see
       # syncthing.nix), and the rest is Syncthing's index database, which it rebuilds by
-      # rescanning. Stopped so no folder is copied mid-sync.
+      # rescanning. Stopped while restoring, so Syncthing doesn't sync a half-restored
+      # folder out to every peer.
       syncthing = mkPlan {
         paths = [ "/mnt/bulk/syncthing" ];
         stopUnits = [ "syncthing.service" ];

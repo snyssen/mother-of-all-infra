@@ -54,9 +54,9 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | Stack | Description | Disposition | Status |
 |-------|-------------|-------------|--------|
 | `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate | ✅ Done |
-| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done |
-| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`). Authelia's `access_control` was first built with a permissive `two_factor` default, which left every forwardAuth-gated admin tool open to any LDAP account with 2FA; now `deny` by default as on prod, with prod's rules carried over for each gated host that exists here (sysadmin-only admin tools, sysadmin|media_manager for the *arr apps with the internal-network bypass for their m2m calls). OIDC clients aligned too: Grafana and CrowdSec on `sysadmin_policy`, PeerTube on `media_policy`, plus the Audiobookshelf client (`media_policy`) the `streaming` migration had missed — its own side of OIDC lives only in Audiobookshelf's database (no env or file config; only the admin API could set it), so it comes back with the `streaming-config` restore; pgAdmin tightened from prod's plain `two_factor` to `sysadmin_policy`. Adding a forwardAuth-gated route now needs a matching rule, or it denies everyone |
-| `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | n/a |
+| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done. Prometheus's config is now a sops template (`prometheus-config.nix`) carrying all of prod's scrape jobs, including the five first deferred: `jellyfin`, `authelia` (Authelia's `telemetry.metrics` enabled for it), `rest_server`, `hass` and `healthchecks` (token, project id and API key from the vault). Node/cAdvisor metrics come through Alloy instead. **Uptime Kuma has no monitors yet** — see [Remaining work before Phase B](#remaining-work-before-phase-b) |
+| `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`). Authelia's `access_control` was first built with a permissive `two_factor` default, which left every forwardAuth-gated admin tool open to any LDAP account with 2FA; now `deny` by default as on prod, with prod's rules carried over for each gated host that exists here (sysadmin-only admin tools, sysadmin|media_manager for the *arr apps with the internal-network bypass for their m2m calls). OIDC clients aligned too, including the two for relying parties outside this host — **Tailscale** (the tailnet's own login; without it nobody can sign in to Tailscale, leaving raw SSH keys as the only way into the hosts) and **Home Assistant** (`hass_policy`) — then Grafana and CrowdSec on `sysadmin_policy`, PeerTube on `media_policy`, plus the Audiobookshelf client (`media_policy`) the `streaming` migration had missed — its own side of OIDC lives only in Audiobookshelf's database (no env or file config; only the admin API could set it), so it comes back with the `streaming-config` restore; pgAdmin tightened from prod's plain `two_factor` to `sysadmin_policy`. Adding a forwardAuth-gated route now needs a matching rule, or it denies everyone |
+| `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | ⏳ **To explore before cutover** — no UniFi OS VM exists yet, and prod's controller goes away with the wipe. See [Remaining work before Phase B](#remaining-work-before-phase-b) |
 | `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
 | `ntfy` | Push notification server | ✅ Migrate | ✅ Done |
 | `streaming` | Jellyfin + VPN (Gluetun) + *arr stack | ✅ Migrate | ✅ Done |
@@ -82,10 +82,33 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `backrest` | Restic backup browser GUI | ⚠️ Migrate as read-only browse UI (restores via CLI) | ✅ Done, and now the backup orchestrator rather than just a browser: the production repo stays registered read-only for restore-testing, `apps` backs itself up into a separate repo (`.../apps/`) with plans for every migrated stack holding state, and three generated commands (`backrest-restore`, `postgres-restore`, `prod-import` — plus the `apps-restore` wrapper) cover disaster recovery and prod→test imports. See `docs/backups.md` |
 | `skyrim_together` | Skyrim Together Reborn server | ✅ Migrate (on-demand only) | ✅ Done (as `skyrim-together`). `autostart = false`: started by hand for a session. UDP 10578 through a `skyrim-together` Traefik entrypoint, as on prod. `STServer.ini` rendered from sops and mounted read-only (verified the server never rewrites an existing one); passwords copied from the vault. No data worth importing or backing up: prod backs up none of it, and the `logs` mount is dropped (stdout reaches journald) |
 | `matrix` | Matrix homeserver (Synapse) + bridges | ✅ Migrate | 🚧 Code ready, not yet deployed. **Runs in restore-test mode until cutover** (`live = false` in `default.nix`): `server_name` must stay `matrix.snyssen.be` (it is in every user and room ID, and Synapse refuses a database of another server's users), so this host *is* that server, with prod's signing key. Federation and push are therefore off, and the bridges and maubot (a `live` compose profile) are not started — they would log in with prod's sessions and tokens. Clients still work under `domains.main`. Every config is prod's, rendered by Ansible with tokens for secrets and public URLs, then verified byte-identical to prod's own render (maubot's admin password aside, now plaintext, which maubot hashes itself). Synapse's database needs the C locale: new `cLocaleDbNames` in the databases stack. `backrest.plans.matrix` and `prod-import matrix` cover the media store and maubot's databases; maubot's plugins join the backups, prod never had them |
-| `attic` | Nix binary cache (Attic server) | ⛔ Exclude - Makes more sense as a nix module (dedicated VM?) | n/a |
+| `attic` | Nix binary cache (Attic server) | ❌ Retire — replaced by `garage` | ❌ Not migrated. Its code (role, `stacks_deploy` entry) is still to be deleted |
 | `garage` | Garage S3-compatible object storage + web UI | ✅ Migrate — *missing from the original inventory; the role was added to `stacks_deploy` after this doc was written* | 🚧 Code ready, not yet deployed. Only the Nix binary cache (`s3.<domain>` to push, `cache.<domain>` to substitute), so no backup and no import, as on prod: it refills from the next pushes. Every consumer names snyssen.be, so the test instance runs beside prod's unused until cutover. The rpc secret, tokens and default access key are copied from the vault; the key is the one argunix's `s3_credentials` already holds. Prod's `--single-node --default-bucket` recreates key and bucket on start; website access on `cache`, which nothing in the role set, is now enabled by a `garage-website` unit. Admin UI behind Authelia's sysadmin rule, as on prod |
 | `mobilizon` | Federated events platform | ❌ Retire | ❌ Not migrated — never used on prod, and the software isn't ready yet. It had its own database on prod, so nothing to remove on this host. Photon, which it shared with Dawarich, stays in the dawarich stack, now on its internal network only |
-| `scrypted` | NVR / camera bridge | ⛔ Exclude — already its own NixOS VM | n/a |
+| `scrypted` | NVR / camera bridge | ❌ Retire — no longer used | ❌ Not migrated. Its code (role, `stacks_deploy` entry, `nix/hosts/scrypted`, the commented hypervisor VM entry, its NFS export and `.sops.yaml` rule) is still to be deleted |
+
+---
+
+## Remaining work before Phase B
+
+Every stack is on `apps`. These are what is left before the cutover can be planned in
+detail:
+
+- [ ] **UniFi OS** — explore running UniFi OS Server (the official self-hosted build) on
+      its own VM, replacing prod's Network Application container, which is wiped with
+      prod. Decide the VM's shape, how devices find the controller without the `lan`
+      network (DHCP option 43 or DNS `unifi`), and how the current controller's
+      configuration moves across (its own `.unf` backup/restore).
+- [ ] **Uptime Kuma monitors** — `apps`'s Uptime Kuma has none, and they must not be
+      created by hand. Prod stayed on Uptime Kuma v1 only because its monitors are
+      created by an Ansible role that doesn't support v2. Find a way to run v2 with its
+      monitors declared in this repo; failing that, another tool for checking websites
+      and push-style job heartbeats. Constraint either way: it does no notifying of its
+      own — Prometheus scrapes it and Grafana alerts, so alerting stays in one place.
+      This also covers the backup heartbeats prod's autorestic pushes per location.
+- [ ] **Delete the retired stacks' code** — `scrypted` and `attic` (see the inventory).
+- Later, not needed for the cutover: the rest of the monitoring setup (dashboards,
+  alert rules) declared in the repo as well.
 
 ---
 

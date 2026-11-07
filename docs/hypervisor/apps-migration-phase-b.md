@@ -68,9 +68,10 @@ This is the step that is *actually* irreversible if skipped — see
       secrets file (`git grep -c age1mpnhsfpava0 -- 'nix/hosts/*/data/*'`).
 - [ ] Both restic repository passwords are in the password manager, as plain text, not
       only inside sops.
-- [ ] The backup server's **IP and MAC address** are written down somewhere outside
-      this repository. It is wake-on-LAN'd, and DNS for `backup.snyssen.be` goes away
-      with the production box.
+- [ ] The backup server's **IP address** is written down somewhere outside this
+      repository: DNS for `backup.snyssen.be` goes away with the production box. (It is
+      always on now. Prod's autorestic still wakes it with wake-on-LAN before each run,
+      but that hook is legacy and is not carried over.)
 
 ### Capacity must be checked, not remembered
 
@@ -228,7 +229,7 @@ the one failure that makes everything else moot.
       — this is what stops a half-restored state from being backed up over the good
       snapshots.
 - [ ] Sanity-check: `ls /run/secrets/backrest/repos/`, `tailscale status`, `ls /mnt/bulk`.
-- [ ] Wake the backup server and confirm `http://backup.snyssen.be:8000/metrics` answers.
+- [ ] Confirm the backup server answers: `http://backup.snyssen.be:8000/metrics`.
 
 ### 5. Restore
 
@@ -284,10 +285,25 @@ setup to be "production" rather than "a test VM":
       gone — each carries the same `TODO` comment:
       `apps`, `blackfog`, `gaming`, `hypervisor`, `ingress`, `purplehaze`, `sninful`,
       `technitium-primary`, `technitium-secondary`.
-- [ ] `nix/hosts/apps/backrest.nix` — decide what happens to the `backup_snyssen_be`
-      repository registration. It is production's repo, registered read-only. After
-      cutover it holds the only copy of pre-migration history, so it should stay
-      registered, still with no plans and no prune/forget policy.
+- [ ] `nix/hosts/apps/backrest.nix` — **apps takes over production's repositories.**
+      Everything `apps` backed up during Phase A was test data, in its own `apps/`
+      repository; it is not kept. Once the restore is verified, the new host backs up
+      on top of production's history instead, so one repository holds the whole
+      timeline (`prod-import` already reads it, so restores keep working across the
+      boundary):
+      - point every plan at production's on-site repo (`backup_snyssen_be`,
+        `rest:http://backup.snyssen.be:8000/`) and drop the read-only registration;
+      - register production's B2 repo (`snyssen-be-autorestic`) and send every plan
+        there too, except `movies` and `tv`, which stay on-site only as on prod. A
+        Backrest plan targets one repo, so this means either a second plan per
+        location or a copy step — to be designed;
+      - **enable a prune policy and a check policy** on both. Phase A ran with neither:
+        forgetting snapshots without pruning never frees space, and prod runs
+        `autorestic check` weekly. Document the chosen schedules in `docs/backups.md`;
+      - remove the `apps` repo registration.
+- [ ] Destroy the Phase A test repository on the backup server
+      (`rest:http://backup.snyssen.be:8000/apps/`), once the above has produced its
+      first good snapshots.
 
 ### 7. Verify before decommissioning anything
 
@@ -442,8 +458,12 @@ Things that need deciding or discovering before the day. Add to this as they sur
 - **How long production's hardware stays untouched** after the final backup. Ideally
   the disks are not wiped until the new setup has been verified, which conflicts with
   needing that exact hardware.
-- **Whether `attic` moves before or after** — it is excluded from `apps` and destined
-  for its own VM.
+- ~~Whether `attic` moves before or after~~ — resolved: retired, replaced by Garage.
+- **Known risk, accepted for the cutover: databases kept as plain files are copied
+  live.** Actual's SQLite, FoundryVTT's LevelDB worlds, maubot's SQLite and the like are
+  snapshotted while their stacks run, as prod's autorestic always has (no failed
+  restore so far). Backrest's hooks can stop or dump them first; that is post-cutover
+  work, and the cutover itself relies on the existing backups.
 - **Rehearsal**: is there a way to dry-run the whole sequence on the test hypervisor
   with a meaningful subset first? `prod-import --all --check` covers snapshot
   resolution, but not the rebuild-and-restore path end to end.
