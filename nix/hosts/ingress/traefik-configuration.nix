@@ -9,7 +9,6 @@ let
   # services.traefik.dynamicConfigOptions.http.routers and
   # services.traefik.dynamicConfigOptions.http.services options below.
   proxiedWebServices = {
-    # attic = "attic.snyssen.be";
     auth-main = "auth.snyssen.be";
     auth-team = "auth.bigdouf.team";
     dashboard = "dash.snyssen.be";

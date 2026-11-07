@@ -109,15 +109,8 @@
     name: container_matrix
   when: "stacks_deploy_list is not defined or 'matrix' in stacks_deploy_list"
 - ansible.builtin.include_role:
-    name: container_attic
-  when: "stacks_deploy_list is not defined or 'attic' in stacks_deploy_list"
-- ansible.builtin.include_role:
     name: container_garage
   when: "stacks_deploy_list is not defined or 'garage' in stacks_deploy_list"
 - ansible.builtin.include_role:
     name: container_mobilizon
   when: "stacks_deploy_list is not defined or 'mobilizon' in stacks_deploy_list"
-
-# - ansible.builtin.include_role:
-#     name: container_scrypted
-#   when: "stacks_deploy_list is not defined or 'scrypted' in stacks_deploy_list"

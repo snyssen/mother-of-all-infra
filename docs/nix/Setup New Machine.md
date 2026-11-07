@@ -71,7 +71,6 @@ Includes:
 - Verify system identity and networking
 - Confirm secrets were decrypted
 - Verify Tailscale connectivity
-- Optional: Set up attic cache authentication
 - Commit configuration to git
 
 **Time required**: 5–15 minutes (mostly manual verification)

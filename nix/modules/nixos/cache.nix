@@ -1,7 +1,6 @@
 {
   lib,
   config,
-  pkgs,
   ...
 }:
 let
@@ -22,19 +21,6 @@ in
         type = lib.types.str;
         default = "cache.snyssen.be:YbGmg46EztCHAFVaMztDfW/tuSuqVjLlYeG67R3VhGY=";
         description = "The public key of the S3 binary cache hosted on snyssen.be.";
-      };
-    };
-    attic = {
-      enable = lib.mkEnableOption "the self-hosted attic cache";
-      url = lib.mkOption {
-        type = lib.types.str;
-        default = "https://attic.snyssen.be/snyssen-infra";
-        description = "The URL of the self-hosted attic cache.";
-      };
-      publicKey = lib.mkOption {
-        type = lib.types.str;
-        default = "snyssen-infra:dxx9yngQiQbhs+XqBC0kN9tb5iU1Sqbs11Mr2EarYIs=";
-        description = "The public key of the self-hosted attic cache.";
       };
     };
     cachix = {
@@ -73,17 +59,14 @@ in
     nix.settings = {
       substituters =
         [ ]
-        ++ lib.lists.optional cfg.attic.enable cfg.attic.url
         ++ lib.lists.optional cfg.cache_snyssen_be.enable cfg.cache_snyssen_be.url
         ++ lib.lists.optional cfg.cachix.enable cfg.cachix.url
         ++ lib.lists.optional cfg.garnix.enable cfg.garnix.url;
       trusted-public-keys =
         [ ]
-        ++ lib.lists.optional cfg.attic.enable cfg.attic.publicKey
         ++ lib.lists.optional cfg.cache_snyssen_be.enable cfg.cache_snyssen_be.publicKey
         ++ lib.lists.optional cfg.cachix.enable cfg.cachix.publicKey
         ++ lib.lists.optional cfg.garnix.enable cfg.garnix.publicKey;
     };
-    environment.systemPackages = if cfg.attic.enable then [ pkgs.attic-client ] else [ ];
   };
 }

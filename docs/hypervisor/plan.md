@@ -62,7 +62,6 @@ The hypervisor exports bulk-storage directories for VM use:
 |-------------|---------|
 | `/mnt/bulk/apps-vm` | `192.168.1.0/24` |
 | `/mnt/bulk/homeassistant-vm` | `192.168.1.0/24`, `100.64.0.0/10` (Tailnet) |
-| `/mnt/bulk/scrypted` | `192.168.1.0/24` |
 
 These directories must exist on the host filesystem before clients attempt to mount them.  See [docs/nix/modules/nfs-exports.md](../nix/modules/nfs-exports.md) for full module documentation, firewall details, and client mount instructions.
 
@@ -312,7 +311,6 @@ Current hosts:
 | `gaming` | Gaming PC (multi-disk LUKS setup) |
 | `ingress` | Remote VPS (Gandi Cloud) — reverse proxy / ingress |
 | `hypervisor` | KVM hypervisor with btrfs RAID1 VM store |
-| `scrypted` | KVM VM — Scrypted home automation / camera bridge |
 
 The **hypervisor** host lives at `nix/hosts/hypervisor/` and follows the same structure as the other hosts.
 

@@ -10,8 +10,6 @@ let
   # `compose-stacks/databases/postgres/passwords/<name>` SOPS leaf and
   # `PG_PASSWORD_<NAME>` line in docker-compose.yaml's `provision` service is enough
   # to provision a new app database without touching the existing Postgres data volume.
-  #
-  # `attic` is intentionally excluded: it's moving to a dedicated VM, not `apps`.
   dbNames = [
     "lldap"
     "authelia"

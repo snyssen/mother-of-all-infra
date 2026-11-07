@@ -136,12 +136,6 @@
       group = "argunix";
       mode = "0400";
     };
-    "argunix/caches/attic/token" = {
-      sopsFile = ./data/common.yaml;
-      owner = "argunix";
-      group = "argunix";
-      mode = "0400";
-    };
   };
 
   tailscale.autoconnect = {

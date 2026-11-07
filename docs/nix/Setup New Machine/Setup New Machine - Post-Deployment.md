@@ -144,74 +144,7 @@ cat /etc/ssh/ssh_host_ed25519_key.pub  # On target
 
 If you regenerated SSH host keys and want the same keys on the next deployment, they're now in place.
 
-## Step 4: Attic Cache Authentication (Optional)
-
-If your NixOS configuration uses binary caching from Attic, the cache client should be pre-configured. However, authentication tokens must be set up.
-
-### 4.1 Generate Attic Token (if cache not done during pre-deployment)
-
-On the **attic server** (if you have one), generate a token for the new machine:
-
-```sh
-# On attic server
-docker exec attic atticadm make-token \
-  -f /attic/attic.toml \
-  --sub snyssen \
-  --validity 365d \
-  --create-cache "snyssen-*" \
-  --push "snyssen-*" \
-  --pull "snyssen-*" \
-  --configure-cache "snyssen-*"
-```
-
-This outputs a token like: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-
-### 4.2 Log Into Attic on Target
-
-On the **target machine**, authenticate with the token:
-
-```sh
-# On target
-attic login snyssen-infra https://attic.snyssen.be ${ATTIC_TOKEN}
-# Replace ${ATTIC_TOKEN} with the token from step 4.1
-```
-
-Verify it works:
-
-```sh
-# Should succeed
-attic cache list
-```
-
-### 4.3 Configure as Persistent Secret (Recommended)
-
-For persistent cache authentication across reboots, add the token to the target's secrets:
-
-```sh
-# On admin host
-just sops-update nix/hosts/${TARGET_HOSTNAME}/data/secrets.yaml
-```
-
-Add:
-
-```yaml
-attic:
-  authToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
-
-Then update the NixOS configuration to load it:
-
-```nix
-# nix/hosts/${TARGET_HOSTNAME}/configuration.nix
-sops.secrets."attic/authToken" = {
-  sopsFile = ./data/secrets.yaml;
-  path = "/root/.config/attic/credentials.toml";
-};
-```
-
-After the next `nixos-rebuild`, attic authentication will be automatic.
-
-## Step 5: Manual Configuration (if needed)
+## Step 4: Manual Configuration (if needed)
 
 For any configuration that cannot be automated through NixOS (hardware tweaks, BIOS settings, etc.), perform those now. Examples:
 
@@ -220,7 +153,7 @@ For any configuration that cannot be automated through NixOS (hardware tweaks, B
 - **Network**: Configure static IPs, VPN connections not in Nix
 - **Users**: Set passwords for non-root users (if not declarative)
 
-## Step 6: Commit Configuration to Git
+## Step 5: Commit Configuration to Git
 
 Once the machine is stable and verified, commit your new NixOS configuration:
 
@@ -233,7 +166,7 @@ git push
 
 This ensures your machine's configuration is version-controlled and can be reproduced.
 
-## Step 7: Document (Optional)
+## Step 6: Document (Optional)
 
 If the new machine requires operational documentation, add it to the repository:
 
@@ -254,7 +187,6 @@ git push
 ✅ Secrets decrypted and accessible
 ✅ Tailscale connected (if configured)
 ✅ SSH host keys in place
-✅ Attic cache authenticated (optional)
 ✅ Any manual configuration completed
 ✅ Configuration committed to git
 

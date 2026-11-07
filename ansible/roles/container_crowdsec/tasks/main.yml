@@ -35,7 +35,6 @@
     - acquis.d/jellyfin.yaml
     - acquis.d/immich.yaml
     - acquis.d/paperless.yaml
-    - parsers/s02-enrich/00-whitelist-attic.yaml
 
 - name: Deploy Crowdsec WebUI config file
   become: true
