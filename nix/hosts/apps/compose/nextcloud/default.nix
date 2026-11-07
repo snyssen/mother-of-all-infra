@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 let
   composeFile = "${./.}/docker-compose.yaml";
-
+  gatusPush = import ../monitoring/gatus-push.nix { inherit config pkgs; };
 in
 {
   sops.secrets = {
@@ -23,13 +23,6 @@ in
       sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/admin/password" = {
-      sopsFile = ../../data/nextcloud.yaml;
-    };
-    # Uptime Kuma push monitor for the cron timer below. Not a credential as such —
-    # it is the capability itself, which is why it goes through an allowlisted route
-    # rather than an authenticated one. It comes back with the restored Uptime Kuma
-    # data, so read it off the "nextcloud background job" monitor there.
-    "compose-stacks/nextcloud/uptime_push_token" = {
       sopsFile = ../../data/nextcloud.yaml;
     };
     "compose-stacks/nextcloud/oidc/client_id" = {
@@ -206,14 +199,9 @@ in
   # cron.php` root crontab entry. Nextcloud degrades quietly without this — file scans,
   # notifications, trash/version expiry and federated retries all ride on it.
   #
-  # The push to Uptime Kuma afterwards is the legacy entry's second half, and it is
-  # what detects the failure mode systemd cannot report on its own: a timer that stops
-  # firing at all. It reaches the allowlisted uptime-push route (see
-  # compose/monitoring), not the Authelia-gated one.
-  #
-  # Written as a script rather than a second ExecStart= line so the token is read from
-  # its secret file at runtime — an ExecStart would put it in the unit file, which is
-  # world-readable in the Nix store.
+  # The push to Gatus afterwards is the legacy entry's second half (an Uptime Kuma push
+  # there), and it is what detects the failure mode systemd cannot report on its own: a
+  # timer that stops firing at all. See compose/monitoring/gatus-push.nix.
   #
   # Skipped, not failed, while the nextcloud container isn't running — whether the stack
   # is stopped (autostart = false) or mid-restart during a switch. A timer run landing
@@ -236,14 +224,9 @@ in
         set -euo pipefail
         ${pkgs.docker}/bin/docker compose --project-name nextcloud -f ${composeFile} \
           exec -T -u www-data nextcloud php cron.php
-        # Only reached if cron.php succeeded, matching the legacy `&&`. -f makes a
-        # rejected push fail the unit loudly: if the allowlist ever stops matching
-        # this host, Traefik answers 403 and this exits non-zero rather than quietly
-        # reporting success while the monitor goes red on its own.
-        ${pkgs.curl}/bin/curl -fsS -m 10 --retry 5 -o /dev/null \
-          "https://uptime.${config.domains.main}/api/push/$(cat ${
-            config.sops.secrets."compose-stacks/nextcloud/uptime_push_token".path
-          })?status=up&msg=OK&ping="
+        # Only reached if cron.php succeeded, matching the legacy `&&`; a rejected
+        # push fails the unit.
+        ${gatusPush} jobs_nextcloud-background-job true
       '';
     };
   };

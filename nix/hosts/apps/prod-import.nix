@@ -52,13 +52,6 @@ in
           to = "/var/lib/app-data/monitoring/grafana";
           owner = "472:472";
         }
-        {
-          # Prod kept uptime beside grafana; here it lives under monitoring/ with the
-          # rest of the stack. Kuma resets this to root itself regardless.
-          from = "/home/snyssen/data/uptime";
-          to = "/var/lib/app-data/monitoring/uptime";
-          owner = "0:0";
-        }
       ];
     };
 

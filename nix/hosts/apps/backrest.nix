@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 let
   # Every plan backs up on the same schedule and keeps the same depth. Both match the
   # legacy autorestic config (daily at 00:30; keep-daily 14 / weekly 4 / monthly 6 /
@@ -29,6 +34,46 @@ let
         retention
         ;
       repo = "apps";
+    };
+
+  # Every plan reports each backup's outcome to its Gatus external endpoint
+  # (backups_<plan>, declared from these same plan names in
+  # compose/monitoring/gatus-config.nix), as prod's autorestic pushed to Uptime Kuma per
+  # location. A missing push is what catches a backup that never ran at all. Warnings
+  # (some files unreadable) count as failures, so they get looked at; a backup skipped
+  # for having nothing new counts as a success. Hook failures are ignored (Backrest's
+  # default): a monitoring hiccup must not fail the backup itself.
+  gatusPush = import ./compose/monitoring/gatus-push.nix { inherit config pkgs; };
+  heartbeat = plan: success: {
+    actionCommand.command = ''
+      #!${pkgs.bash}/bin/bash
+      ${gatusPush} backups_${plan} ${success}
+    '';
+  };
+  withHeartbeat =
+    plan: attrs:
+    attrs
+    // {
+      hooks = [
+        (
+          heartbeat plan "true"
+          // {
+            conditions = [
+              "CONDITION_SNAPSHOT_SUCCESS"
+              "CONDITION_SNAPSHOT_SKIPPED"
+            ];
+          }
+        )
+        (
+          heartbeat plan "false"
+          // {
+            conditions = [
+              "CONDITION_SNAPSHOT_ERROR"
+              "CONDITION_SNAPSHOT_WARNING"
+            ];
+          }
+        )
+      ];
     };
 in
 {
@@ -102,7 +147,7 @@ in
     #   isn't already in git.
     # - no media (/mnt/bulk/streaming/media): empty test data today. Those plans arrive
     #   with the real media, which — like prod's movies/tv — stays on-site only.
-    plans = {
+    plans = lib.mapAttrs withHeartbeat {
       # Dumps only, never the live Postgres data directory: a running cluster's files
       # aren't consistently snapshottable, and this matches what prod backs up. Also
       # the only reason `postgres-restore` has anything to read.
@@ -111,13 +156,11 @@ in
         stopUnits = [ ];
       };
       monitoring = mkPlan {
-        # Grafana dashboards and Uptime Kuma's monitor definitions — the hand-made
-        # state. Prometheus/Loki are deliberately absent (as on prod): their TSDBs are
-        # observability history, large and continuously regenerated, not configuration.
-        paths = [
-          "/var/lib/app-data/monitoring/grafana"
-          "/var/lib/app-data/monitoring/uptime"
-        ];
+        # Grafana's dashboards — the hand-made state. Prometheus/Loki/Gatus are
+        # deliberately absent (as Prometheus/Loki were on prod): their stores are
+        # observability history, continuously regenerated, not configuration. Gatus's
+        # monitors are its config, which is in this repo.
+        paths = [ "/var/lib/app-data/monitoring/grafana" ];
         stopUnits = [ "compose-monitoring.service" ];
       };
       streaming-config = mkPlan {

@@ -10,6 +10,8 @@ compose-stacks:
       healthchecks:
         project_uuid: ENC[AES256_GCM,data:R1hndni0V9TNCCjtnzcFcSJEZeL7KLHxGz+VXfqUlrZkgnw2,iv:iBnKPW4jMOA5lA5TR4RIDDQYLvmbtU7qHFijhnxSO6o=,tag:L0U+3MpWjf/9geHz/Hi+VA==,type:str]
         api_key: ENC[AES256_GCM,data:vG/XyMZI9WnonBr3uX8zQQX7pFpgfzpl7OlN9ClNWYA=,iv:S7YZRBrgQBZbvJb/kSU40FK00IQ+IEy3eg8JIDO739A=,tag:NBdK+UlPGRJBgA2hqLZkgg==,type:str]
+    gatus:
+      push_token: ENC[AES256_GCM,data:DvdCQkyttGN/1pmW2IZ3daHvbiMo2GbTbhFnSgcLHpOkzkgv2tM3atoWv6tkDgm4GK2hj5VKJ/Ygfc16z604oQ==,iv:UaNDm/GKoFSj6H/IuuGjE6eaqWfnHF6nlgB/CtK6r5I=,tag:8k/2YdP4sEDjhDeac0Mu7g==,type:str]
 sops:
   age:
     - enc: |
@@ -48,7 +50,7 @@ sops:
         naN+J/L2HP5Wc72SpZrHSA8n5KCqxFpcHgnKQBOz1PELBOdFlTJYgw==
         -----END AGE ENCRYPTED FILE-----
       recipient: age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
-  lastmodified: "2026-11-07T08:38:41Z"
-  mac: ENC[AES256_GCM,data:S9cWPpHynCI1LMpBtWkZt1TIeUZ+5S5/T1M0DaK7QPCB0Hq8tkHYDFlET93bZWSF7cX1gFE8IpUb49isnLMq3/Jb/2490bbDIePi3iewnFt7sSQzmXZES1wtbxSZwU0ARjyZGW1h9oLbOJ/Am5rnERx0kH2EYYVi/WxxKX5fIDc=,iv:wmeQDeXlpXVxVXcr7ck1hqbf7LxVaUd9DdsB7Bvi5xY=,tag:xC+MmB3umyKJAYL89IwLFA==,type:str]
+  lastmodified: "2026-11-07T13:45:32Z"
+  mac: ENC[AES256_GCM,data:Zpi3mjYe2BFU2cMKeJk5YzlWQsA/HFCY+7PnYAFnef1o8wbuXpDseY/dO39d0JeW+oaxSbBuzuz3zK843Z8XncPsiPyYcbXr7SG5Gs7YRZmW1uhsF7ZpZ3wTW8ry8ovBnGLclmdPptzoGw3jiC66/s0IddOvV2MQuSYeM0gQ2QI=,iv:Gl0fSULl39MYB8vrzu1q0WPrMe/KK6OouX+IKoTnm1E=,tag:dJ9fF203b3ZqiDjq2uSGug==,type:str]
   unencrypted_suffix: _unencrypted
   version: 3.13.3

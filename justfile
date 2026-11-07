@@ -52,7 +52,7 @@ sops-from-vault file +mappings:
 sops-set-stdin file key:
   scripts/sops-set-stdin.sh {{file}} {{key}}
 
-# Generate a random secret, or with --oidc-client an Authelia client id/secret/hash, into a SOPS file without printing it
+# Generate a random secret (64 chars, or --length N), or with --oidc-client an Authelia client id/secret/hash, into a SOPS file without printing it
 sops-gen-secret +args:
   scripts/sops-gen-secret.sh {{args}}
 

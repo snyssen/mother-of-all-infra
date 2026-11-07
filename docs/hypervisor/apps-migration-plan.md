@@ -54,7 +54,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | Stack | Description | Disposition | Status |
 |-------|-------------|-------------|--------|
 | `databases` | Central PostgreSQL (pgAdmin + backups); Redis is per-app, not centralized | ✅ Migrate | ✅ Done |
-| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done. Prometheus's config is now a sops template (`prometheus-config.nix`) carrying all of prod's scrape jobs, including the five first deferred: `jellyfin`, `authelia` (Authelia's `telemetry.metrics` enabled for it), `rest_server`, `hass` and `healthchecks` (token, project id and API key from the vault). Node/cAdvisor metrics come through Alloy instead. **Uptime Kuma has no monitors yet** — see [Remaining work before Phase B](#remaining-work-before-phase-b) |
+| `monitoring` | Prometheus + Grafana (metrics) | ✅ Migrate | ✅ Done. Prometheus's config is now a sops template (`prometheus-config.nix`) carrying all of prod's scrape jobs, including the five first deferred: `jellyfin`, `authelia` (Authelia's `telemetry.metrics` enabled for it), `rest_server`, `hass` and `healthchecks` (token, project id and API key from the vault). Node/cAdvisor metrics come through Alloy instead. Uptime Kuma is replaced by **Gatus**, with all of prod's checks declared in `gatus-config.nix` (see [Remaining work before Phase B](#remaining-work-before-phase-b)) |
 | `backbone` | Traefik reverse proxy + authentik (auth) | ✅ Migrate | ✅ Done (as `reverse-proxy` + `auth`). Authelia's `access_control` was first built with a permissive `two_factor` default, which left every forwardAuth-gated admin tool open to any LDAP account with 2FA; now `deny` by default as on prod, with prod's rules carried over for each gated host that exists here (sysadmin-only admin tools, sysadmin|media_manager for the *arr apps with the internal-network bypass for their m2m calls). OIDC clients aligned too, including the two for relying parties outside this host — **Tailscale** (the tailnet's own login; without it nobody can sign in to Tailscale, leaving raw SSH keys as the only way into the hosts) and **Home Assistant** (`hass_policy`) — then Grafana and CrowdSec on `sysadmin_policy`, PeerTube on `media_policy`, plus the Audiobookshelf client (`media_policy`) the `streaming` migration had missed — its own side of OIDC lives only in Audiobookshelf's database (no env or file config; only the admin API could set it), so it comes back with the `streaming-config` restore; pgAdmin tightened from prod's plain `two_factor` to `sysadmin_policy`. Adding a forwardAuth-gated route now needs a matching rule, or it denies everyone |
 | `unifi` | Unifi Network controller | ⛔ Exclude — separate Unifi OS VM | ⏳ **To explore before cutover** — no UniFi OS VM exists yet, and prod's controller goes away with the wipe. See [Remaining work before Phase B](#remaining-work-before-phase-b) |
 | `crowdsec` | CrowdSec security engine | ✅ Migrate | ✅ Done |
@@ -99,13 +99,12 @@ detail:
       prod. Decide the VM's shape, how devices find the controller without the `lan`
       network (DHCP option 43 or DNS `unifi`), and how the current controller's
       configuration moves across (its own `.unf` backup/restore).
-- [ ] **Uptime Kuma monitors** — `apps`'s Uptime Kuma has none, and they must not be
-      created by hand. Prod stayed on Uptime Kuma v1 only because its monitors are
-      created by an Ansible role that doesn't support v2. Find a way to run v2 with its
-      monitors declared in this repo; failing that, another tool for checking websites
-      and push-style job heartbeats. Constraint either way: it does no notifying of its
-      own — Prometheus scrapes it and Grafana alerts, so alerting stays in one place.
-      This also covers the backup heartbeats prod's autorestic pushes per location.
+- [x] **Uptime Kuma monitors** — replaced by **Gatus**, whose config is the monitor list
+      (`compose/monitoring/gatus-config.nix`): every prod check, plus push endpoints for
+      the nextcloud cron job and each Backrest plan (Backrest hooks, as prod's
+      autorestic pushed per location). It notifies no one; Prometheus scrapes it and
+      Grafana alerts. Kuma v2 with AutoKuma was tried first and dropped: its first-run
+      setup can't be automated.
 - [x] **Delete the retired stacks' code** — `scrypted` and `attic` (see the inventory).
 - Later, not needed for the cutover: the rest of the monitoring setup (dashboards,
   alert rules) declared in the repo as well.
@@ -119,7 +118,7 @@ detail:
 | Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps/data/<stack>.yaml`) | Target (`apps` / dedicated VM / retire) |
 |---|---|---|---|---|---|
 | `databases` | `/home/snyssen/data/databases/postgres/data` (size: live measure; PostgreSQL data), `/home/snyssen/data/databases/postgres/{servers.json,config_local.py}` (pgAdmin config) | `/mnt/storage/backups` (shared backup root), `/mnt/storage/backups/postgres` (Postgres dumps) | Uses `db` and `web` networks; `pgadmin` + `postgres_backups` depend on `postgres`; provides shared `postgres` for many stacks | `db__pg_password`, `db__pgadmin_password`, `db__pgadmin_email` | `apps` |
-| `monitoring` | `/home/snyssen/data/monitoring/prometheus` (Prometheus TSDB), `/home/snyssen/data/grafana/data` (Grafana DB), `/home/snyssen/data/monitoring/loki` (logs), `/home/snyssen/data/uptime` (Uptime Kuma state) | `/mnt/storage/prometheus` (Prometheus config/rules) | Uses `web`, `monitoring`, `db`; `umami` connects to `postgres`; consumes ntfy topic for alerts; OIDC via Authelia | `monitoring__umami_db_pass`, `monitoring__umami_app_secret`, `backbone__authelia__oidc_grafana_clientsecret`, `smtp__pass` | `apps` |
+| `monitoring` | `/home/snyssen/data/monitoring/prometheus` (Prometheus TSDB), `/home/snyssen/data/grafana/data` (Grafana DB), `/home/snyssen/data/monitoring/loki` (logs), `/home/snyssen/data/uptime` (Uptime Kuma state; not migrated, replaced by Gatus) | `/mnt/storage/prometheus` (Prometheus config/rules) | Uses `web`, `monitoring`, `db`; `umami` connects to `postgres`; consumes ntfy topic for alerts; OIDC via Authelia | `monitoring__umami_db_pass`, `monitoring__umami_app_secret`, `backbone__authelia__oidc_grafana_clientsecret`, `smtp__pass` | `apps` |
 | `backbone` | `/home/snyssen/data/traefik` (cert storage), `/home/snyssen/data/authelia/config` (Authelia config) | none in compose | Uses `web`, `db`, `ldap`, `monitoring`, `authelia`; `lldap` uses shared `postgres`; central ingress/auth dependency for almost all stacks | `backbone__lldap__db_user`, `backbone__lldap__db_pass`, `backbone__lldap__jwt_secret`, `backbone__lldap__key_seed` (+ Authelia secrets from mounted config) | `apps` |
 | `unifi` | `/home/snyssen/data/unifi/config` (controller config), `/home/snyssen/data/unifi/mongodb` (MongoDB data), `/home/snyssen/data/unifi/init-mongo.js` (init script) | none in compose | Unifi app depends on `unifi-db`; uses `web` plus L2/L3 discovery + controller ports (TCP/UDP) | `unifi__mongo_pass`, `unifi__mongo_root_pass` | `dedicated VM` |
 | `crowdsec` | `/home/snyssen/data/crowdsec/crowdsec` (config), `/home/snyssen/data/crowdsec/data` (runtime data), `/home/snyssen/data/crowdsec-web-ui/data` (UI db) | none in compose | Uses `web` (and `db` external network defined); integrates with Traefik + Authelia logs/parsers | `crowdsec__firewall_bouncer__api_key`, `crowdsec__webui_user`, `crowdsec__webui_password` | `apps` |
@@ -364,7 +363,7 @@ For each stack, the migration consists of:
 - [ ] Add a `backrest.plans.<stack>` entry for whatever state the stack keeps — or note explicitly why it needs none (reconstructed from sops like `ntfy`, or living in Postgres like `auth`). The disaster-recovery command is derived from these, so a missing plan is a silent gap in DR, not just a missing backup.
 - [ ] Verify stack starts cleanly on test VM
 
-### Cron jobs and Uptime Kuma push monitors
+### Cron jobs and push monitors
 
 Several legacy roles install a root crontab entry that runs a container command and
 then `curl`s an Uptime Kuma *push* URL to prove it ran. On `apps` the command half
@@ -380,17 +379,17 @@ the forwardAuth middleware is not on that router.
 
 **The `monitoring` migration dropped the `uptime-api` router**, leaving `apps` with a
 single Authelia-gated router, which would have silently blocked every push. Restored as
-`uptime-push`, narrowed to `PathPrefix(/api/push)` rather than the whole `/api` prefix:
-that is the only part anything calls today, and Uptime Kuma also serves badges and
-status pages under `/api`. Widen it deliberately if a future stack needs one of those —
-the legacy `dashboard` stack is the likely candidate.
+`uptime-push`, narrowed to the one call anything makes rather than the whole `/api`
+prefix. `apps` runs Gatus instead of Uptime Kuma, so that call is a `POST` to
+`/api/v1/endpoints/<key>/external` with a bearer token, made by
+`compose/monitoring/gatus-push.nix` for the timers and Backrest's backup hooks alike.
 
 The allowlist (`lan-whitelist`, LAN + Docker pool + tailnet) is wider than the
 `tailnet-whitelist` used for metric ingestion, and matches the legacy middleware's own
 `internal_networks_cidr`: the caller is this host's own timer reaching its own Traefik
 by public name, so the source address Traefik sees depends on how that resolves and
-hairpins. The token in the URL is the real capability, which is how Uptime Kuma intends
-push monitors to work.
+hairpins. The bearer token is what Gatus checks; the allowlist keeps the endpoint off
+the open internet.
 
 One property worth keeping: because the route answers 403 rather than redirecting when
 the allowlist does not match, `curl -fsS` fails and the timer fails with it. A plain

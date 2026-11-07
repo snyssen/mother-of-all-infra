@@ -63,13 +63,20 @@ selected by. Everything shares one schedule (daily at 00:30) and one retention p
 does not silently change at cutover. See `nix/hosts/apps/backrest.nix` for the current
 list.
 
+Every plan reports each run to its own Gatus push endpoint, `backups_<plan>`: success
+(or nothing new to back up) as up, failure or warnings as down. A plan with no report
+for 26 hours is marked down too, which is what catches a backup that never ran. Gatus
+only checks once per interval, so that can take up to twice as long to show. Grafana
+alerts on it, like on every other Gatus check.
+
 Three things are deliberately *not* backed up, and the reasoning is worth knowing
 before assuming a gap:
 
 - **Live PostgreSQL data directories.** Only the dumps under `/mnt/bulk/backups/` are
   backed up. A running cluster's files are not consistently snapshottable.
-- **Prometheus and Loki TSDBs.** Observability history, continuously regenerated, not
-  configuration.
+- **Prometheus and Loki TSDBs, and Gatus's check history.** Observability history,
+  continuously regenerated, not configuration. Gatus's checks themselves are its config,
+  in the repository.
 - **`ntfy`'s auth database.** Every user, ACL and token is provisioned declaratively
   from sops, so it is rebuilt from the repository on any host rebuild.
 

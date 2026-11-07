@@ -137,7 +137,7 @@ capacity.
 
 | group | from (prod) | to (`apps`) | state |
 | --- | --- | --- | --- |
-| `monitoring` | `/home/snyssen/data/{grafana/data,uptime}` | `/var/lib/app-data/monitoring/{grafana,uptime}` | enabled |
+| `monitoring` | `/home/snyssen/data/grafana/data` | `/var/lib/app-data/monitoring/grafana` | enabled (Uptime Kuma's data is not imported: Gatus replaces it, with its checks in the repo) |
 | `streaming-config` | jellyfin, audiobookshelf, the 8 `*arr` configs, peertube config | `/var/lib/app-data/…` | enabled |
 | `postgres` | `/mnt/storage/backups/postgres` | `/mnt/bulk/restore/prod-postgres` | enabled, **staging** |
 | `immich` | `/mnt/storage/backups/immich` | `/mnt/bulk/restore/prod-immich` | enabled, **staging** |
@@ -308,8 +308,8 @@ setup to be "production" rather than "a test VM":
 - [ ] Paperless: documents searchable, OCR runs on a new upload.
 - [ ] `backrest-restore --check` passes against `apps`'s own repository.
 - [ ] A backup has actually run and produced a snapshot in the `apps` repository.
-- [ ] Monitoring: Grafana dashboards populated, Uptime Kuma monitors green, alerts
-      firing to ntfy.
+- [ ] Monitoring: Grafana dashboards populated, Gatus checks green (including a
+      `backups_<plan>` push from the first backup run), alerts firing to ntfy.
 
 ### 8. Only then
 
@@ -435,10 +435,11 @@ devices instead:
   those lists and from `nix/data/syncthing.nix` once prod is gone (TODO in
   `nix/hosts/apps/syncthing.nix`).
 
-**`monitoring` — Uptime Kuma push tokens.** Push monitors come back with the restored
-Uptime Kuma data, so the tokens stay valid, but anything referencing them in sops
-(for example `compose-stacks/nextcloud/uptime_push_token`) must match what the restored
-instance actually holds.
+**`monitoring` — Uptime Kuma is not migrated.** Gatus replaces it, with every check
+declared in `compose/monitoring/gatus-config.nix` and one push token in sops, so nothing
+needs restoring or re-matching. Prod's Uptime Kuma history stays on prod. Grafana's
+"Uptime Kuma" dashboard has to be replaced by its Gatus version at the cutover, along
+with any Grafana alert rules written against Kuma's `monitor_*` metrics.
 
 ## Open questions
 

@@ -83,14 +83,22 @@ services:
       - "127.0.0.1:3100:3100"
     mem_limit: 2g
 
-  uptime:
-    image: louislam/uptime-kuma:1@sha256:70233f4acb5163fd2a59a49909cf01e44415cecff13dba69e3a86647a2919f83
+  # Uptime checks, replacing prod's Uptime Kuma. Its whole config is the monitor list,
+  # rendered by sops (gatus-config.nix): the push endpoints carry a token.
+  gatus:
+    image: ghcr.io/twin/gatus:v5.38.0@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
     restart: unless-stopped
     networks:
       - monitoring
       - web
+    # The services native to the host (Backrest, Syncthing) are checked where Traefik
+    # reaches them.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - /var/lib/app-data/monitoring/uptime:/app/data
+      - ${GATUS_CONFIG_PATH}:/config/config.yaml:ro
+      - /var/lib/app-data/monitoring/gatus:/data
+    mem_limit: 128m
 
   umami:
     image: ghcr.io/umami-software/umami:postgresql-v2.13.2@sha256:611cacc80f53fe289f7e7bfe301032a117fb57e790c37272ee05f3b0eba690a3

@@ -308,7 +308,7 @@
             url = "https://monitor.snyssen.be";
           }
           {
-            name = "Uptime Kuma";
+            name = "Gatus";
             url = "https://uptime.snyssen.be";
           }
           {

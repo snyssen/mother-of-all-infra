@@ -71,8 +71,8 @@
           username: "${config.sops.placeholder."compose-stacks/crowdsec/webui/lapi_user"}"
           password:
             env: CROWDSEC_LAPI_PASSWORD
-      # Same container/port the legacy setup's Uptime Kuma monitor already checked
-      # (crowdsec:6060/metrics) — CrowdSec's own Prometheus endpoint, enabled at
+      # Same container/port the uptime checks poll (crowdsec:6060/metrics; see
+      # monitoring/gatus-config.nix) — CrowdSec's own Prometheus endpoint, enabled at
       # level: full in config.yaml.local so this actually has data to show.
       metrics:
         - url: http://crowdsec:6060/metrics

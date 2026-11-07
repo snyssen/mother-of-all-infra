@@ -38,7 +38,8 @@ let
         schedule
         ;
     }
-    // lib.optionalAttrs (plan.excludes != [ ]) { excludes = plan.excludes; };
+    // lib.optionalAttrs (plan.excludes != [ ]) { excludes = plan.excludes; }
+    // lib.optionalAttrs (plan.hooks != [ ]) { hooks = plan.hooks; };
 
   renderUser = user: {
     inherit (user) name;

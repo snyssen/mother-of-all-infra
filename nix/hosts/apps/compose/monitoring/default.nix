@@ -12,9 +12,7 @@ in
     "d /var/lib/app-data/monitoring/prometheus 0700 65534 65534 -"
     "d /var/lib/app-data/monitoring/grafana 0700 472 472 -"
     "d /var/lib/app-data/monitoring/loki 0700 10001 10001 -"
-    # Uptime Kuma resets its data dir to root:root ownership on its own regardless
-    # of what's set here.
-    "d /var/lib/app-data/monitoring/uptime 0700 0 0 -"
+    "d /var/lib/app-data/monitoring/gatus 0700 0 0 -"
   ];
 
   sops.secrets = {
@@ -32,6 +30,11 @@ in
     "compose-stacks/monitoring/prometheus/healthchecks/api_key" = {
       sopsFile = ../../data/monitoring.yaml;
     };
+    # One token for every Gatus external endpoint: all their pushers run on this host
+    # (see gatus-push.nix), and the allowlisted route already keeps it off the internet.
+    "compose-stacks/monitoring/gatus/push_token" = {
+      sopsFile = ../../data/monitoring.yaml;
+    };
   };
 
   # Readable by Prometheus's own user (nobody, 65534) and nothing else.
@@ -41,6 +44,9 @@ in
     gid = 65534;
     mode = "0400";
   };
+
+  # Gatus runs as root, so the default root-only mode is enough.
+  sops.templates."gatus.yaml".content = import ./gatus-config.nix { inherit lib config; };
 
   sops.templates."compose-monitoring.env".content = ''
     GF_SERVER_ROOT_URL=https://monitor.${config.domains.main}
@@ -62,10 +68,11 @@ in
     }@postgres:5432/umami
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
     PROMETHEUS_CONFIG_PATH=${config.sops.templates."prometheus.yml".path}
+    GATUS_CONFIG_PATH=${config.sops.templates."gatus.yaml".path}
   '';
 
   # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
-  # Uptime Kuma have no login of their own, so their dashboards are gated behind
+  # Gatus have no login of their own, so their dashboards are gated behind
   # Authelia's forwardAuth middleware instead (defined once in the `auth` stack's own
   # dynamicConfig fragment, referenced here by plain name) — matching what the old
   # container_backbone/container_monitoring roles protected with `authelia@docker`.
@@ -111,29 +118,27 @@ in
           rule: "Host(`uptime.${config.domains.main}`)"
           entryPoints:
             - websecure
-          service: uptime
+          service: gatus
           middlewares:
             - authelia
           tls:
             certResolver: le_main
-        # Uptime Kuma's *push* monitors: a job proves it ran by GETting
-        # /api/push/<token>. That is a machine call with no browser session, so it
-        # cannot pass the Authelia gate on the router above — hence a second, more
-        # specific router. Traefik's default longest-rule-wins priority is what routes
-        # /api/push here while everything else stays on `uptime`.
+        # Gatus's external endpoints: a job proves it ran by POSTing its result to
+        # /api/v1/endpoints/<key>/external (see gatus-push.nix). That is a machine call
+        # with no browser session, so it cannot pass the Authelia gate on the router
+        # above — hence a second, more specific router. Traefik's default
+        # longest-rule-wins priority is what routes those here while everything else
+        # stays on `uptime`.
         #
-        # The legacy container_monitoring role does the same thing but exempts the
-        # whole `/api` prefix; this is narrowed to `/api/push`, which is the only part
-        # anything actually calls. Widen it deliberately if a future stack needs
-        # another endpoint (Uptime Kuma also serves badges and status pages under
-        # /api). The token in the URL is the real capability here — that is how Uptime
-        # Kuma intends push monitors to work — and the allowlist just keeps the
-        # endpoint off the open internet.
+        # The legacy container_monitoring role exempts the whole `/api` prefix; this is
+        # narrowed to the one call anything makes, since the rest of /api serves the
+        # check results themselves. The bearer token is what Gatus checks; the allowlist
+        # just keeps the endpoint off the open internet.
         uptime-push:
-          rule: "Host(`uptime.${config.domains.main}`) && PathPrefix(`/api/push`)"
+          rule: "Host(`uptime.${config.domains.main}`) && Method(`POST`) && PathRegexp(`^/api/v1/endpoints/[^/]+/external$`)"
           entryPoints:
             - websecure
-          service: uptime
+          service: gatus
           middlewares:
             - lan-whitelist
           tls:
@@ -163,10 +168,10 @@ in
           loadBalancer:
             servers:
               - url: "http://grafana:3000"
-        uptime:
+        gatus:
           loadBalancer:
             servers:
-              - url: "http://uptime:3001"
+              - url: "http://gatus:8080"
         umami:
           loadBalancer:
             servers:
@@ -205,6 +210,7 @@ in
       ../../data/databases.yaml
       config.sops.templates."compose-monitoring.env".content
       config.sops.templates."prometheus.yml".content
+      config.sops.templates."gatus.yaml".content
     ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-monitoring.env".path;

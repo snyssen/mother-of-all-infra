@@ -131,6 +131,17 @@ let
           type = lib.types.attrsOf lib.types.anything;
           description = "Backrest schedule object, passed through as-is.";
         };
+        hooks = lib.mkOption {
+          type = lib.types.listOf (lib.types.attrsOf lib.types.anything);
+          default = [ ];
+          description = ''
+            Backrest hook objects (`conditions`, `actionCommand`, ...), passed through
+            as-is. A command runs through `sh` from Backrest's PATH unless its first line
+            is a `#!` naming another shell, and the service's PATH has no `sh`: start
+            every command with `#!''${pkgs.bash}/bin/bash` or similar. Commands are also
+            Go templates, so they must not contain a literal `{{`.
+          '';
+        };
         stopUnits = lib.mkOption {
           type = lib.types.listOf lib.types.str;
           default = [ ];

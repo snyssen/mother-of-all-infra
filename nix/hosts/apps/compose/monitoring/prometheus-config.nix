@@ -21,11 +21,12 @@ in
     - job_name: "traefik"
       static_configs:
         - targets: ["traefik:8080"]
-    - job_name: "uptime"
+    # Gatus's check results (gatus_results_*), which Grafana alerts on: Gatus itself
+    # notifies no one. See gatus-config.nix.
+    - job_name: "gatus"
       scrape_interval: 30s
-      scheme: http
       static_configs:
-        - targets: ["uptime:3001"]
+        - targets: ["gatus:8080"]
     - job_name: "crowdsec"
       static_configs:
         - targets: ["crowdsec:6060"]
