@@ -61,7 +61,7 @@ services:
       - vpn
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.1.3@sha256:3ac1c9ea03bafa2588dd8acdcb809857bae305e71d2d90e11d689c78076a9c01
+    image: lscr.io/linuxserver/sabnzbd:5.1.3@sha256:693c208f697d0b411410edd92a98b52c8c754c01f5c078a975cbc892044260f5
     restart: unless-stopped
     network_mode: service:vpn
     environment:
@@ -76,7 +76,7 @@ services:
       - vpn
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:4.0.20@sha256:48e36b608b461273b9dae857725cd0561a127f2c694b687318f6d0c5ce63e5c9
+    image: lscr.io/linuxserver/sonarr:4.0.20@sha256:3b8c947d7fa173f70e40047d2c8d02835fb8416aeb5ae36def57d9ad15e2f906
     restart: unless-stopped
     environment:
       - PUID=33
@@ -91,7 +91,7 @@ services:
       - vpn
 
   radarr:
-    image: lscr.io/linuxserver/radarr:6.4.4@sha256:084b3b2ab1d0ef930660727259546a241f2bdf67c9ed085d54bf1486a6887c9b
+    image: lscr.io/linuxserver/radarr:6.4.4@sha256:ade5937813c6ae415b29db729386e53fea3ecf067a019849bafbe2d2a6ec02ba
     restart: unless-stopped
     environment:
       - PUID=33
@@ -106,7 +106,7 @@ services:
       - vpn
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:3.1.6@sha256:9fddcf5c613361edfce390d4e6b7c364282e71e90a40ce7793077fed788f6e63
+    image: lscr.io/linuxserver/lidarr:3.1.6@sha256:d5707cfe084da21a3864c7ef0edd9c0543b5e26c79c551f84dad5ef8683af8c7
     restart: unless-stopped
     environment:
       - PUID=33
@@ -121,7 +121,7 @@ services:
       - vpn
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:2.7.0@sha256:04be30163fbaf48d6aeee7b5893c9f6614ffbad6d853971df0d6dcdf01c7f104
+    image: lscr.io/linuxserver/prowlarr:2.7.0@sha256:431d7efebcef466e56adaa40a7a2fa2b0e85159a037b8bf465eaadbf0cf5bedf
     restart: unless-stopped
     environment:
       - PUID=33
@@ -135,7 +135,7 @@ services:
       - vpn
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.6.2@sha256:9a625883f054e722795affe5e3ca71057e6ed817ecdf99f4a99624346fcc509c
+    image: lscr.io/linuxserver/bazarr:1.6.2@sha256:7ef0e58216900dbce30b123e0eb65f5cb30e36f126de9474acdd2022fb069c54
     restart: unless-stopped
     environment:
       - PUID=33
