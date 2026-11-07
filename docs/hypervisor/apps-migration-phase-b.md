@@ -201,6 +201,11 @@ the one failure that makes everything else moot.
 - [ ] `autorestic --ci check` on both backends, one last time.
 - [ ] Note the snapshot IDs of every location. If something later resolves to an older
       snapshot than these, something is wrong.
+- [ ] UniFi: on prod's controller, check Settings → System → Advanced → **Inform Host**.
+      It must be the name `unifi.snyssen.be`, not prod's IP, so devices follow DNS to
+      `apps`. If it isn't, set it and wait for every device to show Online again.
+- [ ] UniFi: Settings → System → Backups → **download** a backup and keep it off prod.
+      It is what step 5 restores (see [the restore notes](#per-stack-restore-notes)).
 
 ### 3. Point of no return
 
@@ -236,6 +241,8 @@ Run everything in **tmux**. Several of these take hours and an SSH drop kills th
 - [ ] `postgres-restore --from /mnt/bulk/restore/prod-immich immich`.
       `--from` applies to everything selected, so do one instance at a time.
 - [ ] Media: whatever the disk-relocation decision turns out to be.
+- [ ] UniFi: open `https://unifi.<domain>`, pick **restore from backup** in the setup
+      wizard, and upload the `.unf` downloaded in step 2.
 
 ### 6. Code changes at cutover
 
@@ -310,6 +317,8 @@ setup to be "production" rather than "a test VM":
 - [ ] A backup has actually run and produced a snapshot in the `apps` repository.
 - [ ] Monitoring: Grafana dashboards populated, Gatus checks green (including a
       `backups_<plan>` push from the first backup run), alerts firing to ntfy.
+- [ ] UniFi: every device **Online**. They come back by themselves once
+      `unifi.snyssen.be` resolves to `apps` on the LAN.
 
 ### 8. Only then
 
@@ -324,6 +333,19 @@ setup to be "production" rather than "a test VM":
 
 Things that are not obvious from the group table, and that cost time if discovered on
 the day.
+
+**UniFi — a `.unf` restore, not `prod-import`.** A `.unf` holds the whole controller:
+sites, devices and their keys, settings, admins. MongoDB on `apps` starts empty, with
+its own passwords, and the controller's setup wizard restores the backup into it. The
+devices don't need re-adopting: they know the controller by its Inform Host, which is
+why that must be a name. Until they reconnect they keep working; only management is
+down.
+
+The same goes for a disaster recovery later: `backrest-restore unifi` brings back the
+controller's autobackups (`/var/lib/app-data/unifi/config/data/backup/autobackup`).
+Copy the newest `.unf` off the host and upload it in the wizard. How often the
+controller writes them is its own setting (Settings → System → Backups), which comes
+back with the restore. Prod's is monthly; daily costs a few MB and loses less.
 
 **Nextcloud — the strictest pairing.** Its database indexes its file tree; neither half
 is usable without the other. Started against an empty `/mnt/bulk/nextcloud`, the

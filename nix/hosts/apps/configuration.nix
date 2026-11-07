@@ -62,6 +62,7 @@
     ./compose/skyrim-together/default.nix
     ./compose/matrix/default.nix
     ./compose/garage/default.nix
+    ./compose/unifi/default.nix
     ./backrest.nix
     ./syncthing.nix
     # Transitional: delete this line along with the file at the Phase B cutover.

@@ -37,6 +37,11 @@ services:
       # that says what is open. Routers for them live in each stack's dynamicConfig.
       - "--entryPoints.minecraft.address=:25565"
       - "--entryPoints.skyrim-together.address=:10578/udp"
+      # UniFi device ports (compose/unifi). Inform listens on 8081 because 8080 inside
+      # this container is Traefik's own (metrics); the host's 8080 maps to it below.
+      - "--entryPoints.unifi-inform.address=:8081"
+      - "--entryPoints.unifi-stun.address=:3478/udp"
+      - "--entryPoints.unifi-discovery.address=:10001/udp"
       # The one exception: Syncthing runs on the host, not in a container, and opens
       # its own ports there — 22000 (TCP and UDP) and 21027/udp — since Traefik could
       # only pass its end-to-end TLS through. See apps/syncthing.nix.
@@ -101,6 +106,9 @@ services:
       - "443:443"
       - "25565:25565" # Minecraft, routed to mc-router (compose/minecraft)
       - "10578:10578/udp" # Skyrim Together (compose/skyrim-together)
+      - "8080:8081" # UniFi inform (compose/unifi)
+      - "3478:3478/udp" # UniFi STUN
+      - "10001:10001/udp" # UniFi discovery
     # argunix is a native process on the host, not a container — reachable from
     # inside Traefik via the docker-provided host gateway rather than a docker network.
     extra_hosts:

@@ -7,8 +7,7 @@
 # its /metrics and Grafana alerts, as with every other metric.
 #
 # The checks are prod's, one for one (their Ansible `uptime_kuma.monitor` tasks), on this
-# host's domains. Not carried over: `Semaphore UI` (retired) and `unifi` (its controller
-# isn't on this host; see "UniFi OS" in docs/hypervisor/apps-migration-plan.md).
+# host's domains. Not carried over: `Semaphore UI` (retired).
 let
   domain = config.domains.main;
   team = config.domains.team;
@@ -127,6 +126,16 @@ let
       group = "routes";
       conditions = [ "[STATUS] == 401" ];
     }
+    # Prod's json-query monitor on meta.up; /status answers without a login.
+    (
+      http "unifi" "https://unifi.${domain}/status"
+      // {
+        conditions = [
+          "[STATUS] == 200"
+          "[BODY].meta.up == true"
+        ];
+      }
+    )
     # Native on the host, as Traefik reaches it.
     (gated "syncthing" "http://host.docker.internal:8384" "https://sync.${domain}")
 

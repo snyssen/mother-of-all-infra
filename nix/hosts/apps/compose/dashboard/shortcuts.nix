@@ -251,7 +251,7 @@
           }
           {
             name = "Unifi controller";
-            url = "http://unifi.snyssen.be";
+            url = "https://unifi.snyssen.be";
           }
           {
             name = "Speedtest (with server)";

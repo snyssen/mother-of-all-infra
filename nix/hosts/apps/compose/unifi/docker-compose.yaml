@@ -1,0 +1,56 @@
+# Mirrors the legacy container_unifi role. Image pins are carried over unchanged.
+#
+# Network 10.6.109 is the last standalone release (Network 11+ only ships inside UniFi
+# OS Server), so the controller's pin is final. It stays here until a UniFi gateway takes
+# the controller over; see "UniFi" in docs/hypervisor/apps-migration-plan.md.
+#
+# Not backed up as such: MongoDB's files. The controller's own autobackups (.unf) hold
+# the whole controller, and those are what the `unifi` Backrest plan keeps.
+services:
+  unifi-network-application:
+    image: lscr.io/linuxserver/unifi-network-application:10.6.109@sha256:8389f585c6443af7051b4696a09e4bb5408636da7f99c5a0e5a883595c1d434c
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Brussels
+      - MONGO_USER=unifi
+      # Forwarded bare: the env file (default.nix) supplies it. Only read on the first
+      # start, when the image writes it into /config/data/system.properties; changing
+      # it later means editing that file too.
+      - MONGO_PASS
+      - MONGO_HOST=unifi-db
+      - MONGO_PORT=27017
+      - MONGO_DBNAME=unifi
+      - MONGO_AUTHSOURCE=admin
+      - MEM_LIMIT=1024
+      - MEM_STARTUP=1024
+    networks:
+      - web
+      - internal
+    volumes:
+      - /var/lib/app-data/unifi/config:/config
+    depends_on:
+      - unifi-db
+
+  unifi-db:
+    image: docker.io/mongo:8.3.11@sha256:d731d77bfd7afd66bd487bdf627b5bf7ce4c3602ec461d635977021db529ebbc
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD
+      - MONGO_USER=unifi
+      - MONGO_PASS
+      - MONGO_DBNAME=unifi
+      - MONGO_AUTHSOURCE=admin
+    networks:
+      - internal
+    volumes:
+      - /var/lib/app-data/unifi/mongodb:/data/db
+      # Creates the controller's user on the first start only (an empty /data/db).
+      - ./init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro
+
+networks:
+  web:
+    external: true
+  internal:

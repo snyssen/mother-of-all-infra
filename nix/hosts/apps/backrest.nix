@@ -309,6 +309,17 @@ in
         paths = [ "/mnt/bulk/syncthing" ];
         stopUnits = [ "syncthing.service" ];
       };
+      # The controller's own autobackups (.unf), narrower than prod's `unifi` location,
+      # which takes MongoDB's live files too. A .unf holds the whole controller (sites,
+      # devices and their keys, settings, admins), and restoring one is how the
+      # controller comes back, so the database itself is never needed. How often the
+      # controller writes them is its own setting (Settings → System → Backups),
+      # restored along with them. Nothing to stop: these are finished files, which the
+      # controller only ever adds.
+      unifi = mkPlan {
+        paths = [ "/var/lib/app-data/unifi/config/data/backup" ];
+        stopUnits = [ ];
+      };
       # Uploaded recipe images only. Narrower than prod's location, which takes all of
       # /mnt/storage/recipes: staticfiles is no longer mounted (see
       # compose/recipes/docker-compose.yaml), and the recipes themselves live in the
