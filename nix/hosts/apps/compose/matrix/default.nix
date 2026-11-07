@@ -21,8 +21,6 @@ let
   # - push: notifications to the phones of everyone with a pusher. Off here.
   # - the bridges: they would log in to Discord, Signal, WhatsApp and Meta with prod's
   #   sessions from the imported databases, alongside prod's own bridges. Not started.
-  # - maubot: its clients point at prod's public homeserver URL with real access
-  #   tokens, so its bots would act on prod itself. Not started.
   #
   # Clients still work: Element, MAS and the client API all run under domains.main.
   live = false;
@@ -48,7 +46,6 @@ let
     MAIN_DOMAIN = config.domains.main;
     DB_PASS = dbPassword "matrix";
     MAS_DB_PASS = dbPassword "matrix_mas";
-    MAUBOT_DB_PASS = dbPassword "maubot";
     REGISTRATION_SHARED_SECRET = secret "synapse/registration_shared_secret";
     MACAROON_SECRET_KEY = secret "synapse/macaroon_secret_key";
     FORM_SECRET = secret "synapse/form_secret";
@@ -60,11 +57,6 @@ let
     DOUBLEPUPPET_HS_TOKEN = secret "doublepuppet/hs_token";
     DOUBLEPUPPET_SENDER_LOCALPART = secret "doublepuppet/sender_localpart";
     DISCORD_AVATAR_PROXY_KEY = secret "discord/avatar_proxy_key";
-    MAUBOT_SHARED_SECRET = secret "maubot/shared_secret";
-    MAUBOT_ADMIN_USER = secret "maubot/admin_user";
-    # Plaintext, unlike prod's template, which bcrypt-hashed it: maubot hashes a
-    # plaintext admin password itself on start and writes the hash back.
-    MAUBOT_ADMIN_PASS = secret "maubot/admin_pass";
   }
   // lib.listToAttrs (
     lib.concatMap (
@@ -128,24 +120,17 @@ let
     "four"
   ];
 
-  # mautrix and maubot images all run as uid 1337.
-  writableConfigs =
-    lib.concatMap (bridge: [
-      {
-        template = "matrix-${bridge}-config.yaml";
-        dest = "/var/lib/app-data/matrix/${bridge}/config.yaml";
-      }
-      {
-        template = "matrix-appservice-${bridge}.yaml";
-        dest = "/var/lib/app-data/matrix/${bridge}/registration.yaml";
-      }
-    ]) bridges
-    ++ [
-      {
-        template = "matrix-maubot-config.yaml";
-        dest = "/var/lib/app-data/matrix/maubot/config.yaml";
-      }
-    ];
+  # The mautrix images all run as uid 1337.
+  writableConfigs = lib.concatMap (bridge: [
+    {
+      template = "matrix-${bridge}-config.yaml";
+      dest = "/var/lib/app-data/matrix/${bridge}/config.yaml";
+    }
+    {
+      template = "matrix-appservice-${bridge}.yaml";
+      dest = "/var/lib/app-data/matrix/${bridge}/registration.yaml";
+    }
+  ]) bridges;
 
   logConfig = pkgs.writeText "matrix-synapse-log.config" (builtins.readFile ./config/log.config);
   elementConfig = pkgs.writeText "matrix-element-config.json" (render ./config/element-config.json);
@@ -163,9 +148,6 @@ let
     "doublepuppet/hs_token"
     "doublepuppet/sender_localpart"
     "discord/avatar_proxy_key"
-    "maubot/shared_secret"
-    "maubot/admin_user"
-    "maubot/admin_pass"
   ]
   ++ lib.concatMap (
     bridge:
@@ -212,9 +194,9 @@ in
     }
   ];
 
-  systemd.tmpfiles.rules = map (dir: "d /var/lib/app-data/matrix/${dir} 0750 1337 1337 -") (
-    bridges ++ [ "maubot" ]
-  );
+  systemd.tmpfiles.rules = map (
+    bridge: "d /var/lib/app-data/matrix/${bridge} 0750 1337 1337 -"
+  ) bridges;
 
   # Every value carried over unchanged from the legacy vault, the signing and MAS keys
   # from the role's own vault-encrypted files (`sops-from-vault --file`). They have to
@@ -251,12 +233,11 @@ in
     "matrix-mas-config.yaml" = masFile // {
       content = render ./config/mas-config.yaml;
     };
-    # Root-only: matrix-config below installs copies the containers can read.
-    "matrix-maubot-config.yaml".content = render ./config/maubot-config.yaml;
   }
   // lib.listToAttrs (
     lib.concatMap (bridge: [
-      # Mounted into Synapse as is, and copied into the bridge's own /data.
+      # Mounted into Synapse as is, and copied into the bridge's own /data. The
+      # bridge's config is root-only: matrix-config below installs a copy it can read.
       (lib.nameValuePair "matrix-appservice-${bridge}.yaml" (
         synapseFile
         // {
@@ -274,8 +255,7 @@ in
 
   # As on prod: the client and federation APIs on matrix.<domain>, except the login,
   # logout and refresh endpoints, which MAS answers (its documented compatibility
-  # layer; the longer rule wins on Traefik's default priority). maubot's admin UI is
-  # LAN/tailnet-only, through monitoring's lan-whitelist middleware.
+  # layer; the longer rule wins on Traefik's default priority).
   reverseProxy.dynamicConfig.matrix = ''
     http:
       routers:
@@ -300,15 +280,6 @@ in
           service: element
           tls:
             certResolver: le_main
-        maubot:
-          rule: "Host(`maubot.${config.domains.main}`)"
-          entryPoints:
-            - websecure
-          service: maubot
-          middlewares:
-            - lan-whitelist
-          tls:
-            certResolver: le_main
       services:
         synapse:
           loadBalancer:
@@ -322,10 +293,6 @@ in
           loadBalancer:
             servers:
               - url: "http://element:80"
-        maubot:
-          loadBalancer:
-            servers:
-              - url: "http://maubot:29316"
   '';
 
   compose-stacks.stacks.matrix = {
@@ -375,13 +342,11 @@ in
     };
   };
 
-  # Installs the bridges' and maubot's rendered configs into their data directories:
-  # their entrypoints edit config.yaml in place, so it must be a real, writable file
-  # (see docker-compose.yaml). Same pattern as nextcloud-config. Reinstalled on every
-  # change, which also resets maubot's admin password line to plaintext — maubot hashes
-  # it again on its next start.
+  # Installs the bridges' rendered configs into their data directories: their
+  # entrypoints edit config.yaml in place, so it must be a real, writable file (see
+  # docker-compose.yaml). Same pattern as nextcloud-config.
   systemd.services.matrix-config = {
-    description = "Install the matrix bridges' and maubot's configs";
+    description = "Install the matrix bridges' configs";
     restartTriggers = [
       ../../data/matrix.yaml
       ../../data/databases.yaml

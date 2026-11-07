@@ -249,18 +249,12 @@ in
         ];
         stopUnits = [ ];
       };
-      # Prod's `matrix` location minus what is generated here: Synapse's media store, and
-      # maubot's plugin SQLite databases. Plus maubot's uploaded plugins, which prod
-      # backs up nowhere: without them, every bot instance stays disabled until they are
-      # uploaded again. Everything else — homeserver state, MAS, every bridge — is in the
-      # central Postgres, covered by `databases`. Stopped while restoring, for maubot's
-      # SQLite files.
+      # Prod's `matrix` location minus what is generated here (and minus maubot, which
+      # isn't carried over): Synapse's media store. Everything else — homeserver state,
+      # MAS, every bridge — is in the central Postgres, covered by `databases`. Stopped
+      # while restoring, so Synapse doesn't serve a half-restored media store.
       matrix = mkPlan {
-        paths = [
-          "/mnt/bulk/matrix/synapse/media_store"
-          "/var/lib/app-data/matrix/maubot/dbs"
-          "/var/lib/app-data/matrix/maubot/plugins"
-        ];
+        paths = [ "/mnt/bulk/matrix/synapse/media_store" ];
         stopUnits = [ "compose-matrix.service" ];
       };
       # The synced folders, as prod's `syncthing` location. Not its config directory, the

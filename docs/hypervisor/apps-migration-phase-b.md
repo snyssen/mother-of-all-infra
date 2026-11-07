@@ -179,13 +179,6 @@ the database and do come across. `apps` backs this directory up from now on.
 - [ ] Copy it across by hand at cutover (e.g. `rsync` from the legacy box to
       `/mnt/bulk/dawarich/storage`), or decide the originals aren't needed.
 
-**maubot's plugins.** Prod's `/mnt/storage/matrix/maubot/plugins` (the uploaded `.mbp`
-files) is in no autorestic location. Without them every bot instance stays disabled
-until they are uploaded again. `apps` backs them up from now on.
-
-- [ ] Copy them across by hand at cutover (into `/var/lib/app-data/matrix/maubot/plugins`,
-      owner 1337), or re-download them from their releases.
-
 **Docker images.** Pinned by digest. A rebuild with no working internet — or after an
 upstream digest has been garbage-collected — leaves stacks that will not start.
 
@@ -269,7 +262,7 @@ setup to be "production" rather than "a test VM":
       whole disk is 300 GB (`disk_gb` in `ansible/hosts/host_vars/hypervisor/vars.yml`).
       So grow the disk, or pick a smaller `REGION` and/or `UPDATE_STRATEGY` first.
 - [ ] `nix/hosts/apps/compose/matrix/default.nix` — `live = true`, in the same deploy as
-      `domains.main`: federation and push back on, and the bridges and maubot started.
+      `domains.main`: federation and push back on, and the bridges started.
       Only after prod's Synapse and bridges are stopped for good — two copies of the
       same server, or of the same bridge session, must never run at once.
 - [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
@@ -418,11 +411,11 @@ predates that: drop it (pgAdmin, or `DROP DATABASE matrix;` as the superuser) an
 
 ```sh
 prod-import postgres matrix
-postgres-restore --from /mnt/bulk/restore/prod-postgres matrix matrix_mas matrix_discord matrix_signal matrix_whatsapp matrix_meta maubot
+postgres-restore --from /mnt/bulk/restore/prod-postgres matrix matrix_mas matrix_discord matrix_signal matrix_whatsapp matrix_meta
 ```
 
-On the test host it runs in restore-test mode: no federation, no push, no bridges, no
-maubot. That is enough to check that the restore is whole — log in through Element,
+On the test host it runs in restore-test mode: no federation, no push, no bridges. maubot
+is not carried over at all: it stays on prod, little used, and goes with it. That is enough to check that the restore is whole — log in through Element,
 recent messages and media load — without acting as prod anywhere. Logging in needs
 Authelia's database to be prod's too: MAS links each user to Authelia's `sub` for them,
 which is per-instance.
@@ -460,7 +453,7 @@ Things that need deciding or discovering before the day. Add to this as they sur
   needing that exact hardware.
 - ~~Whether `attic` moves before or after~~ — resolved: retired, replaced by Garage.
 - **Known risk, accepted for the cutover: databases kept as plain files are copied
-  live.** Actual's SQLite, FoundryVTT's LevelDB worlds, maubot's SQLite and the like are
+  live.** Actual's SQLite, FoundryVTT's LevelDB worlds and the like are
   snapshotted while their stacks run, as prod's autorestic always has (no failed
   restore so far). Backrest's hooks can stop or dump them first; that is post-cutover
   work, and the cutover itself relies on the existing backups.

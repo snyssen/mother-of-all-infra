@@ -22,7 +22,6 @@ compose-stacks:
         matrix_signal: ENC[AES256_GCM,data:/K640EuevXFAICnhI/nvAqB3dBNeg5apFbrurBaM8c8=,iv:xbasyxO/yYoz5N/MoGF91q/9rRW4rTqOvJNfMCFUp4U=,tag:qEJHxpvT8M0duaaOTJeA7w==,type:str]
         matrix_whatsapp: ENC[AES256_GCM,data:x/5V9HAbQW9uLDV6NLmkzntMhzQPyast/1suLYrg0HQ=,iv:Td7cdMLYHSldORoK3TBOwf+jrdgxJBPRD8mV4cOUQS0=,tag:IvSGzW9ismD4rJLG+D96tw==,type:str]
         matrix_meta: ENC[AES256_GCM,data:W4Sm2NN0Nw8jtDApMMt3OLW2UZk3gbLD88H6mgmAT98=,iv:yoc6ljMU8ExiaHc4wvngurOE0BdJx0sS5yewO9PXtBk=,tag:Nc6VPnSDUqYzN6sxyTzlYw==,type:str]
-        maubot: ENC[AES256_GCM,data:GRvFGlBUhC2xKp0ICNYTWsVeRgQ8gzsG4FSzR7FxI0s=,iv:EckRyE1uPhioRiHs5KdpGV+2HJg68CJDVMBIkwcXK/w=,tag:q6gMK3sSawXGxdaKKDHlew==,type:str]
         peertube: ENC[AES256_GCM,data:YZzzU6XfS3GH+RKFW+Qh1N7cUJjnhN8r63jmfTy+cfc=,iv:zPwliv/eBL4hoMEr4c2ehZdu5dpF2Ad3GyIcILI7W6Q=,tag:lPVViGF0AU/k1Z0UPrHN7A==,type:str]
         audiomuse: ENC[AES256_GCM,data:mSNkUGpeA8DfbvealvPffvxuLdM8jJghsxShHDi0J8U=,iv:thfL2fagAPEjn6aVqyKzXSKTHpJxfj/WRn9SG4PFs9U=,tag:XNXle4slHS24YDNR3lJcnw==,type:str]
     pgadmin:
@@ -71,7 +70,7 @@ sops:
         naN+J/L2HP5Wc72SpZrHSA8n5KCqxFpcHgnKQBOz1PELBOdFlTJYgw==
         -----END AGE ENCRYPTED FILE-----
       recipient: age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
-  lastmodified: "2026-11-04T19:23:10Z"
-  mac: ENC[AES256_GCM,data:/yiGQWzejR1hVLOm1r36hjfTPZbf0u+8wR5cUJzBihIViQ7XKduFW/akiFMQLpTr4I0vvmGkdkXZFQlW+ETzd5xN0LJjhcYrgDB6ykwECq+EP0eK6NqRKwZKMqx8bfy+QlstYHgJgcZaxABuJZcON/ztkfpjSmqOz1mxRFuFEMI=,iv:A0ywRryHpDz9kYiBRzaT5456nK+zJ7z3tLeKQMtk1sM=,tag:fl5B3jp4LGv42IXyyWP/FA==,type:str]
+  lastmodified: "2026-11-07T09:05:42Z"
+  mac: ENC[AES256_GCM,data:2EmJCJfqZ1yqVz2D4XXWRBZC0mRgjuZ7C/Oa/+/lBmprqpwrNRZB5gfpuUdy5fXqmoZapmah3tOUUfCpG7XyLyuAW8FeoKDB6qQEtxxdzVQfepKO54ecypK7NCskUr8sjGxxqzndvJgrmA6JqHwQ1qdvwTZxRcpYWirg2e6y1l4=,iv:xP08JUKL1ONBa6XVtj8hl0urfIpzTBgZJuq5tnmZQ+Q=,tag:bC3wCZoGvM7bCoFTGEC9bA==,type:str]
   unencrypted_suffix: _unencrypted
   version: 3.13.3

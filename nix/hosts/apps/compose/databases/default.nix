@@ -27,7 +27,6 @@ let
     "matrix_signal"
     "matrix_whatsapp"
     "matrix_meta"
-    "maubot"
     "peertube"
     "audiomuse"
   ];
