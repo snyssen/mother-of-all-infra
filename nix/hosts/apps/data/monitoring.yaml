@@ -5,6 +5,11 @@ compose-stacks:
   monitoring:
     umami:
       app_secret: ENC[AES256_GCM,data:B0ntHC1NAVo8oYPqQAWwBNZ89PhWaYGGJP6Xa4Th5R0EYw7QycKnBmc9chdLdoD87X0yHoKL2MCStcqZ9HA+zA==,iv:E4leEoOmdlS6BoFLMzI158a0olX8G2xrG/QLCjZ8awE=,tag:zRst74Z4QZnSxbiY3qfJ5A==,type:str]
+    prometheus:
+      hass_token: ENC[AES256_GCM,data:fbByE7nP/IKpgMx8UUA3LHCyEED94U/0wL1gfMMIU+GcBwbgrr2qeA+PhjdELyj8RC9yiFmDil2MdyJvopy6e9Ni+TEbRbJg5v58/qV5jV9RkRzcGMmsAYEqeLgByvqSLbhjoclOLguROBiPx2a8b4CPQ+csZJlFenPrANOS5mKxxYCmqay63DFxstGK7jcQWbptVgBRTGEwToeq+r3fFR3nwNSpnQeVzGVYpv8sw0kkU3sw6QCM,iv:zzhiRvpwUoO7KB279R/to+dCeufpIRJnjhmjd5evR5Q=,tag:lUsOoSEQpUaAHi1zHKEDTQ==,type:str]
+      healthchecks:
+        project_uuid: ENC[AES256_GCM,data:R1hndni0V9TNCCjtnzcFcSJEZeL7KLHxGz+VXfqUlrZkgnw2,iv:iBnKPW4jMOA5lA5TR4RIDDQYLvmbtU7qHFijhnxSO6o=,tag:L0U+3MpWjf/9geHz/Hi+VA==,type:str]
+        api_key: ENC[AES256_GCM,data:vG/XyMZI9WnonBr3uX8zQQX7pFpgfzpl7OlN9ClNWYA=,iv:S7YZRBrgQBZbvJb/kSU40FK00IQ+IEy3eg8JIDO739A=,tag:NBdK+UlPGRJBgA2hqLZkgg==,type:str]
 sops:
   age:
     - enc: |
@@ -43,7 +48,7 @@ sops:
         naN+J/L2HP5Wc72SpZrHSA8n5KCqxFpcHgnKQBOz1PELBOdFlTJYgw==
         -----END AGE ENCRYPTED FILE-----
       recipient: age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
-  lastmodified: "2026-10-19T19:51:52Z"
-  mac: ENC[AES256_GCM,data:snb9paZtFGXt8wyPY7humDDoI+dpcs131OxTstGzMSziMS/Pc7w7teBM4qndHx8q4cvIcVod+6d+Z1Hvy5Q0IY1cgWvAoBCKjhZVP1ZSyXBu1g2aTpXwvp9xQugA/Ues77AgjM5HOPpBbESDBIqwfq5W+ZBJyBIrAkJAnh3RdW0=,iv:CBjMjbP9C9aiN8HO/3HsaHqkvaMh9turf3BU89FjhoM=,tag:7tVldy3o0Zf+k4p+vIl7gA==,type:str]
+  lastmodified: "2026-11-07T08:38:41Z"
+  mac: ENC[AES256_GCM,data:S9cWPpHynCI1LMpBtWkZt1TIeUZ+5S5/T1M0DaK7QPCB0Hq8tkHYDFlET93bZWSF7cX1gFE8IpUb49isnLMq3/Jb/2490bbDIePi3iewnFt7sSQzmXZES1wtbxSZwU0ARjyZGW1h9oLbOJ/Am5rnERx0kH2EYYVi/WxxKX5fIDc=,iv:wmeQDeXlpXVxVXcr7ck1hqbf7LxVaUd9DdsB7Bvi5xY=,tag:xC+MmB3umyKJAYL89IwLFA==,type:str]
   unencrypted_suffix: _unencrypted
   version: 3.13.3

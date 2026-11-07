@@ -21,6 +21,25 @@ in
     "compose-stacks/monitoring/umami/app_secret" = {
       sopsFile = ../../data/monitoring.yaml;
     };
+    # Carried over unchanged from the legacy vault, for prod's `hass` and
+    # `healthchecks` scrape jobs (see prometheus-config.nix).
+    "compose-stacks/monitoring/prometheus/hass_token" = {
+      sopsFile = ../../data/monitoring.yaml;
+    };
+    "compose-stacks/monitoring/prometheus/healthchecks/project_uuid" = {
+      sopsFile = ../../data/monitoring.yaml;
+    };
+    "compose-stacks/monitoring/prometheus/healthchecks/api_key" = {
+      sopsFile = ../../data/monitoring.yaml;
+    };
+  };
+
+  # Readable by Prometheus's own user (nobody, 65534) and nothing else.
+  sops.templates."prometheus.yml" = {
+    content = import ./prometheus-config.nix { inherit config; };
+    uid = 65534;
+    gid = 65534;
+    mode = "0400";
   };
 
   sops.templates."compose-monitoring.env".content = ''
@@ -42,6 +61,7 @@ in
       config.sops.placeholder."compose-stacks/databases/postgres/passwords/umami"
     }@postgres:5432/umami
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
+    PROMETHEUS_CONFIG_PATH=${config.sops.templates."prometheus.yml".path}
   '';
 
   # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
@@ -184,6 +204,7 @@ in
       ../../data/common.yaml
       ../../data/databases.yaml
       config.sops.templates."compose-monitoring.env".content
+      config.sops.templates."prometheus.yml".content
     ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-monitoring.env".path;
