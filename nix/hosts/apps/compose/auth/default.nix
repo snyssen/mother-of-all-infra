@@ -51,6 +51,22 @@ in
     "compose-stacks/auth/oidc/grafana/client_secret" = {
       sopsFile = ../../data/auth.yaml;
     };
+    # Clients for relying parties that live outside this host's stacks — Tailscale's
+    # login and Home Assistant (haos VM) — so their secrets sit with the auth stack.
+    # Carried over unchanged from the legacy vault; only the id and Authelia's hash are
+    # rendered, the plaintext secrets stay in sops for reference.
+    "compose-stacks/auth/oidc/tailscale/client_id" = {
+      sopsFile = ../../data/auth.yaml;
+    };
+    "compose-stacks/auth/oidc/tailscale/client_secret_hash" = {
+      sopsFile = ../../data/auth.yaml;
+    };
+    "compose-stacks/auth/oidc/hass/client_id" = {
+      sopsFile = ../../data/auth.yaml;
+    };
+    "compose-stacks/auth/oidc/hass/client_secret_hash" = {
+      sopsFile = ../../data/auth.yaml;
+    };
     "compose-stacks/auth/lldap/jwt_secret" = {
       sopsFile = ../../data/auth.yaml;
     };

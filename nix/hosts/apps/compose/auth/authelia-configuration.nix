@@ -25,6 +25,12 @@
   log:
     level: info
 
+  # Metrics on :9959 (Authelia's default address), scraped by the `authelia` job in
+  # compose/monitoring/prometheus-config.nix over the shared `monitoring` network, as on prod.
+  telemetry:
+    metrics:
+      enabled: true
+
   totp:
     disable: false
     issuer: Authelia
@@ -295,6 +301,15 @@
             - policy: one_factor
               subject:
                 - ["group:team_member"]
+        # Home Assistant (haos VM). two_factor, carried over from the legacy config
+        # unchanged. The group already exists — see
+        # lldap-bootstrap/group-configs/hass_user.json.
+        hass_policy:
+          default_policy: deny
+          rules:
+            - policy: two_factor
+              subject:
+                - ["group:hass_user"]
         # Matrix, through MAS. one_factor, carried over from the legacy config unchanged.
         # The group already exists — see lldap-bootstrap/group-configs/matrix_user.json.
         matrix_policy:
@@ -552,6 +567,54 @@
             - code
           grant_types:
             - refresh_token
+            - authorization_code
+          access_token_signed_response_alg: none
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_post
+        # Tailscale's own login: the tailnet's identity provider. Without this client
+        # nobody can log in to the tailnet (raw SSH keys remain the way into the hosts).
+        # Fixed redirect URI on Tailscale's side; client_secret_basic, as on prod.
+        - client_name: Tailscale
+          client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/tailscale/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/auth/oidc/tailscale/client_secret_hash"
+          }"
+          public: false
+          authorization_policy: sysadmin_policy
+          require_pkce: false
+          pkce_challenge_method: ""
+          redirect_uris:
+            - "https://login.tailscale.com/a/oauth_response"
+          scopes:
+            - openid
+            - email
+            - profile
+          response_types:
+            - code
+          grant_types:
+            - authorization_code
+          access_token_signed_response_alg: none
+          userinfo_signed_response_alg: none
+          token_endpoint_auth_method: client_secret_basic
+        # Home Assistant runs on its own VM (haos); only its client lives here.
+        - client_name: Home Assistant
+          client_id: "${config.sops.placeholder."compose-stacks/auth/oidc/hass/client_id"}"
+          client_secret: "${
+            config.sops.placeholder."compose-stacks/auth/oidc/hass/client_secret_hash"
+          }"
+          public: false
+          require_pkce: true
+          pkce_challenge_method: S256
+          authorization_policy: hass_policy
+          redirect_uris:
+            - "https://hass.${config.domains.main}/auth/oidc/callback"
+          scopes:
+            - openid
+            - profile
+            - groups
+          response_types:
+            - code
+          grant_types:
             - authorization_code
           access_token_signed_response_alg: none
           userinfo_signed_response_alg: none
