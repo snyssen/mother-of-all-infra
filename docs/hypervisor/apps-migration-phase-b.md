@@ -90,8 +90,10 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
       Now in apps-01's monitoring stack, with the `monitoring` ntfy user's password
       copied from the vault into `nix/hosts/apps-01/data/ntfy.yaml`. Its test is the
       Grafana line of D8's ntfy check.
-- [ ] Step D9's Backrest design (production's repositories, B2, prune and check
-      policies), as a reviewed commit.
+- [x] The Backrest design for after the cutover: production's two repositories, B2
+      twins, check and prune policies (`nix/hosts/apps-01/backrest.nix`, described in
+      [the backups doc](../backups.md#two-repositories-productions-own)), with the
+      B2 bucket path and credentials from the vault.
 
 ### Backups must be verified, not assumed
 
@@ -120,8 +122,9 @@ This is the step that is *actually* irreversible if skipped — see
       secrets file (`git grep -c age1mpnhsfpava0 -- 'nix/hosts/*/data/*'`).
 - [ ] Both restic repository passwords are in the password manager, as plain text, not
       only inside sops.
-- [ ] The backup server's **IP address** is written down somewhere outside this
-      repository: DNS for `backup.snyssen.be` goes away with the legacy box.
+- [ ] The backup server's **IP address** (`192.168.1.11`) is written down somewhere
+      outside this repository: its name is served by Technitium, which a disaster can
+      take down too.
 - [ ] The LUKS passphrase the hypervisors use as a fallback is in the password manager.
 
 ### Capacity must be checked, not remembered
@@ -825,30 +828,42 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
      - UnifiedPush (anonymous `up*` topics): with Matrix live, a message from another
        account raises a notification from Element on the phone.
 
-### D9. Backups onto production's repositories, then release them
+### D9. Release the backups
 
-Phase A's backups went to the test repository `rest:http://backup.snyssen.be:8000/apps/`.
-Production's own history is the one to continue, so one repository holds the whole
-timeline. `prod-import` already reads it, so restores keep working across the boundary.
+apps-01's Backrest is already configured for production's two repositories (see
+[the backups doc](../backups.md#two-repositories-productions-own)): every plan into the
+on-site repository, and its `-offsite` twin into B2, with check and prune policies on
+both. Until now the hold kept it from starting, so the first thing it writes into those
+repositories is apps-01's restored state. Autorestic's snapshots stay as they are;
+`prod-import` keeps reading them.
 
-1. In `nix/hosts/apps-01/backrest.nix`:
-   - point every plan at production's on-site repo (`backup_snyssen_be`,
-     `rest:http://backup.snyssen.be:8000/`) and drop its read-only registration;
-   - register production's B2 repo (`snyssen-be-autorestic`) and send every plan there
-     too, except `movies` and `tv`, which stay on-site only as on prod. A Backrest plan
-     targets one repo, so this means either a second plan per location or a copy step;
-   - **enable a prune policy and a check policy** on both. Phase A ran with neither:
-     forgetting snapshots without pruning never frees space, and prod ran
-     `autorestic check` weekly. Document the chosen schedules in `docs/backups.md`;
-   - remove the `apps` repo registration.
+1. Release the hold: in `nix/hosts/apps-01/configuration.nix`, set
+   `restoreHold.backups = false`. Commit, push, then:
 
-   These need designing before D-day, so this step is a reviewed commit, not an
-   improvisation.
-2. Set `restoreHold.backups = false` in `nix/hosts/apps-01/configuration.nix`. Commit,
-   push, `just nix-remote-install switch apps-01`.
-3. Trigger every plan once from Backrest's UI, and watch them finish. The `backups_<plan>`
-   Gatus checks turn green.
-4. Re-enable ingest (consume folders, download clients, mobile backup).
+   ```sh
+   just nix-remote-install switch apps-01
+   ```
+
+2. Let the first night run, or trigger the plans from Backrest's UI
+   (`https://backrest.snyssen.be`) rather than waiting. Backrest runs one operation at a
+   time, and these first runs read every file once (~12 TB with movies and tv), so they
+   take a day or more. They upload next to nothing: restic finds the data already
+   stored. Until they are through, expect `backups_*` Gatus checks to go red for missing
+   their 26-hour heartbeat.
+3. As each finishes, check in the UI that its snapshot **added** little data. A plan
+   that uploads close to its full size means restic didn't recognise the data: stop and
+   look before the B2 twins upload it all again.
+4. Once every plan, on-site and off-site, has a snapshot, prove both restore commands
+   find them:
+
+   ```sh
+   ssh apps-01
+   sudo backrest-restore --check --all
+   sudo backrest-restore-offsite --check --all
+   ```
+
+   Every `backups_*` Gatus check is green by then.
+5. Re-enable ingest (consume folders, download clients, mobile backup).
 
 ## A — Afterwards
 
@@ -1090,7 +1105,9 @@ for them.
      `nix/hosts/apps-01/prod-import.nix` and `prod-layout.nix`, and their imports;
    - remove the legacy box's Syncthing device (`sync.snyssen.be`) from
      `nix/data/syncthing.nix` and from every folder in `nix/hosts/apps-01/syncthing.nix`;
-   - set `restoreHold` back to `false` for both (the module stays, for the DR runbook).
+   - set `restoreHold` back to `false` for both (the module stays, for the DR runbook);
+   - drop the Phase A repository's password, which nothing reads any more:
+     `sops unset nix/hosts/apps-01/data/common.yaml '["backrest"]["repos"]["apps"]'`.
 9. Destroy the Phase A test repository on the backup server
    (`rest:http://backup.snyssen.be:8000/apps/`), once D9 has produced good snapshots.
 

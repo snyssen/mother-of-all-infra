@@ -21,6 +21,10 @@ backrest:
       password: ENC[AES256_GCM,data:/n4Z/BtziuuRKWfn+OfWfvBZt2mQ61XQ,iv:VbLHcsQ9wosI0oTIAgwnB7uOl50JfQme1LrGcegpRp8=,tag:PGj1KUt5HBl8tqH+rP/Ykw==,type:str]
     apps:
       password: ENC[AES256_GCM,data:rhl/g/+1GrxSnj/wJPkohlyAGZrCIfeWJub9TbYkm+JeAMqnaak6,iv:8XKTbpiuyOBk+gDTgZExXY4uQfCsZUGeiq16HCUI3vA=,tag:ykt4c1SPyd7HxFGayb01WA==,type:str]
+    snyssen_be_autorestic:
+      password: ENC[AES256_GCM,data:WYibV0dky4IqbkkjOc72cYup6wfOnX4G/V0q3MT5+gRJ1x+XZCwww0CTkG5TI9I5LspDIf/2tafQ+hiiZGPd70QHsBzssuJkz0kZ7VI/SsKVVg==,iv:IRolNSYsuqilsy7XoZQRgX5vmoNSJXtg2iZduyP8FHk=,tag:NKOxrYCqd2q93drMnsZv0A==,type:str]
+      b2_account_id: ENC[AES256_GCM,data:iJhO7eEhZjJzmvPGUfu+E1mN51UZ32mh9A==,iv:WtTI/nvB8YNUkFmrQ+F6f4e8XUnJ0BZabipNMibZcdg=,tag:yFUjsLH9kMrxuaIevCW5UQ==,type:str]
+      b2_account_key: ENC[AES256_GCM,data:JfY5uuETHT5eoXdy9aAf4Dcvdjr9EcYAy2aVBwpTYQ==,iv:BUMrxF+UIm4zzvowHB5K18bXVbny600WudojDxSpLe0=,tag:H4NG173RSogDLME2iGfVGQ==,type:str]
   users:
     snyssen:
       #ENC[AES256_GCM,data:Aw5/N/tlYFTz7jeiqgSh2QmI1DPG5GgTJorE0indQw4kr8Q42NNnXi41GUJj,iv:Ygh7hy1Yjl+udxpeLutVlvmJTm1XuYguqzmTVQQpkXc=,tag:aZTXI7RcvGk9tgH2R1197Q==,type:comment]
@@ -73,7 +77,7 @@ sops:
         naN+J/L2HP5Wc72SpZrHSA8n5KCqxFpcHgnKQBOz1PELBOdFlTJYgw==
         -----END AGE ENCRYPTED FILE-----
       recipient: age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
-  lastmodified: "2026-11-07T08:55:39Z"
-  mac: ENC[AES256_GCM,data:JpQi7yKL6KN6JMeuXQxYYc54snygB4VyZ9sMK9bgQiJFdu8joMdsAU/ZvgDgtgwNphx7YCoINRbgi9r090HOfNVqPYb3Mhwya0u5dZWRVPr9NHISMsLklWbCBPzy/UT+t5U5ZKHjmmWB7RjbmLxSXuc0wRQd8KlLO55ntU/f8jg=,iv:XZj5n77KkSLzcEPa9nqqjrpp1dpLYwIy1zA1PiQtfa4=,tag:6IfHGDXX7u1UFhFaOv2rDQ==,type:str]
+  lastmodified: "2026-11-08T10:06:28Z"
+  mac: ENC[AES256_GCM,data:Wkht+jt1eLVnRVPfKREjpQXw8Ty2irLxtQml4a4vzOA/Awwc70BLxrkTujKhgCHDYMCVmf68bE3i6kUAb/8BmKbuysM4Gl5/lwh1ewtduYSdhiLa//TKbvQcI7RdI4bv5Wwj0mtt3negh/Tb+b9TJ4j7+3Y9uEX5fQt0vNTat9U=,iv:4P2c7r9x85PxiN/hBNIy7dJaCiQx8Rt4HDmrOS07288=,tag:skwzl19NJAH936mhUOdt5A==,type:str]
   unencrypted_suffix: _unencrypted
   version: 3.13.3

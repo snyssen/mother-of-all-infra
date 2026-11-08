@@ -144,7 +144,12 @@ let
   # automatically, which is the whole point — a hand-maintained second copy of the path
   # list would drift, and would only reveal that it had drifted during an actual
   # recovery.
-  drGroups = lib.mapAttrs (_: plan: {
+  #
+  # Mirrors (plans with `mirrorOf`) back up the same paths into another repo, so they are
+  # left out here — they would restore everything twice — and make up the off-site
+  # command below, keyed by the plan they mirror so both commands take the same group
+  # names.
+  planGroup = plan: {
     inherit (plan) repo stopUnits;
     # Both tags rather than --tag + --host: these are the two things Backrest provably
     # stamps on every snapshot it creates. Whether it also passes --host to restic, and
@@ -164,7 +169,13 @@ let
       to = p;
       owner = null;
     }) plan.paths;
-  }) cfg.plans;
+  };
+  primaryPlans = lib.filterAttrs (_: plan: plan.mirrorOf == null) cfg.plans;
+  mirrorPlans = lib.filterAttrs (_: plan: plan.mirrorOf != null) cfg.plans;
+  drGroups = lib.mapAttrs (_: planGroup) primaryPlans;
+  offsiteGroups = lib.mapAttrs' (
+    _: plan: lib.nameValuePair plan.mirrorOf (planGroup plan)
+  ) mirrorPlans;
 in
 {
   options.backrest.restore = {
@@ -175,6 +186,16 @@ in
         Name of the disaster-recovery command generated from `backrest.plans` (one
         group per plan, restoring every path back to where it came from). Not
         generated at all when no plans are declared.
+      '';
+    };
+
+    offsiteCommandName = lib.mkOption {
+      type = lib.types.str;
+      default = "backrest-restore-offsite";
+      description = ''
+        Name of the restore command generated from the mirror plans (`mirrorOf`): the
+        same groups as the disaster-recovery command, read from the mirrors' repo. For
+        when the primary repo is unavailable. Not generated when no plan is a mirror.
       '';
     };
 
@@ -214,7 +235,9 @@ in
     );
 
     environment.systemPackages = lib.mapAttrsToList mkRestoreCommand (
-      lib.optionalAttrs (cfg.plans != { }) { ${cfg.restore.commandName} = drGroups; } // cfg.restore.extra
+      lib.optionalAttrs (primaryPlans != { }) { ${cfg.restore.commandName} = drGroups; }
+      // lib.optionalAttrs (mirrorPlans != { }) { ${cfg.restore.offsiteCommandName} = offsiteGroups; }
+      // cfg.restore.extra
     );
   };
 }

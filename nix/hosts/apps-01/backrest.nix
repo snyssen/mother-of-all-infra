@@ -5,16 +5,19 @@
   ...
 }:
 let
-  # Every plan backs up on the same schedule and keeps the same depth. Both match the
-  # legacy autorestic config (daily at 00:30; keep-daily 14 / weekly 4 / monthly 6 /
-  # yearly 1), so retention behaviour doesn't silently change at cutover.
+  # Every plan backs up daily and keeps the same depth, matching the legacy autorestic
+  # config (daily at 00:30; keep-daily 14 / weekly 4 / monthly 6 / yearly 1), so
+  # retention behaviour doesn't silently change at cutover. The off-site copies run
+  # three hours later, so a night's on-site backups get the disks first.
   #
   # These two objects are passed through to Backrest's config.json verbatim — the
   # module types them as free-form, so a misspelled field is accepted here and only
   # surfaces as a broken config at runtime. Field names below were read out of the
   # backrest binary itself rather than guessed.
-  schedule = {
-    cron = "30 0 * * *";
+  schedule = cron "30 0 * * *";
+  offsiteSchedule = cron "30 3 * * *";
+  cron = expr: {
+    cron = expr;
     clock = "CLOCK_LOCAL";
   };
   retention.policyTimeBucketed = {
@@ -24,17 +27,45 @@ let
     yearly = 1;
   };
 
+  # `offsite = false` keeps a plan on-site only, as prod did for movies and tv.
   mkPlan =
-    { paths, stopUnits }:
+    {
+      paths,
+      stopUnits,
+      offsite ? true,
+    }:
     {
       inherit
         paths
         stopUnits
         schedule
         retention
+        offsite
         ;
-      repo = "apps";
+      repo = "backup_snyssen_be";
     };
+
+  # Each plan, plus its `<plan>-offsite` twin in B2 unless it is on-site only. Two plans
+  # rather than one plan and a copy: a Backrest plan targets a single repo, and this is
+  # what prod's autorestic did too (one backup per backend). `mirrorOf` keeps the twins
+  # out of `backrest-restore` and gathers them into `backrest-restore-offsite`.
+  withOffsite =
+    plans:
+    let
+      plain = lib.mapAttrs (_: plan: removeAttrs plan [ "offsite" ]) plans;
+      offsite = lib.mapAttrs' (
+        name: plan:
+        lib.nameValuePair "${name}-offsite" (
+          plain.${name}
+          // {
+            repo = "snyssen_be_autorestic";
+            schedule = offsiteSchedule;
+            mirrorOf = name;
+          }
+        )
+      ) (lib.filterAttrs (_: plan: plan.offsite) plans);
+    in
+    plain // offsite;
 
   # Every plan reports each backup's outcome to its Gatus external endpoint
   # (backups_<plan>, declared from these same plan names in
@@ -44,10 +75,11 @@ let
   # for having nothing new counts as a success. Hook failures are ignored (Backrest's
   # default): a monitoring hiccup must not fail the backup itself.
   gatusPush = import ./compose/monitoring/gatus-push.nix { inherit config pkgs; };
-  heartbeat = plan: success: {
+  heartbeat = key: success: conditions: {
+    inherit conditions;
     actionCommand.command = ''
       #!${pkgs.bash}/bin/bash
-      ${gatusPush} backups_${plan} ${success}
+      ${gatusPush} ${key} ${success}
     '';
   };
   withHeartbeat =
@@ -55,49 +87,49 @@ let
     attrs
     // {
       hooks = [
-        (
-          heartbeat plan "true"
-          // {
-            conditions = [
-              "CONDITION_SNAPSHOT_SUCCESS"
-              "CONDITION_SNAPSHOT_SKIPPED"
-            ];
-          }
-        )
-        (
-          heartbeat plan "false"
-          // {
-            conditions = [
-              "CONDITION_SNAPSHOT_ERROR"
-              "CONDITION_SNAPSHOT_WARNING"
-            ];
-          }
-        )
+        (heartbeat "backups_${plan}" "true" [
+          "CONDITION_SNAPSHOT_SUCCESS"
+          "CONDITION_SNAPSHOT_SKIPPED"
+        ])
+        (heartbeat "backups_${plan}" "false" [
+          "CONDITION_SNAPSHOT_ERROR"
+          "CONDITION_SNAPSHOT_WARNING"
+        ])
       ];
     };
+  # The repos' own check and prune runs report the same way, to endpoints
+  # backups_check-<site> and backups_prune-<site> (declared in gatus-config.nix, with
+  # heartbeats matching the schedules below): weekly or monthly jobs that fail silently
+  # are exactly the ones nobody notices.
+  repoHeartbeats = site: [
+    (heartbeat "backups_check-${site}" "true" [ "CONDITION_CHECK_SUCCESS" ])
+    (heartbeat "backups_check-${site}" "false" [ "CONDITION_CHECK_ERROR" ])
+    (heartbeat "backups_prune-${site}" "true" [ "CONDITION_PRUNE_SUCCESS" ])
+    (heartbeat "backups_prune-${site}" "false" [ "CONDITION_PRUNE_ERROR" ])
+  ];
 in
 {
-  # Two repos, deliberately distinct:
+  # Production's two restic repositories, continued from where autorestic left them at
+  # the cutover rather than started afresh: the files are the same, so restic finds
+  # their data already stored and the first backups upload next to nothing (which, for
+  # B2, is also what it is billed on). The whole history stays in one place, and
+  # `prod-import` keeps reading autorestic's snapshots from the same repo.
   #
-  # - backup_snyssen_be: the *live production* repo, registered read-only so Backrest's
-  #   UI can browse and restore any of autorestic's existing snapshots onto `apps`
-  #   (Backrest indexes a repo's snapshots directly, regardless of what created them).
-  #   No plans, and no prune/forget/check policy, ever — `apps` must not be able to
-  #   change production's snapshot set.
-  # - apps: `apps`'s own backups, a separate repo on the same rest-server (it runs
-  #   without --private-repos, so a subpath is served as its own repository). Same LAN
-  #   speed, but retention and pruning here can never touch production's snapshots.
+  # Sharing a repo with autorestic's snapshots is safe because a plan's retention only
+  # ever forgets snapshots tagged with that plan *and* `created-by:<instance>` (checked
+  # in Backrest 1.14's source). Autorestic's own snapshots (`ar:location:*`) are left
+  # alone for good, which is what we want: they are the only pre-cutover state. The one
+  # thing that would touch them is a repo-level `forgetPolicy`, which forgets every
+  # snapshot in the repo; never set one here.
   #
-  # An off-site B2 copy for `apps` is still to come; until then the generated restore
-  # commands take --repo-uri for the "on-site server is unreachable" case.
-  sops.secrets."backrest/repos/backup_snyssen_be/password" = {
-    sopsFile = ./data/common.yaml;
-  };
-  sops.secrets."backrest/repos/apps/password" = {
-    sopsFile = ./data/common.yaml;
-  };
-  sops.secrets."backrest/users/snyssen/password_hash" = {
-    sopsFile = ./data/common.yaml;
+  # Pruning and checking are the repos' own jobs, which prod never pruned at all
+  # (forgetting without pruning frees nothing) and checked weekly, structure only.
+  sops.secrets = {
+    "backrest/repos/backup_snyssen_be/password".sopsFile = ./data/common.yaml;
+    "backrest/repos/snyssen_be_autorestic/password".sopsFile = ./data/common.yaml;
+    "backrest/repos/snyssen_be_autorestic/b2_account_id".sopsFile = ./data/common.yaml;
+    "backrest/repos/snyssen_be_autorestic/b2_account_key".sopsFile = ./data/common.yaml;
+    "backrest/users/snyssen/password_hash".sopsFile = ./data/common.yaml;
   };
 
   # Restart when the repository passwords change. The rendered config's own trigger is
@@ -112,21 +144,48 @@ in
     # tailnet/LAN anyway, never the open WAN (apps has no public-facing interface of
     # its own; see the migration plan).
     openFirewall = true;
+    # On-site: the dedicated restic REST server, LAN-only, no auth. Every plan writes
+    # here, and it is what `backrest-restore` reads.
     repos.backup_snyssen_be = {
-      # On-site dedicated restic REST server — LAN-only, no auth. Chosen over the
-      # off-site B2 repo (snyssen-be-autorestic) specifically for restore-testing:
-      # LAN speed between it and `apps`, and it's the richer/more complete repo (every
-      # autorestic location writes here; only some also go to B2).
       uri = "rest:http://backup.snyssen.be:8000/";
       passwordSecret = "backrest/repos/backup_snyssen_be/password"; # Uses sops templates behind the scene
       # Fixed/stable, not a secret — just needs to stay constant across redeploys.
       # Generated once with `openssl rand -hex 32`.
       guid = "6498b158e271405733d31947e066cf746e6a6a5b07206075cdb55763f09fb9db";
+      # Weekly, over the LAN, so there is room to read real data: 10% of the packs each
+      # time, a different 10% each run, which covers the whole repo in about ten weeks.
+      checkPolicy = {
+        schedule = cron "0 4 * * 1";
+        readDataSubsetPercent = 10;
+      };
+      # Weekly too; repacks only once more than 10% of the repo is unreferenced.
+      prunePolicy = {
+        schedule = cron "0 4 * * 0";
+        maxUnusedPercent = 10;
+      };
+      hooks = repoHeartbeats "onsite";
     };
-    repos.apps = {
-      uri = "rest:http://backup.snyssen.be:8000/apps/";
-      passwordSecret = "backrest/repos/apps/password";
-      guid = "f4fcafc27628201b204cd752d2ce0b080a833fe0554c94e92caa0284f4fc40d4";
+    # Off-site: prod's B2 bucket, holding every plan except the on-site-only ones (see
+    # mkPlan). Read by `backrest-restore-offsite` when the backup server is gone.
+    repos.snyssen_be_autorestic = {
+      uri = "b2:snyssen-be-autorestic";
+      passwordSecret = "backrest/repos/snyssen_be_autorestic/password";
+      env = {
+        B2_ACCOUNT_ID = "backrest/repos/snyssen_be_autorestic/b2_account_id";
+        B2_ACCOUNT_KEY = "backrest/repos/snyssen_be_autorestic/b2_account_key";
+      };
+      guid = "79b3aa552a571bba7942257150aa5f33da66a440a6af572129fc6f9216dd3afa";
+      # Monthly and light: B2 bills downloads beyond three times the stored volume a
+      # month, and prune rewrites packs, so both stay well inside that.
+      checkPolicy = {
+        schedule = cron "0 5 1 * *";
+        readDataSubsetPercent = 2;
+      };
+      prunePolicy = {
+        schedule = cron "0 5 15 * *";
+        maxUnusedPercent = 10;
+      };
+      hooks = repoHeartbeats "offsite";
     };
     users.snyssen.passwordHashSecret = "backrest/users/snyssen/password_hash";
 
@@ -145,9 +204,10 @@ in
     #   so the auth DB is rebuilt from this repo on any rebuild. The rest is the
     #   notification cache, which is disposable. A backup would protect nothing that
     #   isn't already in git.
-    # - no media (/mnt/bulk/streaming/media): empty test data today. Those plans arrive
-    #   with the real media, which — like prod's movies/tv — stays on-site only.
-    plans = lib.mapAttrs withHeartbeat {
+    #
+    # Every plan also goes off-site, as `<plan>-offsite`, except the media marked
+    # `offsite = false` at the end.
+    plans = lib.mapAttrs withHeartbeat (withOffsite {
       # Dumps only, never the live Postgres data directory: a running cluster's files
       # aren't consistently snapshottable, and this matches what prod backs up. Also
       # the only reason `postgres-restore` has anything to read.
@@ -329,7 +389,52 @@ in
         paths = [ "/mnt/bulk/recipes/mediafiles" ];
         stopUnits = [ ];
       };
-    };
+
+      # The media library, as prod's locations of the same names. Audiobooks and music
+      # go off-site too, as on prod; movies and tv (~10 TB) stay on-site only, also as
+      # on prod. Restored with the stack stopped, so the *arr apps never scan a
+      # half-restored library.
+      audiobooks = mkPlan {
+        paths = [
+          "/mnt/bulk/streaming/media/audiobooks"
+          "/mnt/bulk/streaming/media/audiobooks_vi"
+        ];
+        stopUnits = [ "compose-streaming.service" ];
+      };
+      music = mkPlan {
+        paths = [
+          "/mnt/bulk/streaming/media/music"
+          "/mnt/bulk/streaming/media/music_vi"
+        ];
+        stopUnits = [ "compose-streaming.service" ];
+      };
+      movies = mkPlan {
+        paths = [ "/mnt/bulk/streaming/media/movies" ];
+        stopUnits = [ "compose-streaming.service" ];
+        offsite = false;
+      };
+      tv = mkPlan {
+        paths = [ "/mnt/bulk/streaming/media/tv" ];
+        stopUnits = [ "compose-streaming.service" ];
+        offsite = false;
+      };
+      # New relative to prod, which backed these up nowhere: podcasts, books and
+      # PeerTube's videos. On-site only, like movies and tv.
+      media-extra = mkPlan {
+        paths = [
+          "/mnt/bulk/streaming/media/podcasts"
+          "/mnt/bulk/streaming/media/podcasts_vi"
+          "/mnt/bulk/streaming/media/books"
+        ];
+        stopUnits = [ "compose-streaming.service" ];
+        offsite = false;
+      };
+      peertube-data = mkPlan {
+        paths = [ "/mnt/bulk/streaming/peertube/data" ];
+        stopUnits = [ "compose-streaming.service" ];
+        offsite = false;
+      };
+    });
   };
 
   # Disaster recovery in one command; see scripts/apps-restore.sh for the rationale.

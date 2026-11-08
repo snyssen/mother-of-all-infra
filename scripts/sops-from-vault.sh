@@ -12,7 +12,13 @@
 #     vault_backbone__authelia__oidc_actual_budget_clientid=compose-stacks/actual-budget/oidc/client_id
 #
 # <vault_var> is a top-level key of the vault (the `vault_*` name, not the group_vars
-# alias pointing at it). <sops/key/path> is the slash-separated path sops-nix uses, so
+# alias pointing at it). To reach inside a structured value, append `.field` to take a
+# mapping's field, or `[name=VALUE]` to take the one list item whose `name` is VALUE:
+#
+#   just sops-from-vault nix/hosts/apps-01/data/common.yaml \
+#     'vault_autorestic__backends[name=backup-snyssen-be].key=backrest/repos/backup_snyssen_be/password'
+#
+# <sops/key/path> is the slash-separated path sops-nix uses, so
 # it can be pasted from the matching `sops.secrets."..."` entry. The SOPS file is
 # created from .sops.yaml's rules if it does not exist yet.
 #
@@ -80,8 +86,9 @@ for mapping in "$@"; do
     *=*) ;;
     *) echo "Not a <vault_var>=<sops/key/path> mapping: $mapping" >&2; exit 2 ;;
   esac
-  var=${mapping%%=*}
-  path=${mapping#*=}
+  # Split at the last `=`: a sops path never contains one, a `[name=...]` selector does.
+  var=${mapping%=*}
+  path=${mapping##*=}
   if [ "$FILES" -eq 1 ]; then
     [ -f "$var" ] || { echo "No such file: $var" >&2; exit 2; }
     case "$(head -n1 "$var")" in
@@ -89,7 +96,8 @@ for mapping in "$@"; do
       *) echo "Not an ansible-vault encrypted file: $var" >&2; exit 2 ;;
     esac
   else
-    [[ "$var" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Invalid vault variable name: $var" >&2; exit 2; }
+    [[ "$var" =~ ^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+|\[name=[A-Za-z0-9_.-]+\])*$ ]] \
+      || { echo "Invalid vault variable: $var" >&2; exit 2; }
   fi
   [[ "$path" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$ ]] || { echo "Invalid sops key path: $path" >&2; exit 2; }
   index=""
@@ -98,6 +106,24 @@ for mapping in "$@"; do
   VARS+=("$var")
   INDEXES+=("$index")
 done
+
+# The yq expression selecting a vault variable, from its `var.field[name=x]` form. Built
+# from characters the validation above restricts, so nothing in it needs quoting.
+vault_expr() {
+  local rest=$1 expr=""
+  [[ "$rest" =~ ^([A-Za-z0-9_]+)(.*)$ ]]
+  expr=".[\"${BASH_REMATCH[1]}\"]"
+  rest=${BASH_REMATCH[2]}
+  while [ -n "$rest" ]; do
+    if [[ "$rest" =~ ^\.([A-Za-z0-9_]+)(.*)$ ]]; then
+      expr+=" | .[\"${BASH_REMATCH[1]}\"]"
+    elif [[ "$rest" =~ ^\[name=([A-Za-z0-9_.-]+)\](.*)$ ]]; then
+      expr+=" | .[] | select(.name == \"${BASH_REMATCH[1]}\")"
+    fi
+    rest=${BASH_REMATCH[2]}
+  done
+  printf '%s' "$expr"
+}
 
 # Decrypted once, held only in this variable (never exported, so no child process
 # inherits it in its environment) and fed to yq through a pipe from the printf
@@ -117,9 +143,9 @@ trap 'unset VAULT_JSON' EXIT
 if [ "$FILES" -eq 1 ]; then
   vault_value() { ansible-vault view --vault-password-file ansible/vault-passphrase-client.sh "$1" | yq -n -o=json -I=0 'load_str("/dev/stdin")'; }
 elif [ -n "$JOIN" ]; then
-  vault_value() { printf '%s' "$VAULT_JSON" | SEP="$JOIN" yq -p=json -o=json -I=0 ".[\"$1\"] | join(strenv(SEP))"; }
+  vault_value() { printf '%s' "$VAULT_JSON" | SEP="$JOIN" yq -p=json -o=json -I=0 "$(vault_expr "$1") | join(strenv(SEP))"; }
 else
-  vault_value() { printf '%s' "$VAULT_JSON" | yq -p=json -o=json -I=0 ".[\"$1\"]"; }
+  vault_value() { printf '%s' "$VAULT_JSON" | yq -p=json -o=json -I=0 "$(vault_expr "$1")"; }
 fi
 # The same encoding read back from the SOPS file. `sops decrypt --extract` would be the
 # obvious tool, but it prints scalars raw and without a final newline, so it cannot be
@@ -128,8 +154,9 @@ sops_value() { sops decrypt --output-type json "$SOPS_FILE" | yq -p=json -o=json
 
 missing=0
 [ "$FILES" -eq 0 ] && for var in "${VARS[@]}"; do
-  if [ "$(printf '%s' "$VAULT_JSON" | yq -p=json ".[\"$var\"] | (. != null)")" != "true" ]; then
-    echo -e "${RED}✗${NC} $var is not set in $VAULT_FILE" >&2
+  # Exactly one match: a `[name=...]` that matches no item, or several, is an error too.
+  if [ "$(printf '%s' "$VAULT_JSON" | yq -p=json "[$(vault_expr "$var")] | (length == 1 and .[0] != null)")" != "true" ]; then
+    echo -e "${RED}✗${NC} $var is not set in $VAULT_FILE (or matches more than once)" >&2
     missing=1
   fi
 done
@@ -138,7 +165,7 @@ done
 if [ -n "$JOIN" ]; then
   notlist=0
   for var in "${VARS[@]}"; do
-    if [ "$(printf '%s' "$VAULT_JSON" | yq -p=json ".[\"$var\"] | tag")" != "!!seq" ]; then
+    if [ "$(printf '%s' "$VAULT_JSON" | yq -p=json "$(vault_expr "$var") | tag")" != "!!seq" ]; then
       echo -e "${RED}✗${NC} $var is not a list, so --join does not apply to it" >&2
       notlist=1
     fi

@@ -9,7 +9,7 @@ one you are looking at:
 | tool | [autorestic](https://autorestic.vercel.app/) (restic wrapper) | [Backrest](https://github.com/garethgeorge/backrest) (restic wrapper) |
 | configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps-01/backrest.nix` |
 | credentials in | ansible-vault | sops (`nix/hosts/apps-01/data/<stack>.yaml`) |
-| writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | `apps` repository (on-site) |
+| writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | the same two repositories, from the cutover (Phase B step D9) |
 | restores with | Ansible playbooks | generated on-host commands |
 
 Both are restic underneath, so both are readable with the plain `restic` CLI and with
@@ -39,35 +39,64 @@ from the tailnet (`openFirewall = true`) for when the reverse proxy is down. It 
 own login on top of that, declared as `backrest.users` — Backrest refuses to run a
 genuinely open UI, so the account is declarative rather than clicked in.
 
-### Two repositories, deliberately separate
+### Two repositories: production's own
 
 | repo | URI | role |
 | --- | --- | --- |
-| `backup_snyssen_be` | `rest:http://backup.snyssen.be:8000/` | The **live production** repo, registered read-only. No plans, and no prune/forget/check policy — `apps` must never be able to alter production's snapshot set. |
-| `apps` | `rest:http://backup.snyssen.be:8000/apps/` | `apps`'s own backups. A separate repository on the same rest-server (it runs without `--private-repos`, so a subpath is served as its own repo), so retention and pruning here are safely scoped. |
+| `backup_snyssen_be` | `rest:http://backup.snyssen.be:8000/` | On-site, the dedicated restic REST server. Every plan writes here; `backrest-restore` reads it. |
+| `snyssen_be_autorestic` | `b2:snyssen-be-autorestic` | Off-site. Every plan except the on-site-only ones writes here too, as `<plan>-offsite`; `backrest-restore-offsite` reads it. |
 
-Registering the production repository is what makes restore-testing possible at all:
-Backrest indexes a repository's snapshots directly, not just the ones it created, so
-every snapshot autorestic has ever written is browsable and restorable from `apps`
-without defining anything.
+These are the repositories autorestic wrote to on the legacy box, continued rather than
+replaced. apps-01's files are the same as the legacy box's, so restic finds their data
+already stored: the first backups upload next to nothing, which matters most for B2,
+billed by volume. The whole history stays in one place, and Backrest's UI browses
+autorestic's snapshots as easily as its own.
 
-An off-site copy of `apps`'s own backups (B2, as production has) is still to come.
-Until then the restore commands take `--repo-uri` for the case where the on-site server
-is unreachable.
+**Autorestic's snapshots are never touched.** A plan's retention only forgets snapshots
+tagged with that plan *and* `created-by:apps-01`, which autorestic's (`ar:location:*`)
+are not, so the final pre-cutover state is kept for good. A repo-level `forgetPolicy`
+would forget every snapshot in the repo, grouped by tags, so neither repo has one, and
+neither should ever get one.
+
+**The B2 key cannot delete.** It was created without `deleteFiles` (see
+[the appendix](#appendix-b2-bucket-setup)), so restic *hides* what it removes, and the
+bucket's lifecycle rule deletes hidden files 30 days later. An attacker holding the key
+gets 30 days of grace, and space freed by a prune on B2 only comes back 30 days later.
+
+During Phase A, `apps` wrote to its own test repository instead
+(`rest:http://backup.snyssen.be:8000/apps/`), with production's registered read-only.
+That test repository is destroyed after the cutover (Phase B step A2).
 
 ### What gets backed up
 
 Plan boundaries mirror roughly one per stack, which is also the unit a restore is
-selected by. Everything shares one schedule (daily at 00:30) and one retention policy
-(daily 14 / weekly 4 / monthly 6 / yearly 1), matching the legacy config so behaviour
-does not silently change at cutover. See `nix/hosts/apps-01/backrest.nix` for the current
-list.
+selected by. Every plan runs daily at 00:30 into the on-site repository, and its
+`<plan>-offsite` twin at 03:30 into B2. A Backrest plan targets a single repository, so
+two plans per location is how this is done, as autorestic did (one backup per backend).
+Every plan keeps the same depth (daily 14 / weekly 4 / monthly 6 / yearly 1), matching
+the legacy config so behaviour does not silently change at cutover. See
+`nix/hosts/apps-01/backrest.nix` for the current list.
+
+On-site only, as on prod: `movies` and `tv` (~10 TB). Also on-site only, and new: the
+media prod backed up nowhere, `media-extra` (podcasts, books) and `peertube-data`.
+
+The repositories' own jobs:
+
+| | on-site | off-site (B2) |
+| --- | --- | --- |
+| check | weekly, Monday 04:00, reading 10% of the data (all of it in ~10 weeks) | monthly, the 1st at 05:00, reading 2% (B2 bills downloads beyond 3× the stored volume) |
+| prune | weekly, Sunday 04:00, if over 10% of the repo is unused | monthly, the 15th at 05:00, same threshold |
+
+Prod never pruned (autorestic forgot snapshots, which frees nothing on its own) and
+checked weekly, structure only.
 
 Every plan reports each run to its own Gatus push endpoint, `backups_<plan>`: success
 (or nothing new to back up) as up, failure or warnings as down. A plan with no report
 for 26 hours is marked down too, which is what catches a backup that never ran. Gatus
 only checks once per interval, so that can take up to twice as long to show. Grafana
-alerts on it, like on every other Gatus check.
+alerts on it, like on every other Gatus check. The checks and prunes report the same
+way, to `backups_check-onsite`, `backups_prune-onsite`, `backups_check-offsite` and
+`backups_prune-offsite`, each allowed a day past its schedule.
 
 Three things are deliberately *not* backed up, and the reasoning is worth knowing
 before assuming a gap:
@@ -87,7 +116,8 @@ Generated from the Nix config and living on `apps` itself, so a VM rebuilt from
 
 | command | what it does |
 | --- | --- |
-| `backrest-restore` | Restores files. Derived automatically from `backrest.plans`, so it always covers exactly what is backed up — one selectable group per plan, each path going back where it came from. |
+| `backrest-restore` | Restores files. Derived automatically from `backrest.plans`, so it always covers exactly what is backed up — one selectable group per plan, each path going back where it came from. Reads the on-site repository. |
+| `backrest-restore-offsite` | The same, from the `-offsite` plans in B2, under the same group names, for when the backup server is gone. On-site-only plans are not in it. |
 | `postgres-restore` | Loads PostgreSQL dumps back with `pg_restore`, across every PostgreSQL instance on the host. `backrest-restore` only puts the dump *files* back; a directory of dumps is not a database. |
 | `apps-restore` | Thin wrapper: `backrest-restore --all` then `postgres-restore --all`. |
 
@@ -309,8 +339,9 @@ rehearsal.
    (nothing running).
 6. Make sure the backup server answers: `curl -fsS http://backup.snyssen.be:8000/metrics`.
    **Keep its IP address somewhere outside this repo**: in a real disaster, DNS for
-   `backup.snyssen.be` may be gone too. Alternatively point `--repo-uri` at the off-site
-   copy.
+   `backup.snyssen.be` may be gone too. If the backup server itself is gone, use
+   `backrest-restore-offsite` instead of `backrest-restore` in step 7: the same groups,
+   from B2, minus the on-site-only media.
 7. **In `screen`**: a few hundred GB over NFS-over-Tailscale takes hours, and an SSH
    drop would kill the run. `Ctrl-a d` detaches, `screen -r restore` re-attaches.
 
@@ -441,7 +472,7 @@ Everything below applies to **both** systems — they are both restic repositori
 Any restic repository is directly usable with the plain `restic` CLI — no Backrest, no
 autorestic, no Ansible. Pull the repository URI and password from wherever they are
 declared (ansible-vault for autorestic's repos; the sops-decrypted
-`nix/hosts/apps-01/data/common.yaml` for `apps`'s), then:
+`nix/hosts/apps-01/data/common.yaml` for Backrest's, under `backrest/repos/`), then:
 
 ```sh
 export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # on-site REST server

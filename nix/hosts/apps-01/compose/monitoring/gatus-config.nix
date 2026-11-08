@@ -169,7 +169,38 @@ let
     group = "backups";
     inherit token;
     heartbeat.interval = "26h";
-  }) (lib.attrNames config.backrest.plans);
+  }) (lib.attrNames config.backrest.plans)
+  # The repos' check and prune runs (repoHeartbeats in backrest.nix), each a day past its
+  # schedule there: weekly on-site, monthly off-site.
+  ++
+    map
+      (
+        { name, interval }:
+        {
+          inherit name;
+          group = "backups";
+          inherit token;
+          heartbeat.interval = interval;
+        }
+      )
+      [
+        {
+          name = "check-onsite";
+          interval = "192h";
+        }
+        {
+          name = "prune-onsite";
+          interval = "192h";
+        }
+        {
+          name = "check-offsite";
+          interval = "768h";
+        }
+        {
+          name = "prune-offsite";
+          interval = "768h";
+        }
+      ];
 in
 # JSON is valid YAML. Note that Gatus expands `$VAR`s anywhere in its config: nothing
 # here may contain a literal `$`.

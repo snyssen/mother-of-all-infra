@@ -23,10 +23,11 @@ let
     // lib.optionalAttrs (repo.env != { }) { env = mkEnvList repo.env; }
     // lib.optionalAttrs (repo.prunePolicy != null) { prunePolicy = repo.prunePolicy; }
     // lib.optionalAttrs (repo.checkPolicy != null) { checkPolicy = repo.checkPolicy; }
-    // lib.optionalAttrs (repo.forgetPolicy != null) { forgetPolicy = repo.forgetPolicy; };
+    // lib.optionalAttrs (repo.forgetPolicy != null) { forgetPolicy = repo.forgetPolicy; }
+    // lib.optionalAttrs (repo.hooks != [ ]) { inherit (repo) hooks; };
 
-  # Note what is *not* forwarded: stopUnits. It is this repo's own addition for the
-  # restore commands, and Backrest's config schema would reject the unknown field.
+  # Note what is *not* forwarded: stopUnits and mirrorOf. They are this repo's own
+  # additions for the restore commands, and Backrest's config schema would reject them.
   renderPlan =
     plan:
     {

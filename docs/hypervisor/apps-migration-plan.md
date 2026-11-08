@@ -115,8 +115,10 @@ detail:
       with, `legacy-import` to copy the data off the legacy data disks), `apps-01`
       (production values baked in, held at first boot by `restoreHold`), and the libvirt
       playbooks and `hypervisor-*` recipes taking the hypervisor as an argument.
-- [ ] **Backrest onto production's repositories** (Phase B step D9): B2 copies, prune
-      and check policies. Needs designing before D-day.
+- [x] **Backrest onto production's repositories**: every plan into prod's on-site repo
+      and, as `<plan>-offsite`, into its B2 repo (movies, tv and the media prod never
+      backed up stay on-site only), with check and prune policies and Gatus heartbeats
+      for both. Configured now, held off until Phase B step D9.
 - Later, not needed for the cutover: the rest of the monitoring setup (dashboards,
   alert rules) declared in the repo as well.
 

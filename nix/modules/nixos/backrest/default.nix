@@ -66,7 +66,20 @@ let
         forgetPolicy = lib.mkOption {
           type = lib.types.nullOr (lib.types.attrsOf lib.types.anything);
           default = null;
-          description = "Backrest forgetPolicy object, passed through as-is.";
+          description = ''
+            Backrest forgetPolicy object, passed through as-is. Careful: it overrides
+            every plan's retention and forgets *every* snapshot in the repo, grouped by
+            tags, including snapshots no Backrest plan made. Never set it on a repo
+            shared with another tool's snapshots.
+          '';
+        };
+        hooks = lib.mkOption {
+          type = lib.types.listOf (lib.types.attrsOf lib.types.anything);
+          default = [ ];
+          description = ''
+            Repo-level Backrest hook objects, for the repo's own operations (check,
+            prune). Same format and caveats as a plan's `hooks`.
+          '';
         };
       };
     }
@@ -153,6 +166,18 @@ let
             Set it when restoring onto a live host is a realistic thing to do.
           '';
         };
+        mirrorOf = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "nextcloud";
+          description = ''
+            Marks this plan as a second copy of another plan, backing up the same paths
+            into a different repo (an off-site one, typically). Mirrors are left out of
+            the disaster-recovery command, which would otherwise restore the same paths
+            twice, and make up the off-site restore command instead, under the name of
+            the plan they mirror.
+          '';
+        };
       };
     }
   );
@@ -227,6 +252,20 @@ in
         assertion = cfg.repos ? ${plan.repo};
         message = "backrest.plans.${name}.repo refers to \"${plan.repo}\", which is not declared in backrest.repos.";
       }) cfg.plans
+      ++ lib.concatLists (
+        lib.mapAttrsToList (
+          name: plan:
+          lib.optionals (plan.mirrorOf != null) [
+            {
+              assertion =
+                cfg.plans ? ${plan.mirrorOf}
+                && cfg.plans.${plan.mirrorOf}.mirrorOf == null
+                && cfg.plans.${plan.mirrorOf}.paths == plan.paths;
+              message = "backrest.plans.${name}.mirrorOf must name a plan that is not itself a mirror and has the same paths.";
+            }
+          ]
+        ) cfg.plans
+      )
       ++ lib.mapAttrsToList (name: repo: {
         assertion = config.sops.secrets ? ${repo.passwordSecret};
         message = "backrest.repos.${name}.passwordSecret refers to the sops secret \"${repo.passwordSecret}\", which is not declared in sops.secrets.";
