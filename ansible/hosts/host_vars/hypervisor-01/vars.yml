@@ -38,15 +38,10 @@ libvirt_vms:
       build: false
   - name: apps-01
     vcpu: 6
-    # TODO(P2): 48 GiB per the migration plan's sizing; check it leaves the host enough
-    # once its RAM is known.
     ram_mb: 49152
     # Same MAC as the Phase A test VM (which is off for good by then): apps-01's static
     # LAN address is matched on it (nix/hosts/apps-01/network.nix).
     mac_address: "52:54:00:00:00:01"
-    # TODO(P2): size from the measured /home/snyssen/data and Docker footprint. The
-    # temporary vmstore is the 1 TB Kingston, shared with haos (31 GB) and
-    # technitium-secondary (10 GB), so at most ~850 for now. Only resizes up.
     disk_gb: 700
     virtiofs_luks_key:
       enable: true

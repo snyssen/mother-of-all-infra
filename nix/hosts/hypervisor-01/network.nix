@@ -17,7 +17,7 @@
 let
   # Physical NIC to enslave to the bridge.
   # Override this value if the actual interface name differs.
-  lanNic = "TODO"; # TODO(P2): from `ip link` on the legacy box (the test hypervisor's is enp5s0)
+  lanNic = "enp3s0";
 in
 {
   networking = {

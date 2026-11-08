@@ -56,8 +56,8 @@
     "vfio"
     "vfio_iommu_type1"
   ];
-  # TODO(P2): the i5-13400 iGPU's vendor:device id, from `lspci -nn | grep -i vga`.
-  boot.extraModprobeConfig = "options vfio-pci ids=8086:TODO";
+  # from `lspci -nn | grep -i vga`
+  boot.extraModprobeConfig = "options vfio-pci ids=8086:4682";
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.secrets = {
@@ -98,8 +98,7 @@
     {
       layout = ly;
       "${ly}" = {
-        # TODO(P2): prod's boot SSD, from `ls -l /dev/disk/by-id/` on the legacy box.
-        mainDiskPath = "/dev/disk/by-id/TODO-prod-boot-ssd";
+        mainDiskPath = "/dev/disk/by-id/nvme-SPCC_M.2_PCIe_SSD_AA230711NV01KG14278";
         # The same two sticks as the test hypervisor, each carrying a second keyfile
         # named after this host (`/key/hypervisor-01`; keyFilename defaults to
         # system.name). Step P4 of the Phase B runbook writes it.
