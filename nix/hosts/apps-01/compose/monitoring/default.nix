@@ -35,6 +35,12 @@ in
     "compose-stacks/monitoring/gatus/push_token" = {
       sopsFile = ../../data/monitoring.yaml;
     };
+    # The `monitoring` ntfy user's plaintext password, carried over from the legacy
+    # vault next to the hash ntfy itself is provisioned with (compose/ntfy). The topic
+    # is declared there too; its placeholder is used below.
+    "compose-stacks/ntfy/users/monitoring/password" = {
+      sopsFile = ../../data/ntfy.yaml;
+    };
   };
 
   # Readable by Prometheus's own user (nobody, 65534) and nothing else.
@@ -69,6 +75,9 @@ in
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
     PROMETHEUS_CONFIG_PATH=${config.sops.templates."prometheus.yml".path}
     GATUS_CONFIG_PATH=${config.sops.templates."gatus.yaml".path}
+    NTFY_URL=http://ntfy:80/${config.sops.placeholder."compose-stacks/ntfy/topics/monitoring"}
+    NTFY_BAUTH_PASS=${config.sops.placeholder."compose-stacks/ntfy/users/monitoring/password"}
+    BAUTH_PASS=${config.sops.placeholder."compose-stacks/ntfy/users/monitoring/password"}
   '';
 
   # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
@@ -205,6 +214,7 @@ in
   compose-stacks.stacks.monitoring = {
     restartTriggers = [
       ../../data/monitoring.yaml
+      ../../data/ntfy.yaml
       ../../data/auth.yaml
       ../../data/common.yaml
       ../../data/databases.yaml

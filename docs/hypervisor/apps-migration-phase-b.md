@@ -86,12 +86,10 @@ Nothing here is destructive. All of it has to be true *before* anything is.
 Phase A itself is done: every stack is migrated and tested on `apps`, and the DNS
 migration (#153/#170) is live. Two things it left open have to be closed before D-day:
 
-- [ ] **`grafana-to-ntfy` on apps-01.** Prod relays Grafana alerts to ntfy through it
-      (`ansible/roles/container_monitoring`). apps-01's monitoring stack still says
-      "deferred" (`nix/hosts/apps-01/compose/monitoring/docker-compose.yaml`), so
-      without it alerts stop reaching your phone at the cutover. It needs the
-      `monitoring` ntfy user's plaintext password in sops (only its hash is there now),
-      moved from the vault with `scripts/sops-from-vault.sh`.
+- [x] **`grafana-to-ntfy` on apps-01.** Prod relays Grafana alerts to ntfy through it.
+      Now in apps-01's monitoring stack, with the `monitoring` ntfy user's password
+      copied from the vault into `nix/hosts/apps-01/data/ntfy.yaml`. Its test is the
+      Grafana line of D8's ntfy check.
 - [ ] Step D9's Backrest design (production's repositories, B2, prune and check
       policies), as a reviewed commit.
 

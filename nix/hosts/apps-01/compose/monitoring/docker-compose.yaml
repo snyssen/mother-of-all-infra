@@ -116,8 +116,29 @@ services:
       timeout: 5s
       retries: 5
 
-  # grafana-to-ntfy deferred: it only relays Grafana alerts to ntfy, which isn't
-  # converted yet.
+  # Relays Grafana alerts to ntfy. Grafana's contact point lives in its database,
+  # imported from prod, and reaches this by the name prod's container had
+  # (grafana-to-ntfy, port 8080), authenticating with BAUTH_*: the `monitoring` user, as
+  # on prod. Same image and settings as the legacy container_monitoring role, except
+  # that it reaches ntfy directly on the shared `monitoring` network rather than
+  # through Traefik, so alerts don't depend on the reverse proxy being up.
+  #
+  # Upstream now calls it unnecessary: ntfy >= 2.14 takes Grafana webhooks itself
+  # (`/<topic>?template=grafana`). Kept so the imported contact point works unchanged.
+  # TODO: remove and configure Grafana to contact to ntfy directly
+  grafana-to-ntfy:
+    image: kittyandrew/grafana-to-ntfy@sha256:75852dca66f695a84cb76c459959bc89fc079bb252381f1e5afe2b6bf88d4f0e
+    restart: unless-stopped
+    # Forwarded bare, as for Grafana above: the topic name and password are secrets.
+    environment:
+      - NTFY_URL
+      - NTFY_BAUTH_USER=monitoring
+      - NTFY_BAUTH_PASS
+      - BAUTH_USER=monitoring
+      - BAUTH_PASS
+      - MARKDOWN=true
+    networks:
+      - monitoring
 
 networks:
   monitoring:
