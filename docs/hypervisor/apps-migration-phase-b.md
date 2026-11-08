@@ -101,7 +101,7 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
       failures in `/var/log/autorestic`.
 - [ ] `autorestic --ci check` has passed recently on **both** backends
       (`backup-snyssen-be` on-site and `snyssen-be-autorestic` on B2).
-- [ ] Every `prod-import` group resolves against the real repository. From the Phase A
+- [x] Every `prod-import` group resolves against the real repository. From the Phase A
       `apps` VM, which has the same command:
 
       ```sh
@@ -110,7 +110,7 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
       sudo prod-import --all --check   # resolves each snapshot, proves every path exists
       ```
 
-- [ ] The off-site B2 copy is current. The on-site REST server is a single machine in
+- [x] The off-site B2 copy is current. The on-site REST server is a single machine in
       the same building as the one being reinstalled.
 
 ### Credentials must exist outside this infrastructure
@@ -118,14 +118,14 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
 This is the step that is *actually* irreversible if skipped — see
 [key management](../backups.md#key-management-the-actual-single-point-of-failure).
 
-- [ ] The breakglass age key is in the password manager **and** is a recipient on every
+- [x] The breakglass age key is in the password manager **and** is a recipient on every
       secrets file (`git grep -c age1mpnhsfpava0 -- 'nix/hosts/*/data/*'`).
-- [ ] Both restic repository passwords are in the password manager, as plain text, not
+- [x] Both restic repository passwords are in the password manager, as plain text, not
       only inside sops.
-- [ ] The backup server's **IP address** (`192.168.1.11`) is written down somewhere
+- [x] The backup server's **IP address** (`192.168.1.11`) is written down somewhere
       outside this repository: its name is served by Technitium, which a disaster can
       take down too.
-- [ ] The LUKS passphrase the hypervisors use as a fallback is in the password manager.
+- [x] The LUKS passphrase the hypervisors use as a fallback is in the password manager.
 
 ### Capacity must be checked, not remembered
 
@@ -141,10 +141,10 @@ Step P2 measures the real numbers. The Phase A estimates, which **will have grow
 | `postgres` (all dump dirs) | ~77 GB |
 | `audiobooks`, `podcasts`, `books`, PeerTube videos | not measured |
 
-- [ ] What `legacy-import` copies fits on the 16 TB disk (~14.5 TiB) with headroom:
+- [x] What `legacy-import` copies fits on the 16 TB disk (~14.5 TiB) with headroom:
       `legacy-import --check --all` reports it on the day (D4), but measure it in P2 so
       there is no surprise.
-- [ ] The apps-01 disk fits the measured `/home/snyssen/data` and Docker footprint on the
+- [x] The apps-01 disk fits the measured `/home/snyssen/data` and Docker footprint on the
       1 TB vmstore (P2).
 
 ## The import tools
@@ -255,16 +255,16 @@ it up from D9 on. If it is empty, drop that group from the D4 command.
 
 Then fill in the `TODO(P2)` placeholders and commit:
 
-- [ ] `nix/hosts/hypervisor-01/configuration.nix`: `mainDiskPath` (the boot SSD's
+- [x] `nix/hosts/hypervisor-01/configuration.nix`: `mainDiskPath` (the boot SSD's
       `/dev/disk/by-id/…`) and the vfio-pci id (`8086:xxxx`).
-- [ ] `nix/hosts/hypervisor-01/network.nix`: `lanNic`.
-- [ ] `ansible/hosts/host_vars/hypervisor-01/vars.yml`, `apps-01`:
+- [x] `nix/hosts/hypervisor-01/network.nix`: `lanNic`.
+- [x] `ansible/hosts/host_vars/hypervisor-01/vars.yml`, `apps-01`:
   - `ram_mb`: leave the host at least 8 GB;
   - `disk_gb`: app-data plus Docker, with ~50% headroom, at most ~850 (the 1 TB vmstore
     also holds haos and technitium-secondary).
-- [ ] If the firmware boots BIOS, switch it to UEFI before D2.
-- [ ] Used space on `/mnt/disk1` + `/mnt/disk2` is well under 14.5 TiB.
-- [ ] `just nix-build hypervisor-01` succeeds.
+- [x] If the firmware boots BIOS, switch it to UEFI before D2.
+- [x] Used space on `/mnt/disk1` + `/mnt/disk2` is well under 14.5 TiB.
+- [x] `just nix-build hypervisor-01` succeeds.
 
 ### P3. Tailscale auth keys
 
@@ -278,6 +278,8 @@ them in:
 just sops-update nix/hosts/hypervisor-01/data/secrets.yaml   # key: tailscale/authKey
 just sops-update nix/hosts/apps-01/data/common.yaml          # key: tailscale/authKey
 ```
+
+- [x] Keys checked
 
 ### P4. hypervisor-01's keys
 
@@ -295,6 +297,8 @@ just sops-get-pubkey ~/phase-b/$H-age-temp     # prints age1...
 rm ~/phase-b/$H-age-temp
 ```
 
+- [ ] Keys generated
+
 In `.sops.yaml`, add the printed key under `keys:` as `- &root_hypervisor_01 age1…`, and
 in the `nix/hosts/hypervisor-01/data/` rule replace `*root_hypervisor` with
 `*root_hypervisor_01` (and drop the comment above it). Then:
@@ -305,6 +309,8 @@ just sops-update-keys nix/hosts/hypervisor-01/data/secrets.yaml
 
 Commit `.sops.yaml` and the re-encrypted file.
 
+- [ ] Key saved
+
 **USB keyfile.** The same two sticks unlock both hypervisors; each gets a second keyfile,
 named after the new host. Make it once and copy it to both sticks:
 
@@ -314,11 +320,15 @@ dd if=/dev/urandom of=~/phase-b/hypervisor-01 bs=512 count=1
 cp ~/phase-b/hypervisor-01 /run/media/$USER/<stick>/hypervisor-01 && sync
 ```
 
+- [ ] USB stick prepared and keys are backed up
+
 **LUKS fallback passphrase**, the one in the password manager, for nixos-anywhere:
 
 ```sh
 read -s > ~/phase-b/hypervisor-01-luks-password.txt
 ```
+
+- [ ] Fallback password is saved in passwords manager
 
 ### P5. Rehearse adding a disk (test hypervisor)
 
@@ -367,6 +377,8 @@ isn't there any more, use any spare disk.
    ```
 
    Comment the line again, `just nix-remote-install boot hypervisor`, reboot.
+
+- [ ] Rehearsal done
 
 ### P6. Rehearse `legacy-import` (test hypervisor)
 
@@ -422,6 +434,8 @@ over it.
    ```sh
    cd /root && umount rehearsal/d1 rehearsal/d2 && rm -r rehearsal /mnt/bulk/rehearsal
    ```
+
+- [ ] Rehearsal done
 
 ### P7. Take the Kingston NVMe out of the test hypervisor
 
@@ -489,6 +503,8 @@ running throughout the conversion and are only down for the final reboot.
 
    `crypt-vmstore-0` on the WD, and haos, technitium-secondary and apps running.
 
+- [ ] Kingston NVMe is out of hypervisor and ready to be put in hypervisor-01
+
 ## D — D-day
 
 Plan for about two days of downtime; the disk copy sets the pace. Run every long step in
@@ -530,6 +546,12 @@ then the arrow keys or PgUp; `Esc` again to leave.
 - [ ] `autorestic --ci check` on both backends, one last time.
 - [ ] Note the snapshot ID of every location. If a `prod-import` later resolves an older
       snapshot than these, something is wrong.
+
+```
+# Save snapshots IDs here:
+
+```
+
 - [ ] Shut down the Phase A VM for good. It shares apps-01's Syncthing identity and MAC,
       so the two must never run at once:
 
