@@ -36,6 +36,18 @@ let
 
   # Build all disko disk entries for a single named pool.
   #
+  # A pool of one disk is formatted `single` (metadata `dup`), since btrfs RAID1 needs
+  # two devices. It is meant to be temporary: grow it with `btrfs device add` and
+  # convert it with `btrfs balance start -dconvert=raid1 -mconvert=raid1` (see
+  # docs/hypervisor/overview.md, "Adding a Disk to an Existing Pool"). Disko only formats
+  # at install time, so the profile chosen here never touches an existing pool.
+  #
+  # Boot finds each LUKS container by GPT partition label, which disko derives from the
+  # disk and partition names below:
+  #   index 0      → disk-<pool>-luks-<pool>                 → crypt-<pool>-0
+  #   index i ≥ 1  → disk-0-before-<pool>-<i-1>-luks-<pool>  → crypt-<pool>-<i>
+  # A disk prepared by hand for an existing pool must carry exactly that label.
+  #
   # Disko processes disks in alphabetical order of their attribute name.
   # For btrfs RAID1 over LUKS, we need every secondary LUKS container to be
   # opened *before* mkfs.btrfs runs on the primary disk.
@@ -105,16 +117,20 @@ let
                   settings = luksSettings;
                   content = {
                     type = "btrfs";
-                    extraArgs = [
-                      "-L"
-                      poolName
-                      "-d"
-                      "raid1"
-                      "-m"
-                      "raid1"
-                      "-f"
-                    ]
-                    ++ (lib.lists.drop 1 (lib.imap0 (j: _: luksDevice j) poolCfg.disks));
+                    extraArgs =
+                      let
+                        multi = builtins.length poolCfg.disks >= 2;
+                      in
+                      [
+                        "-L"
+                        poolName
+                        "-d"
+                        (if multi then "raid1" else "single")
+                        "-m"
+                        (if multi then "raid1" else "dup")
+                        "-f"
+                      ]
+                      ++ (lib.lists.drop 1 (lib.imap0 (j: _: luksDevice j) poolCfg.disks));
                     subvolumes = {
                       "/${poolName}" = {
                         mountpoint = poolCfg.mountpoint;
@@ -135,11 +151,11 @@ let
     secondaryDiskEntries // primaryDiskEntry;
 
   # Merge disk entries from every configured pool into a single attrset.
-  # Only include pools with at least 2 disks to avoid builtins.head crashing
+  # Only include pools with at least one disk to avoid builtins.head crashing
   # on invalid pools before assertions fire.
   allPoolDiskEntries = lib.foldl' lib.mergeAttrs { } (
     lib.mapAttrsToList poolDiskEntries (
-      lib.filterAttrs (_: poolCfg: builtins.length poolCfg.disks >= 2) cfg.pools
+      lib.filterAttrs (_: poolCfg: builtins.length poolCfg.disks >= 1) cfg.pools
     )
   );
 
@@ -227,9 +243,13 @@ in
                   Ordered list of disk paths (e.g. /dev/disk/by-id/…) that form
                   this btrfs RAID1 pool.
 
-                  At least two disks are required for RAID1.  The first disk in the
+                  Two or more disks are formatted as RAID1. A single disk is
+                  formatted `single` (metadata `dup`): no redundancy, meant as a
+                  temporary state until more disks are added. The first disk in the
                   list is the *primary*: mkfs.btrfs is run there and all other disks
-                  are passed as additional devices.  All disks are given their own
+                  are passed as additional devices. Adding a disk to an existing pool
+                  means appending it here *and* preparing it by hand (see the comment
+                  on partition labels at the top of this file).  All disks are given their own
                   LUKS container and share the same USB keyfile / passphrase as the
                   OS disk.
                 '';
@@ -284,10 +304,10 @@ in
     };
 
     assertions =
-      # Ensure each pool configured for btrfs RAID1 has at least 2 disks.
+      # Ensure each pool has at least one disk.
       (lib.mapAttrsToList (poolName: poolCfg: {
-        assertion = builtins.length poolCfg.disks >= 2;
-        message = "disko.${layoutName}.pools.${poolName}.disks: btrfs RAID1 requires at least 2 disks (got ${toString (builtins.length poolCfg.disks)}).";
+        assertion = builtins.length poolCfg.disks >= 1;
+        message = "disko.${layoutName}.pools.${poolName}.disks: a pool needs at least one disk.";
       }) cfg.pools)
       # Prevent pool names from colliding with reserved disk keys (e.g. \"main\")
       # which are used under `disko.devices.disk` and merged via `//`.

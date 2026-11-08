@@ -1,63 +1,70 @@
-hypervisor_host := "hypervisor"
+# The hypervisor recipes act on hypervisor-01 unless told otherwise. During the Phase B
+# cutover the test hypervisor (`hypervisor`) still exists, so:
+# - inspection recipes take the host as an optional *last* argument
+#   (`just hypervisor-vm-list hypervisor`);
+# - the two playbook recipes, which change things, take it as a required *first*
+#   argument, so they never act on a hypervisor by default
+#   (`just hypervisor-provision-vms hypervisor-01`).
+hypervisor_host := "hypervisor-01"
 
-# SSH into the hypervisor
-hypervisor-ssh:
-  ssh {{hypervisor_host}}
+# SSH into a hypervisor
+hypervisor-ssh host=hypervisor_host:
+  ssh {{host}}
 
-# List all defined VMs on the hypervisor (running and stopped)
-hypervisor-vm-list:
-  ssh {{hypervisor_host}} virsh list --all
+# List all defined VMs on a hypervisor (running and stopped)
+hypervisor-vm-list host=hypervisor_host:
+  ssh {{host}} virsh list --all
 
 # Start a VM
-hypervisor-vm-start vm:
-  ssh {{hypervisor_host}} virsh start {{vm}}
+hypervisor-vm-start vm host=hypervisor_host:
+  ssh {{host}} virsh start {{vm}}
 
 # Gracefully shut down a VM
-hypervisor-vm-stop vm:
-  ssh {{hypervisor_host}} virsh shutdown {{vm}}
+hypervisor-vm-stop vm host=hypervisor_host:
+  ssh {{host}} virsh shutdown {{vm}}
 
 # Reboot a VM
-hypervisor-vm-reboot vm:
-  ssh {{hypervisor_host}} virsh reboot {{vm}}
+hypervisor-vm-reboot vm host=hypervisor_host:
+  ssh {{host}} virsh reboot {{vm}}
 
 # Force-off a VM (hard power cut — use only if graceful shutdown fails)
-hypervisor-vm-destroy vm:
-  ssh {{hypervisor_host}} virsh destroy {{vm}}
+hypervisor-vm-destroy vm host=hypervisor_host:
+  ssh {{host}} virsh destroy {{vm}}
 
 # Open an interactive serial console to a VM (press Ctrl-] to exit)
-hypervisor-vm-console vm:
-  ssh -t {{hypervisor_host}} virsh console {{vm}}
+hypervisor-vm-console vm host=hypervisor_host:
+  ssh -t {{host}} virsh console {{vm}}
 
 # Show detailed info about a VM
-hypervisor-vm-info vm:
-  ssh {{hypervisor_host}} virsh dominfo {{vm}}
+hypervisor-vm-info vm host=hypervisor_host:
+  ssh {{host}} virsh dominfo {{vm}}
 
 # Trigger a btrfs scrub on a pool (pool: vmstore or bulk); waits for completion
-hypervisor-btrfs-scrub pool:
-  ssh root@{{hypervisor_host}} btrfs scrub start -B /mnt/{{pool}}
+hypervisor-btrfs-scrub pool host=hypervisor_host:
+  ssh root@{{host}} btrfs scrub start -B /mnt/{{pool}}
 
 # Show the status of the last btrfs scrub for a pool
-hypervisor-btrfs-scrub-status pool:
-  ssh root@{{hypervisor_host}} btrfs scrub status /mnt/{{pool}}
+hypervisor-btrfs-scrub-status pool host=hypervisor_host:
+  ssh root@{{host}} btrfs scrub status /mnt/{{pool}}
 
 # Show btrfs filesystem usage for a pool
-hypervisor-btrfs-usage pool:
-  ssh root@{{hypervisor_host}} btrfs filesystem usage /mnt/{{pool}}
+hypervisor-btrfs-usage pool host=hypervisor_host:
+  ssh root@{{host}} btrfs filesystem usage /mnt/{{pool}}
 
 # Show per-device I/O error counters for a pool
-hypervisor-btrfs-stats pool:
-  ssh root@{{hypervisor_host}} btrfs device stats /mnt/{{pool}}
+hypervisor-btrfs-stats pool host=hypervisor_host:
+  ssh root@{{host}} btrfs device stats /mnt/{{pool}}
 
 # Show btrfs device listing and filesystem info for a pool
-hypervisor-btrfs-devices pool:
-  ssh root@{{hypervisor_host}} btrfs filesystem show /mnt/{{pool}}
+hypervisor-btrfs-devices pool host=hypervisor_host:
+  ssh root@{{host}} btrfs filesystem show /mnt/{{pool}}
 
-# Build selected NixOS VM disk images locally and copy them to the hypervisor
+# Build a hypervisor's selected NixOS VM disk images locally and copy them to it
 [working-directory: 'ansible']
-hypervisor-build-vm-images *flags:
-  ansible-playbook playbooks/libvirt-image-build.ansible.yml -i hosts/prod.yml {{flags}}
+hypervisor-build-vm-images host *flags:
+  ansible-playbook playbooks/libvirt-image-build.ansible.yml -i hosts/prod.yml -e libvirt_hypervisor={{host}} {{flags}}
 
-# Run the libvirt VM provisioning playbook against the hypervisor (production)
+# Provision a hypervisor's VMs (add -e libvirt_vms_only=<vm>[,<vm>...] for some only)
 [working-directory: 'ansible']
-hypervisor-provision-vms *flags:
-  ansible-playbook playbooks/libvirt-provision.ansible.yml -i hosts/prod.yml {{flags}}
+hypervisor-provision-vms host *flags:
+  ansible-playbook playbooks/libvirt-provision.ansible.yml -i hosts/prod.yml -e libvirt_hypervisor={{host}} {{flags}}

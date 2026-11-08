@@ -118,16 +118,13 @@ in
       "db"
       "ldap"
     ];
-    # Dormant until the data is actually here, the same way the streaming stack is.
-    #
-    # This is not caution for its own sake: Nextcloud's database and its file tree are
-    # a matched pair. Started against an empty /mnt/bulk/nextcloud, the entrypoint runs
-    # its first-run installer, writes a fresh config.php and version.php and populates
-    # the database — and a later `postgres-restore nextcloud` then drops that in favour
-    # of prod's schema while the freshly-installed files stay behind. Import both
-    # halves first (`prod-import nextcloud` + `postgres-restore nextcloud`), then flip
-    # this to true.
-    autostart = false;
+    # Must not start before its data is here: Nextcloud's database and its file tree
+    # are a matched pair. Started against an empty /mnt/bulk/nextcloud, the entrypoint
+    # runs its first-run installer, writes a fresh config.php and version.php and
+    # populates the database — and a later `postgres-restore nextcloud` then drops that
+    # in favour of prod's schema while the freshly-installed files stay behind. The
+    # host-wide hold (`restoreHold`, ../../restore-hold.nix) keeps it down until both
+    # halves are in, at the cutover and on any later rebuild.
     extraAfter = [
       "mnt-bulk.mount"
       "reverse-proxy-dynamic-config.service"

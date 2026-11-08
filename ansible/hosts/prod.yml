@@ -27,5 +27,9 @@ livecams:
 
 hypervisor:
   hosts:
+    # The Phase A test hypervisor, retired after the Phase B cutover.
     hypervisor:
       ansible_host: "hypervisor.taild023c5.ts.net"
+    # The legacy prod box, reinstalled (docs/hypervisor/apps-migration-phase-b.md).
+    hypervisor-01:
+      ansible_host: "hypervisor-01.taild023c5.ts.net"

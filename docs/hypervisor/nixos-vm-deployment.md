@@ -110,7 +110,7 @@ The playbook auto-detects the NixOS config name from the VM name (or uses explic
 From the repo root:
 
 ```sh
-just hypervisor-build-vm-images
+just hypervisor-build-vm-images hypervisor-01
 ```
 
 Or directly:
@@ -134,7 +134,7 @@ When prompted, the playbook displays derived age keys for each new VM. Add each 
 Example — adding only the `apps` key for a new VM:
 
 ```yaml
-  - path_regex: nix/hosts/apps/data/[^/]+\.(yaml|json|env|ini)$
+  - path_regex: nix/hosts/apps-01/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
         age:
@@ -143,7 +143,7 @@ Example — adding only the `apps` key for a new VM:
           - *snyssen_blackfog   # backup key for manual rotation
 ```
 
-If you have existing secrets files for the VM (e.g., those under `nix/hosts/apps/data/`), the playbook will automatically re-encrypt them after you confirm.
+If you have existing secrets files for the VM (e.g., those under `nix/hosts/apps-01/data/`), the playbook will automatically re-encrypt them after you confirm.
 
 ### 2c. Confirm and proceed
 
@@ -175,7 +175,7 @@ git push
 ### 3a. Execute the provisioning playbook
 
 ```sh
-just hypervisor-provision-vms
+just hypervisor-provision-vms hypervisor-01
 ```
 
 Or directly:
@@ -264,7 +264,7 @@ Each VM can have encrypted SOPS secrets under `nix/hosts/<vm-name>/data/`. Most 
 After the playbook runs and `.sops.yaml` is committed, create or edit secrets:
 
 ```sh
-just sops-edit nix/hosts/apps/data/common.yaml
+just sops-edit nix/hosts/apps-01/data/common.yaml
 ```
 
 The editor will automatically use the VM's age key and your backup identity key for encryption.
@@ -310,7 +310,7 @@ virsh undefine apps --nvram
 Or force the overwrite (use with caution):
 
 ```sh
-just hypervisor-build-vm-images -- -e libvirt_image_build_force=true
+just hypervisor-build-vm-images hypervisor-01 -e libvirt_image_build_force=true
 ```
 
 ### VM fails to boot: "Unable to open LUKS device"
@@ -367,7 +367,7 @@ To rebuild the entire disk image (e.g., after changing Disko layout or disk size
 2. **Do NOT** update the VM's age key in `.sops.yaml` — it's already running
 3. Run the build playbook:
    ```sh
-   just hypervisor-build-vm-images
+   just hypervisor-build-vm-images hypervisor-01
    ```
 4. Stop the VM:
    ```sh
@@ -375,7 +375,7 @@ To rebuild the entire disk image (e.g., after changing Disko layout or disk size
    ```
 5. Re-run provisioning to reload the updated disk:
    ```sh
-   just hypervisor-provision-vms
+   just hypervisor-provision-vms hypervisor-01
    ```
 6. **Disable building** again by setting `disk_image.build: false` once the rebuild is complete
 
@@ -385,8 +385,8 @@ To rebuild the entire disk image (e.g., after changing Disko layout or disk size
 
 | Command | Purpose |
 |---------|---------|
-| `just hypervisor-build-vm-images` | Build Disko images and copy to hypervisor |
-| `just hypervisor-provision-vms` | Define and start VMs in libvirt |
+| `just hypervisor-build-vm-images hypervisor-01` | Build Disko images and copy to hypervisor |
+| `just hypervisor-provision-vms hypervisor-01` | Define and start VMs in libvirt |
 | `just hypervisor-vm-list` | List all VMs and their state |
 | `just hypervisor-vm-console <vm>` | Open serial console to a VM |
 | `just hypervisor-vm-start <vm>` | Start a stopped VM |

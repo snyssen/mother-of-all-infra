@@ -1,47 +1,99 @@
 # apps VM migration — Phase B (production cutover)
 
 > [!CAUTION]
-> **Phase B destroys the production server.** Its hardware is the target hardware: the
-> only way to run the new infrastructure on it is to wipe the machine that is currently
-> serving everything. There is no rollback once the disks are repartitioned — the only
-> way back is a restore from the restic repositories onto *different* hardware.
+> **Phase B reinstalls the production server.** Its hardware is the target hardware:
+> the legacy box (`snyssen.be`) becomes the hypervisor `hypervisor-01`, and production
+> moves into the `apps-01` VM on it. Its boot SSD and its SnapRAID parity disk are wiped.
+> Its **two data disks are not**: they are where most of production's data is copied
+> from, and they stay untouched until the new setup is verified (step A1). Everything
+> else comes back from the restic repositories.
 >
 > Read "[Before you start](#before-you-start)" in full and tick every box before the
-> first destructive step. The day this runs will be stressful; the point of this
-> document is that nothing has to be remembered or improvised on the day.
+> first destructive step. The point of this document is that nothing has to be
+> remembered or improvised on the day: every step is a numbered instruction with its
+> commands.
 
 ## What Phase B is
 
 The migration is split in two (see [apps-migration-plan.md](apps-migration-plan.md) for
 the architecture and per-stack progress):
 
-- **Phase A** — build the `apps` NixOS VM on the *test* hypervisor and migrate every
-  stack to it, iteratively, against partial data. This is where the work tracked in
-  `apps-migration-plan.md` happens.
-- **Phase B — this document** — take the production box (`snyssen.be`, bare-metal
-  Ubuntu, Ansible-managed) out of service, wipe it, install the hypervisor NixOS config
-  on it, recreate the VMs, and restore all production data onto them.
+- **Phase A** — build the apps NixOS VM on the *test* hypervisor and migrate every stack
+  to it, against partial data. Done.
+- **Phase B — this document** — take the legacy box out of service, reinstall it as the
+  real hypervisor, move the VMs that already run on the test hypervisor onto it, build
+  the production apps VM there and restore production's data into it.
 
-Phase A exists only because production runs on the better hardware. Everything else is
-a consequence of that one constraint.
+| Machine | Before | After |
+|---|---|---|
+| Legacy prod box (i5-13400) | `snyssen.be`, bare-metal Ubuntu, Ansible | `hypervisor-01` (NixOS), running haos, technitium-secondary and `apps-01` |
+| Test hypervisor | `hypervisor`, running haos, technitium-secondary and the Phase A `apps` | retired; its disks join `hypervisor-01` (step A2) |
+| apps VM | `apps` on the test hypervisor, test domains | `apps-01` on `hypervisor-01`, production domains, LAN IP `192.168.1.10` |
 
-Phase B is also the real disaster-recovery rehearsal: it exercises the same restore
-path as [the DR runbook](../backups.md#full-disaster-recovery-rebuilding-apps-from-scratch),
-with the difference that the source snapshots are production's rather than `apps`'s own.
+Phase B is also the real disaster-recovery rehearsal: `apps-01` boots *held* and is
+restored with the same tools as [the DR runbook](../backups.md#full-disaster-recovery-rebuilding-apps-01-from-scratch).
+
+### How the storage moves
+
+There is no spare disk, so both pools on `hypervisor-01` start with **one disk** each and
+grow after the cutover:
+
+| Pool | At install | After the cutover |
+|---|---|---|
+| `vmstore` (SSD) | the 1 TB Kingston NVMe, taken out of the test hypervisor's vmstore (step P7) | + the test hypervisor's 500 GB WD SSD and its 1 TB Micron boot NVMe → RAID1, ~1.25 TB (step A2) |
+| `bulk` (HDD) | the legacy box's 16 TB parity disk (`ata-ST16000NM000J-2TW103_ZR58BLR6`), which holds no data | + the legacy data disks, 12 TB and 8 TB, once verified → RAID1, ~18 TB (step A1); + the test hypervisor's HDDs if there are bays (step A2) |
+
+The legacy data disks never appear in `hypervisor-01`'s disk configuration before step
+A1, because nixos-anywhere formats every disk it knows about:
+
+- `ata-ST8000VN004-3CP101_WWZ3XVDG` — 8 TB IronWolf, legacy `/mnt/disk1`
+- `ata-ST12000NM0538-2K2101_ZHZ12PTZ` — 12 TB Exos X14, legacy `/mnt/disk2`
+
+Until A1 they are the only on-disk copy of the media; the backup server has
+the other.
+
+### How the data moves
+
+| What | From | Tool |
+|---|---|---|
+| Everything under the legacy `/mnt/storage` (media, Nextcloud, photos, the final PostgreSQL dumps, paperless media, minecraft, Matrix media, Sharkey files, recipes, dawarich storage, PeerTube videos) | the legacy data disks, at disk speed, on `hypervisor-01` | `legacy-import` |
+| Everything under the legacy `/home/snyssen/data` (app configs, Grafana, paperless data, Actual, FoundryVTT, Sharkey's Redis) | production's restic snapshots, on `apps-01` | `prod-import` |
+| Any `legacy-import` group that fails | production's restic snapshots | `prod-import <group>`, the fallback |
+| The databases | the dumps the two above put in `/mnt/bulk/restore/prod-*` | `postgres-restore --from` |
+| UniFi | a `.unf` downloaded from the legacy controller | the controller's setup wizard |
+
+Both import tools read the same table, `nix/hosts/apps-01/prod-layout.nix`. The paths
+and owners `prod-import` was tested with during Phase A are therefore exactly the ones
+`legacy-import` uses; only the transport differs. See
+[the import tools](#the-import-tools).
+
+### The hold
+
+`apps-01` is built with `restoreHold.stacks` and `restoreHold.backups` set in its
+`configuration.nix` (`nix/hosts/apps-01/restore-hold.nix`). Its first boot starts no
+compose stack, no Backrest and no data-acting timer. Every unit still exists, so you
+start `compose-databases` by hand for the database restore, and the restore tools leave
+stopped units stopped. Releasing a hold is a commit, a deploy with `boot` and a reboot
+(steps D8 and D9). It replaces masking units at the GRUB prompt, which needs a console in
+time to catch the boot.
 
 ## Before you start
 
 Nothing here is destructive. All of it has to be true *before* anything is.
 
-### Phase A must be finished
+### What Phase A leaves to finish
 
-- [ ] Every stack marked **Migrate** in the Current Stack Inventory is **Done**, not
-      just the ones in daily use.
-- [ ] `nix flake check` passes and argunix is green on `main`.
-- [ ] `apps` has run for a sustained period on the test hypervisor with no unresolved
-      issues.
-- [ ] The DNS migration (issue #153) is either done or has a decided, written plan —
-      it is excluded from this document on purpose and is not something to improvise.
+Phase A itself is done: every stack is migrated and tested on `apps`, and the DNS
+migration (#153/#170) is live. Two things it left open have to be closed before D-day:
+
+- [ ] **`grafana-to-ntfy` on apps-01.** Prod relays Grafana alerts to ntfy through it
+      (`ansible/roles/container_monitoring`). apps-01's monitoring stack still says
+      "deferred" (`nix/hosts/apps-01/compose/monitoring/docker-compose.yaml`), so
+      without it alerts stop reaching your phone at the cutover. It needs the
+      `monitoring` ntfy user's plaintext password in sops (only its hash is there now),
+      moved from the vault with `scripts/sops-from-vault.sh`.
+- [ ] Step D9's Backrest design (production's repositories, B2, prune and check
+      policies), as a reviewed commit.
 
 ### Backups must be verified, not assumed
 
@@ -49,15 +101,17 @@ Nothing here is destructive. All of it has to be true *before* anything is.
       failures in `/var/log/autorestic`.
 - [ ] `autorestic --ci check` has passed recently on **both** backends
       (`backup-snyssen-be` on-site and `snyssen-be-autorestic` on B2).
-- [ ] Every `prod-import` group has been verified against the real repository:
+- [ ] Every `prod-import` group resolves against the real repository. From the Phase A
+      `apps` VM, which has the same command:
 
       ```sh
-      prod-import --list
-      prod-import --all --check     # resolves each snapshot, proves every path exists
+      ssh apps
+      sudo prod-import --list
+      sudo prod-import --all --check   # resolves each snapshot, proves every path exists
       ```
 
 - [ ] The off-site B2 copy is current. The on-site REST server is a single machine in
-      the same building as the one being wiped.
+      the same building as the one being reinstalled.
 
 ### Credentials must exist outside this infrastructure
 
@@ -69,14 +123,12 @@ This is the step that is *actually* irreversible if skipped — see
 - [ ] Both restic repository passwords are in the password manager, as plain text, not
       only inside sops.
 - [ ] The backup server's **IP address** is written down somewhere outside this
-      repository: DNS for `backup.snyssen.be` goes away with the production box. (It is
-      always on now. Prod's autorestic still wakes it with wake-on-LAN before each run,
-      but that hook is legacy and is not carried over.)
+      repository: DNS for `backup.snyssen.be` goes away with the legacy box.
+- [ ] The LUKS passphrase the hypervisors use as a fallback is in the password manager.
 
 ### Capacity must be checked, not remembered
 
-Production holds roughly 12 TB. The numbers below were measured during Phase A and
-**will have grown** — re-measure rather than trusting this table.
+Step P2 measures the real numbers. The Phase A estimates, which **will have grown**:
 
 | location | measured size (Phase A) |
 | --- | --- |
@@ -86,246 +138,972 @@ Production holds roughly 12 TB. The numbers below were measured during Phase A a
 | `nextcloud` | ~353 GB |
 | `photos` | ~88 GB |
 | `postgres` (all dump dirs) | ~77 GB |
-| `audiobooks` (+ `audiobooks_vi`) | not measured |
+| `audiobooks`, `podcasts`, `books`, PeerTube videos | not measured |
 
-- [ ] Target pool capacity on the rebuilt hypervisor is known and exceeds the above
-      with headroom.
-- [ ] The decision on media is made — see
-      [what does not come through restic](#data-that-does-not-come-through-restic).
+- [ ] What `legacy-import` copies fits on the 16 TB disk (~14.5 TiB) with headroom:
+      `legacy-import --check --all` reports it on the day (D4), but measure it in P2 so
+      there is no surprise.
+- [ ] The apps-01 disk fits the measured `/home/snyssen/data` and Docker footprint on the
+      1 TB vmstore (P2).
 
-## The `prod-import` tooling
+## The import tools
 
-`prod-import` is a generated on-host command that pulls legacy-production data onto
-`apps` with paths and ownership translated. It is **transitional**: it is declared in
-`nix/hosts/apps/prod-import.nix`, and that file plus its one `import` line in
-`configuration.nix` are deleted at the end of Phase B.
-
-It is built from the same generator as `backrest-restore` (see
-`nix/modules/nixos/backrest/restore.nix`), so it shares all of that command's safety
-behaviour — snapshot resolution per group, a real `--dry-run` size preflight checked
-per filesystem, a confirmation prompt, and `--at` for older states. See
+**`prod-import`** (on `apps-01`) restores groups from production's restic snapshots,
+with paths and owners translated. It is built from the same generator as
+`backrest-restore` (`nix/modules/nixos/backrest/restore.nix`), so it shares that
+command's safety behaviour: snapshot resolution per group, a real `--dry-run` size
+preflight, a confirmation prompt, and `--at`. See
 [the backups doc](../backups.md#the-restore-commands) for the shared flags.
 
-The one thing it adds is translation. Each entry is a `from` → `to` pair plus an
-optional `owner`, and restic's `snapshotID:subfolder` syntax does the retargeting
-natively: the subfolder becomes the root of the restore, and it may be *deeper* than
-the snapshot's own root.
+**`legacy-import`** (on `hypervisor-01`, `nix/hosts/hypervisor-01/legacy-import.nix`)
+copies the `/mnt/storage` groups off the two legacy data disks, which it mounts
+read-only itself. `/mnt/storage` was a mergerfs pool over both disks, so a directory may
+be split across them; it copies from each. It writes to this host's side of apps-01's
+bulk mount (apps-01's `/mnt/bulk/X` is `hypervisor-01`'s `/mnt/bulk/apps/X`). It uses
+`rsync -aHAX --numeric-ids` with the table's owner, never deletes anything in a target,
+and resumes when re-run. The summary lists every path ok or FAIL, with the `prod-import`
+command that takes over a FAIL.
 
-```nix
-monitoring = fromLocation "monitoring" // {
-  stopUnits = [ "compose-monitoring.service" ];
-  paths = [
-    { from = "/home/snyssen/data/grafana/data";
-      to   = "/var/lib/app-data/monitoring/grafana";
-      owner = "472:472"; }
-  ];
-};
+```sh
+legacy-import --list                 # every group, and which ones only prod-import has
+legacy-import --check --all          # per path: which disk, how big, files on both disks, room left
+legacy-import --dry-run <group>...
+legacy-import <group>... | --all     # --all puts the media last
 ```
 
-`owner` matters more than it looks. restic restores numeric owners verbatim, and
-production's uid/gid conventions are not this host's — production used the deploy
-user's gid 1000 for the media applications, where `apps` uses gid 100. The `chown` is
-recursive on purpose: systemd-tmpfiles re-asserts ownership of a directory's *top
-level* on every activation but never touches its children, so a shallow chown leaves a
-correct-looking directory over wrongly-owned contents.
+`restic` restores numeric owners verbatim, and so does `rsync --numeric-ids`, so
+production's uid/gid conventions (gid 1000 for the media apps, where this host uses
+100) are translated by each row's `owner`, applied recursively.
 
-### Import groups
+### Groups
 
-One group per autorestic location, selected by name, variadic. Groups commented out in
-`prod-import.nix` are declared but disabled — uncomment them when the target has the
-capacity.
-
-| group | from (prod) | to (`apps`) | state |
+| group | from (legacy) | to (apps-01) | tool |
 | --- | --- | --- | --- |
-| `monitoring` | `/home/snyssen/data/grafana/data` | `/var/lib/app-data/monitoring/grafana` | enabled (Uptime Kuma's data is not imported: Gatus replaces it, with its checks in the repo) |
-| `streaming-config` | jellyfin, audiobookshelf, the 8 `*arr` configs, peertube config | `/var/lib/app-data/…` | enabled |
-| `postgres` | `/mnt/storage/backups/postgres` | `/mnt/bulk/restore/prod-postgres` | enabled, **staging** |
-| `immich` | `/mnt/storage/backups/immich` | `/mnt/bulk/restore/prod-immich` | enabled, **staging** |
-| `nextcloud` | `/mnt/storage/nextcloud` | `/mnt/bulk/nextcloud` | enabled, ~353 GB |
-| `paperless` | `/home/snyssen/data/paperless/data`, `/mnt/storage/paperless/media` | `/var/lib/app-data/paperless/data`, `/mnt/bulk/paperless/media` | enabled |
-| `paperless-export` | `/mnt/storage/paperless/export` | `/mnt/bulk/paperless/export` | **commented out** |
-| `photos` | `/mnt/storage/photos` | `/mnt/bulk/photos` | **commented out**, ~88 GB |
-| `movies` / `tv` / `music` / `audiobooks` | `/mnt/storage/streaming/media/…` | `/mnt/bulk/streaming/media/…` | **commented out**, ~10.6 TB total |
+| `monitoring` | `/home/snyssen/data/grafana/data` | `/var/lib/app-data/monitoring/grafana` | prod-import |
+| `streaming-config` | jellyfin, audiobookshelf, the 8 `*arr` configs, peertube config | `/var/lib/app-data/…` | prod-import |
+| `paperless` | `/home/snyssen/data/paperless/data` | `/var/lib/app-data/paperless/data` | prod-import |
+| `actual-budget` | `/home/snyssen/data/actual-budget` | `/var/lib/app-data/actual-budget` | prod-import |
+| `foundryvtt` | `/home/snyssen/data/foundryvtt` | `/var/lib/app-data/foundryvtt` | prod-import |
+| `sharkey` | `/home/snyssen/data/sharkey/redis` | `/var/lib/app-data/sharkey/redis` | prod-import |
+| `postgres` | `/mnt/storage/backups/postgres` | `/mnt/bulk/restore/prod-postgres` (**staging**) | legacy-import |
+| `immich` | `/mnt/storage/backups/immich` | `/mnt/bulk/restore/prod-immich` (**staging**) | legacy-import |
+| `dawarich` | `/mnt/storage/backups/dawarich` | `/mnt/bulk/restore/prod-dawarich` (**staging**) | legacy-import |
+| `dawarich-storage` | `/mnt/storage/dawarich/storage` | `/mnt/bulk/dawarich/storage` | legacy-import, **disks only** |
+| `nextcloud` | `/mnt/storage/nextcloud` | `/mnt/bulk/nextcloud` | legacy-import |
+| `paperless-media` | `/mnt/storage/paperless/media` | `/mnt/bulk/paperless/media` | legacy-import |
+| `photos` | `/mnt/storage/photos` | `/mnt/bulk/photos` | legacy-import |
+| `matrix` | `/mnt/storage/matrix/synapse/media_store` | `/mnt/bulk/matrix/synapse/media_store` | legacy-import |
+| `minecraft` | `/mnt/storage/{minecraft,mc-usw}/data` | `/mnt/bulk/{minecraft,mc-usw}/data` | legacy-import |
+| `recipes` | `/mnt/storage/recipes/mediafiles` | `/mnt/bulk/recipes/mediafiles` | legacy-import |
+| `sharkey-files` | `/mnt/storage/sharkey/files` | `/mnt/bulk/sharkey/files` | legacy-import |
+| `movies` / `tv` / `music` / `audiobooks` | `/mnt/storage/streaming/media/…` | `/mnt/bulk/streaming/media/…` | legacy-import |
+| `media-extra` | `/mnt/storage/streaming/media/{podcasts,podcasts_vi,books}` | same under `/mnt/bulk` | legacy-import, **disks only** |
+| `peertube-data` | `/mnt/storage/streaming/peertube/data` | `/mnt/bulk/streaming/peertube/data` | legacy-import, **disks only** |
 
-The two **staging** groups are deliberate. Production's PostgreSQL dumps must not land
-on `/mnt/bulk/backups/postgres`: that is `apps`'s own dump directory, feeding `apps`'s
-own `databases` backup plan. Importing onto it would both clobber this host's dumps and
-push production's data into this host's backups. They go to `/mnt/bulk/restore/prod-*`
-instead and are loaded with `postgres-restore --from`.
+**Disks only** means the group is in no autorestic location: if `legacy-import` cannot
+copy it, there is no restic fallback, so fix the cause and re-run it. Every other
+`legacy-import` group falls back to `prod-import <group>`.
 
-`paperless-export` is commented out because it roughly doubles paperless' bytes and the
-nightly `paperless-export.timer` regenerates it from the library anyway.
+The three **staging** groups are deliberate. Production's PostgreSQL dumps must not land
+on `/mnt/bulk/backups/*`: that is `apps-01`'s own dump directory, feeding its own
+`databases` backup plan. They are loaded with `postgres-restore --from`.
 
-## Data that does not come through restic
+**Not imported, on purpose**: `paperless-export` (regenerated nightly from the library);
+Syncthing's folders (apps-01 fills them from its peers); in-progress downloads
+(`torrent`, `usenet`), inboxes (paperless `consume`, dawarich `watched`); Garage (the Nix
+cache refills from the next pushes); Uptime Kuma (replaced by Gatus, whose checks are in
+the repo); ntfy (provisioned from sops); UniFi (its own `.unf`). Docker named volumes are
+all disposable caches; anything stateful is a bind mount. The legacy data disks stay
+untouched until A1, so anything found missing until then can still be copied by hand.
 
-**Media — roughly 10.6 TB of the 12 TB.** `movies`, `tv`, `music` and `audiobooks`
-should not be streamed through restic. The plan is to move the physical disks into the
-hypervisor's pool instead. This is also consistent with production's own policy, where
-`movies` and `tv` are on-site-only and never went to B2 at all.
+## P — Preparation
 
-- [ ] Decide and write down *here* how the media disks are moved, before the day.
-      This is currently the largest open question in this document.
+Weeks ahead. Production keeps serving throughout, except for haos and
+technitium-secondary during P7.
 
-**Docker named volumes.** Nothing backs them up, by design — backups are path-based.
-Every named volume in use today is disposable (Redis caches, Immich's ML model cache),
-and the convention for new stacks is that anything stateful is a bind mount. Worth
-re-checking at cutover that this is still true.
+### P1. Before you start
 
-**Dawarich's uploaded files.** Prod's `/mnt/storage/dawarich/storage` holds the
-original import files (GPX, Google Takeout...) and generated exports, and is in no
-autorestic location, so restic has nothing to import from. The points themselves are in
-the database and do come across. `apps` backs this directory up from now on.
+- [ ] Every box in [Before you start](#before-you-start) is ticked.
 
-- [ ] Copy it across by hand at cutover (e.g. `rsync` from the legacy box to
-      `/mnt/bulk/dawarich/storage`), or decide the originals aren't needed.
+### P2. Measure the legacy box
 
-**Docker images.** Pinned by digest. A rebuild with no working internet — or after an
-upstream digest has been garbage-collected — leaves stacks that will not start.
+Read-only, on the legacy box:
 
-**The age keys.** Covered under preconditions above, and worth repeating because it is
-the one failure that makes everything else moot.
+```sh
+ssh snyssen.be
+lsblk -o NAME,SIZE,MODEL,SERIAL,MOUNTPOINTS      # which disk holds /: the boot SSD
+ls -l /dev/disk/by-id/ | grep -v -- -part        # its by-id name
+ip -br link                                      # the wired NIC, e.g. enp3s0
+lspci -nn | grep -iE 'vga|display'               # 00:02.0 ... [8086:xxxx]: the iGPU's id
+[ -d /sys/firmware/efi ] && echo UEFI || echo BIOS   # must be UEFI
+free -g                                          # RAM, for apps-01's share
+df -h / /mnt/disk1 /mnt/disk2 /mnt/parity1
+sudo du -sh /home/snyssen/data                   # what goes into apps-01's disk
+docker system df                                 # plus images and volumes
+sudo du -sh /mnt/storage/streaming/media /mnt/storage/streaming/peertube/data \
+  /mnt/storage/nextcloud /mnt/storage/photos
+sudo du -sh /mnt/storage/dawarich/storage; sudo find /mnt/storage/dawarich/storage -type f | head
+```
 
-## Cutover checklist
+`/mnt/storage/dawarich/storage` is Dawarich's file store (Rails ActiveStorage): files
+uploaded through the web UI's Imports page, and exports generated from it. It is not the
+`watched` import folder. The points themselves are all in the database, so it only
+matters if you uploaded something you can't download again. Production backs it up
+nowhere; `legacy-import dawarich-storage` copies it, and apps-01's `dawarich` plan backs
+it up from D9 on. If it is empty, drop that group from the D4 command.
 
-### 1. Freeze
+Then fill in the `TODO(P2)` placeholders and commit:
+
+- [ ] `nix/hosts/hypervisor-01/configuration.nix`: `mainDiskPath` (the boot SSD's
+      `/dev/disk/by-id/…`) and the vfio-pci id (`8086:xxxx`).
+- [ ] `nix/hosts/hypervisor-01/network.nix`: `lanNic`.
+- [ ] `ansible/hosts/host_vars/hypervisor-01/vars.yml`, `apps-01`:
+  - `ram_mb`: leave the host at least 8 GB;
+  - `disk_gb`: app-data plus Docker, with ~50% headroom, at most ~850 (the 1 TB vmstore
+    also holds haos and technitium-secondary).
+- [ ] If the firmware boots BIOS, switch it to UEFI before D2.
+- [ ] Used space on `/mnt/disk1` + `/mnt/disk2` is well under 14.5 TiB.
+- [ ] `just nix-build hypervisor-01` succeeds.
+
+### P3. Tailscale auth keys
+
+`nix/hosts/hypervisor-01/data/secrets.yaml` is a copy of the test hypervisor's, and
+`nix/hosts/apps-01/data/common.yaml` holds the Phase A VM's key. In the Tailscale admin
+console (Settings → Keys), check that the keys they hold are **reusable** (or not yet
+used), **pre-approved** and not expiring before D-day. If not, create new ones and put
+them in:
+
+```sh
+just sops-update nix/hosts/hypervisor-01/data/secrets.yaml   # key: tailscale/authKey
+just sops-update nix/hosts/apps-01/data/common.yaml          # key: tailscale/authKey
+```
+
+### P4. hypervisor-01's keys
+
+The SSH host key decides the host's sops identity, so it is made now and installed with
+nixos-anywhere (see [Setup New Machine — Pre-Deployment](../nix/Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
+for the background). Keep it out of `/tmp`, which may not survive until D-day:
+
+```sh
+H=hypervisor-01
+DEPLOY=~/phase-b/$H-deploy
+mkdir -p "$DEPLOY/etc/ssh" && chmod 700 ~/phase-b
+ssh-keygen -t ed25519 -f "$DEPLOY/etc/ssh/ssh_host_ed25519_key" -N "" -C "root@$H"
+just sops-gen-privkey "$DEPLOY/etc/ssh/ssh_host_ed25519_key" ~/phase-b/$H-age-temp
+just sops-get-pubkey ~/phase-b/$H-age-temp     # prints age1...
+rm ~/phase-b/$H-age-temp
+```
+
+In `.sops.yaml`, add the printed key under `keys:` as `- &root_hypervisor_01 age1…`, and
+in the `nix/hosts/hypervisor-01/data/` rule replace `*root_hypervisor` with
+`*root_hypervisor_01` (and drop the comment above it). Then:
+
+```sh
+just sops-update-keys nix/hosts/hypervisor-01/data/secrets.yaml
+```
+
+Commit `.sops.yaml` and the re-encrypted file.
+
+**USB keyfile.** The same two sticks unlock both hypervisors; each gets a second keyfile,
+named after the new host. Make it once and copy it to both sticks:
+
+```sh
+dd if=/dev/urandom of=~/phase-b/hypervisor-01 bs=512 count=1
+# for each stick: mount it, then
+cp ~/phase-b/hypervisor-01 /run/media/$USER/<stick>/hypervisor-01 && sync
+```
+
+**LUKS fallback passphrase**, the one in the password manager, for nixos-anywhere:
+
+```sh
+read -s > ~/phase-b/hypervisor-01-luks-password.txt
+```
+
+### P5. Rehearse adding a disk (test hypervisor)
+
+Proves the [corrected procedure](overview.md#adding-a-disk-to-an-existing-pool) on a pool
+whose data doesn't matter, with the spare 2 TB WD20EZRZ still in the test box. If it
+isn't there any more, use any spare disk.
+
+1. On the test hypervisor:
+
+   ```sh
+   ssh root@hypervisor
+   NEW=/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9
+   POOL=bulk; I=2
+   LABEL="disk-0-before-$POOL-$((I - 1))-luks-$POOL"; NAME="crypt-$POOL-$I"
+   sgdisk --zap-all "$NEW"
+   sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
+   udevadm settle
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" /key/hypervisor
+   cryptsetup luksAddKey --key-file /key/hypervisor "/dev/disk/by-partlabel/$LABEL"
+   cryptsetup open --key-file /key/hypervisor "/dev/disk/by-partlabel/$LABEL" "$NAME"
+   umount /key
+   ```
+
+2. In `nix/hosts/hypervisor/configuration.nix`, uncomment the WD20EZRZ line in `bulk`.
+   Deploy: `just nix-remote-install switch hypervisor`.
+3. Add it to the pool, rebalance and reboot:
+
+   ```sh
+   ssh root@hypervisor
+   btrfs device add /dev/mapper/crypt-bulk-2 /mnt/bulk
+   btrfs balance start -dconvert=raid1,soft -mconvert=raid1,soft /mnt/bulk
+   reboot
+   ```
+
+4. Once it is back: `ssh root@hypervisor ls /dev/mapper/` shows `crypt-bulk-2`, and
+   `btrfs filesystem show /mnt/bulk` shows three devices. **This is the check that
+   matters**: the disk was unlocked at boot from its partition label.
+5. Take it out again ([Removing a Disk](overview.md#removing-a-disk-from-a-pool); it is
+   the last index, so nothing needs relabelling):
+
+   ```sh
+   ssh root@hypervisor
+   btrfs device remove /dev/mapper/crypt-bulk-2 /mnt/bulk
+   cryptsetup close crypt-bulk-2
+   ```
+
+   Comment the line again, `just nix-remote-install boot hypervisor`, reboot.
+
+### P6. Rehearse `legacy-import` (test hypervisor)
+
+The test hypervisor has `legacy-import` too, with no data disks, so it runs on two small
+loop images instead. The sample data is what Phase A already imported from production,
+in `/mnt/bulk/apps`. The rehearsal writes to `/mnt/bulk/rehearsal` (`--target`), never
+over it.
+
+1. Deploy the test hypervisor's current config, which brings the command (and `screen`,
+   used from P7 on): `just nix-remote-install switch hypervisor`.
+2. Build two "data disks", with one directory split across both as mergerfs did:
+
+   ```sh
+   ssh root@hypervisor
+   mkdir -p /root/rehearsal && cd /root/rehearsal
+   truncate -s 20G disk1.img disk2.img
+   mkfs.ext4 -q -F disk1.img && mkfs.ext4 -q -F disk2.img
+   mkdir -p d1 d2 && mount -o loop disk1.img d1 && mount -o loop disk2.img d2
+   mkdir -p d1/recipes d2/minecraft d1/backups/postgres d2/backups/postgres
+   cp -a /mnt/bulk/apps/recipes/mediafiles d1/recipes/
+   cp -a /mnt/bulk/apps/minecraft/data d2/minecraft/
+   # half the dumps on each disk
+   ls /mnt/bulk/apps/restore/prod-postgres | awk 'NR%2' | xargs -I{} cp -a /mnt/bulk/apps/restore/prod-postgres/{} d1/backups/postgres/
+   ls /mnt/bulk/apps/restore/prod-postgres | awk '!(NR%2)' | xargs -I{} cp -a /mnt/bulk/apps/restore/prod-postgres/{} d2/backups/postgres/
+   ```
+
+   (If any of those sources is missing, use any other Phase A path under
+   `/mnt/bulk/apps`; the point is real files in the legacy layout.)
+
+3. Run it:
+
+   ```sh
+   legacy-import --check --sources /root/rehearsal/d1,/root/rehearsal/d2 --target /mnt/bulk/rehearsal recipes minecraft postgres
+   legacy-import --sources /root/rehearsal/d1,/root/rehearsal/d2 --target /mnt/bulk/rehearsal recipes minecraft postgres photos
+   ```
+
+   Expect `ok` for recipes, minecraft's `data` and postgres. Expect `FAIL` for
+   minecraft's `mc-usw` and for `photos` (not on the images), each naming its
+   `prod-import` fallback, and a non-zero exit.
+4. Check owners and contents:
+
+   ```sh
+   stat -c '%u:%g %n' /mnt/bulk/rehearsal/minecraft/data /mnt/bulk/rehearsal/recipes/mediafiles
+   diff -r /mnt/bulk/apps/recipes/mediafiles /mnt/bulk/rehearsal/recipes/mediafiles && echo SAME
+   ls /mnt/bulk/rehearsal/restore/prod-postgres | wc -l; ls /mnt/bulk/apps/restore/prod-postgres | wc -l
+   ```
+
+   `1000:1000` for minecraft, `0:0` for recipes, identical contents, and both halves of
+   the dumps in one directory.
+5. Re-run the same command: it finishes quickly (nothing left to copy).
+6. Clean up:
+
+   ```sh
+   cd /root && umount rehearsal/d1 rehearsal/d2 && rm -r rehearsal /mnt/bulk/rehearsal
+   ```
+
+### P7. Take the Kingston NVMe out of the test hypervisor
+
+The test vmstore is RAID1 over the 1 TB Kingston and the 500 GB WD. It drops to the WD
+alone, and the Kingston goes to `hypervisor-01`. haos and technitium-secondary keep
+running throughout the conversion and are only down for the final reboot.
+
+1. Safety copies, on your machine:
+   - In Home Assistant: Settings → System → Backups → download the newest backup.
+   - technitium-secondary's image and key, in case it has to be put back by hand:
+
+     ```sh
+     mkdir -p ~/phase-b/vm-copy
+     ssh root@hypervisor 'tar -C / -cSf - mnt/vmstore/technitium-secondary var/lib/vm-keys/technitium-secondary var/lib/libvirt/qemu/nvram/technitium-secondary_VARS.fd' > ~/phase-b/vm-copy/technitium-secondary.tar
+     ```
+
+2. Check it fits: `Used` must be well under the WD's 465 GiB (it was 322 GiB at the time
+   of writing).
+
+   ```sh
+   ssh root@hypervisor btrfs filesystem usage /mnt/vmstore | head -8
+   ```
+
+3. Convert and remove the Kingston (index 0, `crypt-vmstore-0`), in a `screen` session
+   (see [Long-running steps](#long-running-steps-screen)):
+
+   ```sh
+   ssh root@hypervisor
+   screen -S vmstore
+   btrfs balance start -dconvert=single -mconvert=dup /mnt/vmstore
+   btrfs device remove /dev/mapper/crypt-vmstore-0 /mnt/vmstore
+   btrfs filesystem show /mnt/vmstore            # one device left: the WD
+   cryptsetup close crypt-vmstore-0
+   ```
+
+4. Relabel. The WD becomes index 0, so it takes index 0's label. The Kingston gives it
+   up first, so no two partitions share it:
+
+   ```sh
+   sgdisk --change-name=1:retired-vmstore /dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113
+   sgdisk --change-name=1:disk-vmstore-luks-vmstore /dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987
+   udevadm settle
+   ls -l /dev/disk/by-partlabel/ | grep vmstore  # disk-vmstore-luks-vmstore -> the WD's partition
+   ```
+
+5. In `nix/hosts/hypervisor/configuration.nix`, make the vmstore pool the WD alone:
+
+   ```nix
+   vmstore = {
+     disks = [
+       "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987"
+     ];
+     storageMedia = "ssd";
+   };
+   ```
+
+   Commit, then deploy for the next boot only (the mapper names change):
+   `just nix-remote-install boot hypervisor`.
+6. Shut the test hypervisor down (`ssh root@hypervisor poweroff`), take the Kingston out,
+   boot it. Check:
+
+   ```sh
+   ssh root@hypervisor 'ls /dev/mapper/; btrfs filesystem show /mnt/vmstore; virsh list --all'
+   ```
+
+   `crypt-vmstore-0` on the WD, and haos, technitium-secondary and apps running.
+
+## D — D-day
+
+Plan for about two days of downtime; the disk copy sets the pace. Run every long step in
+**`screen`**: an SSH drop kills it otherwise.
+
+### Long-running steps: `screen`
+
+`screen` keeps a shell running on the server after your SSH connection drops. It is
+installed on both hypervisors and on apps-01. All you need:
+
+| Do | Command |
+| --- | --- |
+| Start a named session | `screen -S <name>` |
+| Detach (it keeps running) | `Ctrl-a`, then `d` |
+| List sessions | `screen -ls` |
+| Re-attach | `screen -r <name>` |
+| End it | `exit` inside it |
+
+If the connection drops while you are attached, the session detaches by itself;
+`screen -r <name>` gets it back. To scroll back through output: `Ctrl-a`, then `Esc`,
+then the arrow keys or PgUp; `Esc` again to leave.
+
+### D1. Freeze and final backup
 
 - [ ] Announce downtime to anyone else who uses the services.
-- [ ] Stop writing: pause anything that ingests data (paperless consume folder,
-      `*arr` downloads, Syncthing, Immich mobile backup).
-- [ ] Disable autorestic's cron on production so no partial state is captured mid-wipe.
-
-### 2. Final backup
-
-- [ ] Run a final full autorestic backup, **and watch it finish.**
-- [ ] Run the final PostgreSQL dumps and confirm they are in the dump directories.
+- [ ] Stop writing: pause anything that ingests data (paperless consume folder, `*arr`
+      downloads, Syncthing, Immich mobile backup).
+- [ ] UniFi: on the legacy controller, Settings → System → Advanced → **Inform Host**
+      must be the name `unifi.snyssen.be`, not the legacy box's IP, so devices follow
+      DNS to apps-01. If it isn't, set it and wait for every device to show Online
+      again.
+- [ ] UniFi: Settings → System → Backups → **download** a backup to your machine.
+- [ ] Home Assistant: download its newest backup to your machine. Its backups normally go
+      to the legacy Nextcloud, which is about to go down.
+- [ ] Run the final PostgreSQL dumps and confirm they are in the dump directories
+      (`/mnt/storage/backups/{postgres,immich,dawarich}`). `legacy-import` copies these.
+- [ ] Run a final full autorestic backup, **and watch it finish**. Then disable
+      autorestic's cron.
 - [ ] `autorestic --ci check` on both backends, one last time.
-- [ ] Note the snapshot IDs of every location. If something later resolves to an older
+- [ ] Note the snapshot ID of every location. If a `prod-import` later resolves an older
       snapshot than these, something is wrong.
-- [ ] UniFi: on prod's controller, check Settings → System → Advanced → **Inform Host**.
-      It must be the name `unifi.snyssen.be`, not prod's IP, so devices follow DNS to
-      `apps`. If it isn't, set it and wait for every device to show Online again.
-- [ ] UniFi: Settings → System → Backups → **download** a backup and keep it off prod.
-      It is what step 5 restores (see [the restore notes](#per-stack-restore-notes)).
+- [ ] Shut down the Phase A VM for good. It shares apps-01's Syncthing identity and MAC,
+      so the two must never run at once:
 
-### 3. Point of no return
+      ```sh
+      ssh root@hypervisor 'virsh shutdown apps; virsh autostart --disable apps'
+      ```
 
-- [ ] Re-read [Before you start](#before-you-start). Every box ticked.
-- [ ] Physically label the production disks before removing anything.
-- [ ] Wipe and install the hypervisor NixOS configuration on the production hardware.
+### D2. Install hypervisor-01
 
-### 4. Rebuild
+1. `ssh snyssen.be sudo poweroff`.
+2. Fit the Kingston NVMe in the free M.2 slot. Label the HDDs physically:
+   - "FORMAT" on the 16 TB parity disk (`ZR58BLR6`);
+   - "KEEP" on the 8 TB (`WWZ3XVDG`) and the 12 TB (`ZHZ12PTZ`).
+3. **Unplug the two KEEP disks** (SATA data cable) for the install. Nothing in the
+   config formats them, but unplugged they can't be touched by mistake.
+4. Boot the NixOS installer USB, with one of the USB key sticks plugged in. On the
+   console:
 
-- [ ] `just hypervisor-build-vm-images` — note this generates **new** SSH host keys, and
-      therefore new `root_<vm>` age keys.
-- [ ] Add each new key to `.sops.yaml`, then `just sops-update-keys-all`, then commit.
-      **Not optional**: without it sops-nix cannot decrypt and no secret — including the
-      restic repository password — ever reaches the host.
-- [ ] `just hypervisor-provision-vms`.
-- [ ] Boot `apps` with `docker.service` and `backrest.service` **masked** (append
-      `systemd.mask=docker.service systemd.mask=backrest.service` at the GRUB prompt).
-      See the warning in [the DR runbook](../backups.md#full-disaster-recovery-rebuilding-apps-from-scratch)
-      — this is what stops a half-restored state from being backed up over the good
-      snapshots.
-- [ ] Sanity-check: `ls /run/secrets/backrest/repos/`, `tailscale status`, `ls /mnt/bulk`.
-- [ ] Confirm the backup server answers: `http://backup.snyssen.be:8000/metrics`.
+   ```sh
+   passwd                                        # temporary, for nixos-anywhere
+   ip -br addr                                   # note the IP
+   lsblk -d -o NAME,SIZE,MODEL,SERIAL            # boot SSD, Kingston, 16 TB: nothing else
+   mkdir -m 0755 -p /key && mount -n -t vfat -o ro -U 8B34-7D3C /key   # or 9FBA-884A
+   ls /key                                       # hypervisor-01 is there
+   ```
 
-### 5. Restore
+5. From your machine, at the repo root, on the commit with P2–P4 in. `nix flake check`
+   passes on it and argunix is green:
 
-Run everything in **tmux**. Several of these take hours and an SSH drop kills them.
+   ```sh
+   TARGET_IP=<the IP above>
+   nix run github:nix-community/nixos-anywhere -- \
+     --flake .#hypervisor-01 \
+     --target-host root@$TARGET_IP \
+     --generate-hardware-config nixos-generate-config \
+       nix/hosts/hypervisor-01/hardware-configuration.nix \
+     --extra-files ~/phase-b/hypervisor-01-deploy \
+     --disk-encryption-keys /tmp/secret.key ~/phase-b/hypervisor-01-luks-password.txt \
+     --chown /etc/ssh/ssh_host_ed25519_key 0:0 \
+     --chown /etc/ssh/ssh_host_ed25519_key.pub 0:0
+   ```
 
-- [ ] `prod-import --all --check` — proves every path still resolves before writing.
-- [ ] `prod-import --all --dry-run` — review the per-filesystem size table.
-- [ ] `prod-import --all` (or group by group, which is easier to recover from).
-- [ ] `postgres-restore --from /mnt/bulk/restore/prod-postgres --all` for the central
-      cluster.
-- [ ] `postgres-restore --from /mnt/bulk/restore/prod-immich immich`.
-      `--from` applies to everything selected, so do one instance at a time.
-- [ ] Media: whatever the disk-relocation decision turns out to be.
-- [ ] UniFi: open `https://unifi.<domain>`, pick **restore from backup** in the setup
-      wizard, and upload the `.unf` downloaded in step 2.
+   See [Setup New Machine — Deployment](../nix/Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
+   for what each part does and what to expect.
+6. It reboots into hypervisor-01. Commit the generated
+   `nix/hosts/hypervisor-01/hardware-configuration.nix`.
+7. Power it off, plug the two KEEP disks back in, boot.
+8. Delete `~/phase-b/hypervisor-01-deploy` and `~/phase-b/hypervisor-01-luks-password.txt`
+   from your machine.
 
-### 6. Code changes at cutover
+### D3. Check hypervisor-01
 
-These are known, grounded in the repository, and all of them are needed for the new
-setup to be "production" rather than "a test VM":
+```sh
+ssh root@hypervisor-01
+btrfs filesystem show /mnt/vmstore /mnt/bulk     # one device each
+btrfs filesystem usage /mnt/bulk | grep -E 'Data|Metadata'   # single / DUP
+tailscale status                                 # joined
+ls -l /dev/disk/by-id/ | grep -E 'WWZ3XVDG|ZHZ12PTZ'   # both KEEP disks visible
+ls /sys/bus/pci/devices/0000:00:02.0/iommu_group/devices/   # only 0000:00:02.0
+lspci -nnk -s 00:02.0 | grep 'in use'            # vfio-pci
+```
 
-- [ ] `nix/hosts/apps/configuration.nix` — `domains.main = "snyssen1.xyz"` becomes
-      `"snyssen.be"`.
-- [ ] `nix/hosts/apps/configuration.nix` — `domains.team = "snyssen2.xyz"` becomes
-      `"bigdouf.team"`.
-- [ ] Delete `nix/hosts/apps/prod-import.nix` and its `import` line.
-- [ ] `nix/hosts/apps/compose/reverse-proxy/default.nix` — drop the hardcoded
-      `argunix_domain = "snyssen.be"` and restore `config.domains.main` (the commented
-      line directly above it).
-- [ ] `nix/hosts/apps/compose/streaming/default.nix` — `autostart = false` back to true
-      (disabled during testing so it would not act on absent media).
-- [ ] `nix/hosts/apps/compose/nextcloud/default.nix` — `autostart = false` back to true,
-      once its data and database are both in.
-- [ ] `nix/hosts/apps/compose/sharkey/default.nix` — `autostart = false` back to true,
-      in the same deploy as `domains.main`, and only after its data and database are in.
-- [ ] `nix/hosts/apps/compose/dawarich/default.nix` — `photon.enable = true`, and only
-      once there is room for it. Prod's worldwide index is ~200 GB and grows 10–20 GB a
-      year; its `PARALLEL` update strategy needs twice that while swapping. The VM's
-      whole disk is 300 GB (`disk_gb` in `ansible/hosts/host_vars/hypervisor/vars.yml`).
-      So grow the disk, or pick a smaller `REGION` and/or `UPDATE_STRATEGY` first.
-- [ ] `nix/hosts/apps/compose/matrix/default.nix` — `live = true`, in the same deploy as
-      `domains.main`: federation and push back on, and the bridges started.
-      Only after prod's Synapse and bridges are stopped for good — two copies of the
-      same server, or of the same bridge session, must never run at once.
-- [ ] `nix/hosts/apps/compose/minecraft/default.nix` — restore prod's sizing in the
-      `memory` binding: 8G heap / 8.2g limit for both servers (shrunk to fit the 8 GiB
-      test VM).
-- [ ] `nix/hosts/ingress/traefik-configuration.nix` — `appsServerIp` is the legacy box's
-      tailnet address, and it is what the TCP proxy (Minecraft, 25565) forwards to.
-      Point it at the new `apps` VM's tailnet IP. The HTTP backends are unaffected: they
-      resolve by hostname, so they follow DNS.
-- [ ] Grafana Alloy dual-shipping: nine configurations currently push to **both** the
-      legacy and the new Prometheus/Loki. Drop the `*.snyssen1.xyz` entries when
-      `domains.main` flips, and the legacy `*.snyssen.be` entries once the old box is
-      gone — each carries the same `TODO` comment:
-      `apps`, `blackfog`, `gaming`, `hypervisor`, `ingress`, `purplehaze`, `sninful`,
-      `technitium-primary`, `technitium-secondary`.
-- [ ] `nix/hosts/apps/backrest.nix` — **apps takes over production's repositories.**
-      Everything `apps` backed up during Phase A was test data, in its own `apps/`
-      repository; it is not kept. Once the restore is verified, the new host backs up
-      on top of production's history instead, so one repository holds the whole
-      timeline (`prod-import` already reads it, so restores keep working across the
-      boundary):
-      - point every plan at production's on-site repo (`backup_snyssen_be`,
-        `rest:http://backup.snyssen.be:8000/`) and drop the read-only registration;
-      - register production's B2 repo (`snyssen-be-autorestic`) and send every plan
-        there too, except `movies` and `tv`, which stay on-site only as on prod. A
-        Backrest plan targets one repo, so this means either a second plan per
-        location or a copy step — to be designed;
-      - **enable a prune policy and a check policy** on both. Phase A ran with neither:
-        forgetting snapshots without pruning never frees space, and prod runs
-        `autorestic check` weekly. Document the chosen schedules in `docs/backups.md`;
-      - remove the `apps` repo registration.
-- [ ] Destroy the Phase A test repository on the backup server
-      (`rest:http://backup.snyssen.be:8000/apps/`), once the above has produced its
-      first good snapshots.
+In the Tailscale admin console, **remove the legacy box's machine**. That frees its
+address, `100.114.242.89`, for apps-01 (D6).
 
-### 7. Verify before decommissioning anything
+### D4. Start `legacy-import`
 
-- [ ] Every service answers on its real hostname, over TLS, with a valid certificate.
-- [ ] Authelia login works, including a second factor and at least one OIDC client.
-- [ ] Nextcloud: files present, a desktop client syncs, CalDAV/CardDAV resolves.
-- [ ] Immich: assets present *and* thumbnails render (a restored database with absent
-      files looks fine until you scroll).
-- [ ] Paperless: documents searchable, OCR runs on a new upload.
-- [ ] `backrest-restore --check` passes against `apps`'s own repository.
-- [ ] A backup has actually run and produced a snapshot in the `apps` repository.
-- [ ] Monitoring: Grafana dashboards populated, Gatus checks green (including a
-      `backups_<plan>` push from the first backup run), alerts firing to ntfy.
-- [ ] UniFi: every device **Online**. They come back by themselves once
-      `unifi.snyssen.be` resolves to `apps` on the LAN.
+It runs for many hours. Everything up to D7's database restores can happen alongside it.
 
-### 8. Only then
+```sh
+ssh root@hypervisor-01
+screen -S import
+legacy-import --check --all     # sizes, files on both disks, room on bulk
+```
 
-- [ ] Unmask `docker.service` and `backrest.service`, reboot, confirm a clean ordered
-      start.
-- [ ] Re-enable ingest (consume folders, download clients, mobile backup).
-- [ ] Keep production's final snapshots **indefinitely** — they are the only pre-cutover
+Look at any `WARNING: … exist on both disks` (the copy from the second disk would win)
+before going on. Then the app data first, the media after:
+
+```sh
+legacy-import postgres immich dawarich dawarich-storage nextcloud photos paperless-media matrix minecraft recipes sharkey-files ; \
+legacy-import audiobooks movies tv music media-extra peertube-data
+```
+
+Detach with `Ctrl-a d`; re-attach with `screen -r import`. Note every `FAIL` line in
+the summaries: each names the `prod-import` command that takes over (D7).
+
+### D5. Move technitium-secondary, then haos
+
+From your machine. Each VM: shut down on the old box, copy its disk image, NVRAM (UEFI
+boot entries) and, for technitium-secondary, its disk key, then provision it on
+hypervisor-01. The copy goes through your machine, so the two servers need no trust
+between them; `tar -S` keeps the images sparse.
+
+**technitium-secondary** (the NUC keeps serving DNS meanwhile):
+
+```sh
+VM=technitium-secondary
+FILES="mnt/vmstore/$VM/disk.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd var/lib/vm-keys/$VM/luks.key"
+ssh root@hypervisor "virsh shutdown $VM"
+until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
+ssh root@hypervisor "virsh autostart --disable $VM"
+ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
+diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
+     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
+just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
+```
+
+Check: `dig @192.168.1.3 snyssen.be` answers, and the Technitium cluster page on the NUC
+shows the secondary in sync.
+
+**haos** (home automation is down for ~10 minutes):
+
+```sh
+VM=haos
+FILES="mnt/vmstore/$VM/haos.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd"
+ssh root@hypervisor "virsh shutdown $VM"
+until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
+ssh root@hypervisor "virsh autostart --disable $VM"
+ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
+diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
+     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
+```
+
+Move the ZBT-2 USB dongle from the test hypervisor to hypervisor-01, then:
+
+```sh
+just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
+```
+
+Check: Home Assistant answers at `https://hass.snyssen.be`, and a Zigbee device responds.
+
+**If a move misbehaves**: shut the new copy down
+(`just hypervisor-vm-stop <vm> hypervisor-01`), then
+`ssh root@hypervisor "virsh autostart <vm>; virsh start <vm>"`. The old files are still
+there. To rebuild instead:
+
+- **haos**: delete `/mnt/vmstore/haos/haos.qcow2` on hypervisor-01 and provision again
+  (it downloads a fresh HAOS image), then restore the backup downloaded in D1.
+- **technitium-secondary**: set `build: true` for it in
+  `ansible/hosts/host_vars/hypervisor-01/vars.yml` and follow D6's build steps for it
+  (new key → `.sops.yaml` → re-encrypt `nix/hosts/technitium-secondary/data/*`). The
+  cluster re-syncs its zones from the NUC.
+
+### D6. Build and boot apps-01
+
+1. Build the image:
+
+   ```sh
+   just hypervisor-build-vm-images hypervisor-01
+   ```
+
+   It generates apps-01's SSH host key, prints the age key derived from it, and
+   **pauses**. While it waits, in another terminal at the repo root:
+
+   - in `.sops.yaml`, add `- &root_apps_01 age1…` (the printed key) under `keys:`, and in
+     the `nix/hosts/apps-01/data/` rule replace `*root_apps` with `*root_apps_01` (and
+     drop the comment above it);
+   - re-encrypt apps-01's files for it. **Before** continuing, since the image is built
+     from them as they are now:
+
+     ```sh
+     for f in nix/hosts/apps-01/data/*.yaml; do sops updatekeys -y "$f"; done
+     ```
+
+   Then type `CONTINUE`. When it finishes, commit `.sops.yaml` and
+   `nix/hosts/apps-01/data/`. Set `build: false` on apps-01 in
+   `ansible/hosts/host_vars/hypervisor-01/vars.yml` and commit that too.
+2. Provision and start it:
+
+   ```sh
+   just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=apps-01
+   ```
+
+3. It boots **held**. Check, on it:
+
+   ```sh
+   ssh apps-01
+   ip -br addr | grep 192.168.1.10                 # static LAN address
+   sudo ls /run/secrets/backrest/repos/            # sops decrypts
+   ls /mnt/bulk                                    # the NFS mount from hypervisor-01
+   systemctl list-units 'compose-*' --no-legend    # nothing running
+   ```
+
+4. In the Tailscale admin console, edit apps-01's machine and set its IPv4 address to
+   `100.114.242.89`, the legacy box's. The split-horizon records for `snyssen.be`,
+   `*.snyssen.be` and `bigdouf.team`, and ingress's `appsServerIp`, all name that
+   address, so none of them changes. Then `sudo systemctl restart tailscaled` on
+   apps-01, and check `tailscale ip -4`. If the console doesn't allow it, edit those
+   records in `ansible/hosts/group_vars/technitium/vars.yml` and `appsServerIp` in
+   `nix/hosts/ingress/traefik-configuration.nix` to apps-01's address instead.
+5. The `argunix` and `argunix-ingress` records still name the Phase A VM
+   (`100.86.224.95`). Point them at `100.114.242.89` in
+   `ansible/hosts/group_vars/technitium/vars.yml`, commit, push, and:
+
+   ```sh
+   just ansible-playbook technitium-setup -i hosts/prod.yml
+   ```
+
+### D7. Restore
+
+On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
+
+1. The boot-SSD groups, from restic. These go into the VM's own disk and don't depend on
+   `legacy-import`:
+
+   ```sh
+   prod-import --check monitoring streaming-config paperless actual-budget foundryvtt sharkey
+   prod-import --dry-run monitoring streaming-config paperless actual-budget foundryvtt sharkey
+   prod-import monitoring streaming-config paperless actual-budget foundryvtt sharkey
+   ```
+
+   **Never** `prod-import --all` here: that would also pull the ~10.6 TB of media through
+   restic.
+2. Any group `legacy-import` reported as `FAIL` (except a disks-only one, which needs
+   `legacy-import` re-run on hypervisor-01): `prod-import <group>`.
+3. Once `legacy-import`'s **first** command (the app data) has printed its summary, load
+   the databases. There are three PostgreSQL instances:
+   - the central cluster, in the `databases` stack;
+   - Immich's own, in the `immich` stack;
+   - Dawarich's own, in the `dawarich` stack.
+
+   The hold leaves all three stacks stopped. Start `databases` by hand: on start it
+   creates every application's role and database, which the restore needs, and the
+   Docker networks the other two use. Matrix needs its database created with collation
+   `C` (see [Matrix](#per-stack-restore-notes)), which a fresh cluster does.
+
+   Immich and Dawarich don't need starting: `postgres-restore` reaches them with
+   `docker compose run` on their dump sidecar, and that starts only the sidecar's
+   database container, not the app. That container is left running afterwards, so the
+   last lines below stop all three stacks again; step D8 starts everything in order.
+
+   ```sh
+   systemctl start compose-databases
+   postgres-restore --from /mnt/bulk/restore/prod-postgres --all --dry-run
+   postgres-restore --from /mnt/bulk/restore/prod-postgres --all
+   postgres-restore --from /mnt/bulk/restore/prod-immich immich
+   postgres-restore --from /mnt/bulk/restore/prod-dawarich dawarich
+   compose-immich down
+   compose-dawarich down
+   systemctl stop compose-databases
+   docker ps --format '{{.Names}}'     # no databases, immich or dawarich container left
+   ```
+
+   `--from` applies to everything selected, so the central cluster goes first with
+   `--all`, then one instance at a time. A database with no dump in the directory is
+   listed as `skipped`, not as an error. In the dry run, check that `immich` and
+   `dawarich` show `skipped` (their dumps are in their own directories) and every other
+   database names a dump from the freeze.
+4. Wait for `legacy-import`'s second command (the media) to finish, so the `*arr` apps
+   never see an empty library.
+
+### D8. Release the stacks, then verify
+
+1. In `nix/hosts/apps-01/configuration.nix`, set `restoreHold.stacks = false`. Commit,
+   push, then:
+
+   ```sh
+   just nix-remote-install boot apps-01
+   ssh apps-01 sudo reboot
+   ```
+
+   Everything starts in dependency order. Traefik requests its certificates once, for
+   the real domains.
+2. UniFi: open `https://unifi.snyssen.be`, pick **restore from backup** in the setup
+   wizard, and upload the `.unf` downloaded in D1.
+3. Fix what the per-stack notes below say needs fixing (the `*arr` root folders, …).
+4. Verify, before decommissioning anything:
+   - [ ] Every service answers on its real hostname, over TLS, with a valid certificate,
+         from the LAN, the tailnet, and outside (through ingress).
+   - [ ] Authelia login works, including a second factor and at least one OIDC client.
+   - [ ] Nextcloud: files present, a desktop client syncs, CalDAV/CardDAV resolves.
+   - [ ] Immich: assets present *and* thumbnails render (a restored database with absent
+         files looks fine until you scroll).
+   - [ ] Paperless: documents searchable, OCR runs on a new upload.
+   - [ ] Jellyfin plays something; check the playback info for hardware (QSV)
+         transcoding.
+   - [ ] Matrix: log in through Element, recent messages and media load, a message
+         reaches someone on another server, the bridges connect.
+   - [ ] Sharkey: log in, timelines load, an existing image displays, a post reaches a
+         remote follower.
+   - [ ] UniFi: every device **Online**. They come back by themselves once
+         `unifi.snyssen.be` resolves to apps-01 on the LAN, which it does from the
+         start (`*.snyssen.be` → `192.168.1.10`).
+   - [ ] Syncthing: the Pixel has `apps-01` with address `tcp://apps-01:22000` (edit
+         the device by hand), and the folders are filling from the peers.
+   - [ ] Monitoring: Grafana dashboards populated, Gatus checks green. The Grafana
+         "Uptime Kuma" dashboard replaced by its Gatus version.
+   - [ ] ntfy delivers to your phone, from each kind of sender (each one uses its own
+         ntfy user, carried over from prod):
+     - Grafana (`monitoring` user, through `grafana-to-ntfy`): Alerting → Contact
+       points → the ntfy contact point → **Test**.
+     - Home Assistant (`hass` user): Developer tools → Actions → the `notify.*` action
+       that posts to ntfy, with a test message.
+     - The `*arr` apps (`streaming` token): in Sonarr, Settings → Connect → the ntfy
+       connection → **Test**.
+     - UnifiedPush (anonymous `up*` topics): with Matrix live, a message from another
+       account raises a notification from Element on the phone.
+
+### D9. Backups onto production's repositories, then release them
+
+Phase A's backups went to the test repository `rest:http://backup.snyssen.be:8000/apps/`.
+Production's own history is the one to continue, so one repository holds the whole
+timeline. `prod-import` already reads it, so restores keep working across the boundary.
+
+1. In `nix/hosts/apps-01/backrest.nix`:
+   - point every plan at production's on-site repo (`backup_snyssen_be`,
+     `rest:http://backup.snyssen.be:8000/`) and drop its read-only registration;
+   - register production's B2 repo (`snyssen-be-autorestic`) and send every plan there
+     too, except `movies` and `tv`, which stay on-site only as on prod. A Backrest plan
+     targets one repo, so this means either a second plan per location or a copy step;
+   - **enable a prune policy and a check policy** on both. Phase A ran with neither:
+     forgetting snapshots without pruning never frees space, and prod ran
+     `autorestic check` weekly. Document the chosen schedules in `docs/backups.md`;
+   - remove the `apps` repo registration.
+
+   These need designing before D-day, so this step is a reviewed commit, not an
+   improvisation.
+2. Set `restoreHold.backups = false` in `nix/hosts/apps-01/configuration.nix`. Commit,
+   push, `just nix-remote-install switch apps-01`.
+3. Trigger every plan once from Backrest's UI, and watch them finish. The `backups_<plan>`
+   Gatus checks turn green.
+4. Re-enable ingest (consume folders, download clients, mobile backup).
+
+## A — Afterwards
+
+### A1. The legacy data disks join `bulk` (after about a week)
+
+Once everything has run cleanly for a while and nothing turned out to be missing, the two
+KEEP disks become part of `bulk`, which becomes RAID1. **This destroys the last on-disk
+copy of the legacy layout**; the backup server keeps the restic one.
+
+1. On hypervisor-01, as root, wipe and prepare the 12 TB disk as `bulk`'s index 1:
+
+   ```sh
+   ssh root@hypervisor-01
+   legacy-import --unmount
+   NEW=/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ
+   POOL=bulk; I=1
+   LABEL="disk-0-before-$POOL-$((I - 1))-luks-$POOL"; NAME="crypt-$POOL-$I"
+   echo "$NEW -> $LABEL -> $NAME"               # check twice: this erases the disk
+   wipefs -a "$NEW"
+   sgdisk --zap-all "$NEW"
+   sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
+   udevadm settle
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" /key/hypervisor-01
+   cryptsetup luksAddKey --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL"
+   cryptsetup open --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL" "$NAME"
+   ```
+
+   `luksAddKey` asks for the fallback passphrase (the one in the password manager).
+2. The same for the 8 TB disk as index 2 (the key is still mounted):
+
+   ```sh
+   NEW=/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG
+   I=2
+   LABEL="disk-0-before-$POOL-$((I - 1))-luks-$POOL"; NAME="crypt-$POOL-$I"
+   echo "$NEW -> $LABEL -> $NAME"
+   wipefs -a "$NEW"
+   sgdisk --zap-all "$NEW"
+   sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
+   udevadm settle
+   cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" /key/hypervisor-01
+   cryptsetup luksAddKey --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL"
+   cryptsetup open --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL" "$NAME"
+   umount /key
+   ```
+
+3. In `nix/hosts/hypervisor-01/configuration.nix`, `bulk`'s `disks` become (order
+   matters: it is the index):
+
+   ```nix
+   disks = [
+     "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
+     "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
+     "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
+   ];
+   ```
+
+   Remove `legacyImport.disks` and the warning about the data disks. Commit, push,
+   `just nix-remote-install switch hypervisor-01`.
+4. Add them and convert, in `screen` (a day or more; services stay up):
+
+   ```sh
+   ssh root@hypervisor-01
+   btrfs device add /dev/mapper/crypt-bulk-1 /dev/mapper/crypt-bulk-2 /mnt/bulk
+   screen -S balance
+   btrfs balance start -dconvert=raid1 -mconvert=raid1 /mnt/bulk
+   ```
+
+   Follow it with `btrfs balance status /mnt/bulk` from another shell.
+5. Prove it survives a reboot: `reboot`, then
+   `btrfs filesystem usage /mnt/bulk | grep -E 'Data|Metadata'` shows RAID1, and
+   `ls /dev/mapper/` lists `crypt-bulk-0` to `crypt-bulk-2`.
+
+### A2. Retire the test hypervisor
+
+Its disks join `hypervisor-01`: both SSDs into `vmstore`, which becomes RAID1 (1 TB +
+1 TB + 500 GB gives ~1.25 TB), and its HDDs into `bulk` if there are bays and SATA ports
+for them.
+
+| Disk | by-id | Goes to |
+| --- | --- | --- |
+| 1 TB Micron NVMe (its boot disk) | `nvme-Micron_2300_NVMe_1024GB__20292942A517` | `vmstore` index 1, if a second M.2 slot is free |
+| 500 GB WD SSD | `ata-WDC_WDS500G2B0B-00YS70_204246801987` | `vmstore` index 2 (index 1 without the Micron) |
+| 4 TB IronWolf | `ata-ST4000VN008-2DR166_ZDH9AT9F` | `bulk` index 3, optional |
+| 2 TB IronWolf | `ata-ST2000VN004-2E4164_Z524CEHK` | `bulk` index 4, optional |
+| 2 TB WD Green (the spare) | `ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9` | `bulk` index 5, optional |
+
+> [!WARNING]
+> **Wipe them in the test box, before they go anywhere near hypervisor-01** (step 2).
+> They carry the very partition labels hypervisor-01 boots from: `boot` and `luks` on
+> the Micron, `disk-vmstore-luks-vmstore` on the WD (since P7), `disk-bulk-luks-bulk`
+> and `disk-0-before-bulk-0-luks-bulk` on the HDDs. Both boxes share the fallback
+> passphrase. Plugged in as they are, hypervisor-01 could mount the test box's `/boot`
+> or unlock its pool in place of its own.
+
+1. Nothing must still run on it:
+
+   ```sh
+   just hypervisor-vm-list hypervisor    # every VM: shut off
+   ssh root@hypervisor poweroff
+   ```
+
+2. Wipe all five disks. Boot the test box from the NixOS installer USB, then on its
+   console:
+
+   ```sh
+   for d in \
+     /dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517 \
+     /dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987 \
+     /dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F \
+     /dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK \
+     /dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9
+   do
+     for p in "$d"-part*; do [ -e "$p" ] && wipefs -a "$p"; done
+     wipefs -a "$d"
+     sgdisk --zap-all "$d"
+   done
+   lsblk -o NAME,SIZE,MODEL,PARTLABEL       # no partitions left on any of them
+   poweroff
+   ```
+
+3. Fit them in hypervisor-01. This stops every VM on it for the time it takes, so
+   announce it like D-day's downtime:
+
+   ```sh
+   ssh root@hypervisor-01 poweroff
+   ```
+
+   Fit the WD SSD, the Micron if an M.2 slot is free, and whichever HDDs have a bay and a
+   SATA port. Boot, then check that it came up on its own disks and sees the new ones:
+
+   ```sh
+   ssh root@hypervisor-01
+   findmnt -no SOURCE /boot /mnt/vmstore /mnt/bulk   # /dev/disk/by-partlabel/boot, crypt-vmstore-0, crypt-bulk-0
+   virsh list --all                                  # haos, technitium-secondary, apps-01 running
+   ls -l /dev/disk/by-id/ | grep -E 'Micron|WDS500G2B0B|ZDH9AT9F|Z524CEHK|WCC4N2RYUKT9'
+   ```
+
+4. Prepare each new disk: a GPT partition with the label boot looks for, LUKS with the
+   USB keyfile plus the fallback passphrase, opened under the name boot will give it.
+   Define the helper once, in the same root shell:
+
+   ```sh
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   prep_disk() {  # prep_disk <disk> <pool> <index> [extra cryptsetup open options]
+     local new=$1 pool=$2 i=$3; shift 3
+     local label="disk-0-before-$pool-$((i - 1))-luks-$pool" name="crypt-$pool-$i"
+     echo "$new -> $label -> $name"
+     printf 'This erases %s. Type yes: ' "$new"; read -r ok
+     [ "$ok" = yes ] || return 1
+     wipefs -a "$new"
+     sgdisk --zap-all "$new"
+     sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$label" "$new"
+     udevadm settle
+     wipefs -a "/dev/disk/by-partlabel/$label"
+     cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$label" /key/hypervisor-01
+     cryptsetup luksAddKey --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$label"
+     cryptsetup open --key-file /key/hypervisor-01 "$@" "/dev/disk/by-partlabel/$label" "$name"
+   }
+   ```
+
+   Then the SSDs, with discards on as for every SSD pool. `luksAddKey` asks for the
+   fallback passphrase each time.
+
+   ```sh
+   prep_disk /dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517 vmstore 1 --allow-discards
+   prep_disk /dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987 vmstore 2 --allow-discards
+   ```
+
+   Without the Micron, only the WD, as index 1:
+   `prep_disk /dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987 vmstore 1 --allow-discards`.
+
+   Then the HDDs you fitted, in this order, skipping the ones you didn't fit and
+   numbering on from 3 without gaps:
+
+   ```sh
+   prep_disk /dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F bulk 3
+   prep_disk /dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK bulk 4
+   prep_disk /dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9 bulk 5
+   umount /key
+   ls /dev/mapper/                  # the new crypt-vmstore-* and crypt-bulk-* are there
+   ```
+
+5. In `nix/hosts/hypervisor-01/configuration.nix`, list them in the same order as their
+   indexes (order matters: it is the index):
+
+   ```nix
+   bulk = {
+     disks = [
+       "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
+       "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
+       "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
+       "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F"
+       "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
+       "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
+     ];
+     storageMedia = "hdd";
+   };
+   vmstore = {
+     disks = [
+       "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
+       "/dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517"
+       "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987"
+     ];
+     storageMedia = "ssd";
+   };
+   ```
+
+   Commit, push, `just nix-remote-install switch hypervisor-01`.
+6. Add them to the pools and convert, in `screen` (hours for `vmstore`, a day or more
+   for `bulk`; services stay up). Name only the mappers you created in step 4:
+
+   ```sh
+   ssh root@hypervisor-01
+   screen -S balance
+   btrfs device add /dev/mapper/crypt-vmstore-1 /dev/mapper/crypt-vmstore-2 /mnt/vmstore
+   btrfs balance start -dconvert=raid1 -mconvert=raid1 /mnt/vmstore
+   btrfs device add /dev/mapper/crypt-bulk-3 /dev/mapper/crypt-bulk-4 /dev/mapper/crypt-bulk-5 /mnt/bulk
+   btrfs balance start /mnt/bulk
+   ```
+
+   `vmstore` was single-disk, so it converts to RAID1. `bulk` is already RAID1 since A1,
+   so a plain balance only spreads the existing data onto the new disks. Follow either
+   with `btrfs balance status /mnt/<pool>` from another shell.
+7. Prove it survives a reboot:
+
+   ```sh
+   ssh root@hypervisor-01 reboot
+   # once it is back:
+   ssh root@hypervisor-01 'ls /dev/mapper/; btrfs filesystem usage /mnt/vmstore | grep -E "Data|Metadata"; btrfs filesystem show /mnt/bulk'
+   ```
+
+   Every `crypt-*` mapper is there, `vmstore` shows RAID1, and `bulk` lists all its
+   devices.
+8. Code cleanup, one commit:
+   - delete `nix/hosts/hypervisor/`, `ansible/hosts/host_vars/hypervisor/`, its inventory
+     entry in `ansible/hosts/prod.yml`, and its key and rule in `.sops.yaml`;
+   - delete `nix/hosts/hypervisor-01/legacy-import.nix` and its `scripts/`,
+     `nix/hosts/apps-01/prod-import.nix` and `prod-layout.nix`, and their imports;
+   - remove the legacy box's Syncthing device (`sync.snyssen.be`) from
+     `nix/data/syncthing.nix` and from every folder in `nix/hosts/apps-01/syncthing.nix`;
+   - set `restoreHold` back to `false` for both (the module stays, for the DR runbook).
+9. Destroy the Phase A test repository on the backup server
+   (`rest:http://backup.snyssen.be:8000/apps/`), once D9 has produced good snapshots.
+
+### A3. Last steps
+
+- [ ] Enable Photon (`nix/hosts/apps-01/compose/dawarich/default.nix`,
+      `photon.enable = true`) once `vmstore` has room: prod's worldwide index is ~200 GB
+      and grows 10–20 GB a year, and its `PARALLEL` update strategy needs twice that while
+      swapping. Grow apps-01's disk first (`disk_gb`), or pick a smaller `REGION` and/or
+      `UPDATE_STRATEGY`.
+- [ ] Keep production's final snapshots **indefinitely**: they are the only pre-cutover
       state that exists.
 - [ ] Update `apps-migration-plan.md` to mark Phase B complete.
 
@@ -334,32 +1112,25 @@ setup to be "production" rather than "a test VM":
 Things that are not obvious from the group table, and that cost time if discovered on
 the day.
 
-**UniFi — a `.unf` restore, not `prod-import`.** A `.unf` holds the whole controller:
-sites, devices and their keys, settings, admins. MongoDB on `apps` starts empty, with
-its own passwords, and the controller's setup wizard restores the backup into it. The
-devices don't need re-adopting: they know the controller by its Inform Host, which is
-why that must be a name. Until they reconnect they keep working; only management is
-down.
+**UniFi — a `.unf` restore, not an import.** A `.unf` holds the whole controller: sites,
+devices and their keys, settings, admins. MongoDB on apps-01 starts empty, with its own
+passwords, and the controller's setup wizard restores the backup into it. The devices
+don't need re-adopting: they know the controller by its Inform Host, which is why that
+must be a name. Until they reconnect they keep working; only management is down.
 
 The same goes for a disaster recovery later: `backrest-restore unifi` brings back the
-controller's autobackups (`/var/lib/app-data/unifi/config/data/backup/autobackup`).
-Copy the newest `.unf` off the host and upload it in the wizard. How often the
-controller writes them is its own setting (Settings → System → Backups), which comes
-back with the restore. Prod's is monthly; daily costs a few MB and loses less.
+controller's autobackups (`/var/lib/app-data/unifi/config/data/backup/autobackup`). Copy
+the newest `.unf` off the host and upload it in the wizard. How often the controller
+writes them is its own setting (Settings → System → Backups), which comes back with the
+restore. Prod's is monthly; daily costs a few MB and loses less.
 
 **Nextcloud — the strictest pairing.** Its database indexes its file tree; neither half
 is usable without the other. Started against an empty `/mnt/bulk/nextcloud`, the
 entrypoint runs its first-run installer and writes a config and schema of its own,
-which a later `postgres-restore nextcloud` then half-replaces. The stack ships with
-`autostart = false` for exactly this reason. Order:
+which a later `postgres-restore nextcloud` then half-replaces. The hold keeps it down
+until both `legacy-import nextcloud` and `postgres-restore … nextcloud` are done.
 
-```sh
-prod-import nextcloud                 # ~353 GB, hours — tmux
-postgres-restore --from /mnt/bulk/restore/prod-postgres nextcloud
-systemctl start compose-nextcloud
-```
-
-Its `extra.config.php` is what makes an imported `config.php` work at all: Nextcloud
+Its `extra.config.php` is what makes the imported `config.php` work at all: Nextcloud
 reads `*.config.php` after `config.php`, so the restored file keeps pointing at
 production's database password, domain and Redis host, and the generated one overrides
 all three. `passwordsalt`, `secret` and `instanceid` must be production's values —
@@ -367,119 +1138,82 @@ all three. `passwordsalt`, `secret` and `instanceid` must be production's values
 directory inside the restored tree.
 
 **Immich — database and photos together.** Restoring the database without
-`prod-import photos` leaves a library whose every asset is missing. Its dumps are in
+`legacy-import photos` leaves a library whose every asset is missing. Its dumps are in
 production's `postgres` location but belong to its own PostgreSQL, which is why they
 get a separate group and a separate staging path.
 
 **Paperless — mind the export timer.** The nightly export runs
 `document_exporter --delete`, so it mirrors the library. Run against a database that
-has not been restored yet, it finds no documents and clears the export directory.
-`prod-import paperless` restarts the stack when it finishes, so either load the
-database before the next 22:43 or pass `--keep-stopped` and start the stack by hand.
-Nothing is lost permanently — the export has its own snapshots and is regenerable.
+has not been restored yet, it finds no documents and clears the export directory. The
+hold keeps the timer off until the stacks are released. Nothing is lost permanently
+either way: the export is regenerable.
 
 **Streaming — expect stale configuration.** The `*arr` applications and Jellyfin store
-absolute paths and hostnames in their configs. After an import they will be pointing at
-production's layout and domain. Budget time for fixing root folders and indexers rather
-than assuming the import is the end of it.
+absolute paths and hostnames in their configs. After an import they point at
+production's layout. Budget time for fixing root folders and indexers rather than
+assuming the import is the end of it.
 
-**Team wiki — database only, then its own settings.** There is no file data, so the
-import is `prod-import postgres` followed by
-`postgres-restore --from /mnt/bulk/restore/prod-postgres team_wiki`. On the test host the restored wiki still names production's domain in
-its own settings, which live in the database: the site URL, and the OIDC strategy's
-authorization, token, userinfo and issuer URLs (all `auth.bigdouf.team`). Edit them in
-the wiki's admin UI to `snyssen2.xyz` to test login. At cutover the domain is
-production's again, so they are right as imported. Keep the strategy itself rather
-than recreating it: its id is part of the redirect URI registered with Authelia.
+**Team wiki — database only.** `postgres-restore --from /mnt/bulk/restore/prod-postgres
+team_wiki`. Its site URL and OIDC endpoints live in the database and name production's
+domain, which is right again on apps-01. Keep the OIDC strategy as imported: its id is
+part of the redirect URI registered with Authelia.
 
-**Rallly — database only.** `postgres-restore --from /mnt/bulk/restore/prod-postgres
-rallly`. Its base URL and OIDC endpoints come from the environment, not the database,
-so they follow `domains.team` without editing anything in the app.
+**Rallly — database only.** Its base URL and OIDC endpoints come from the environment, so
+they follow `domains.team` without editing anything in the app.
 
-**Speedtest Tracker — database only.** `postgres-restore --from
-/mnt/bulk/restore/prod-postgres speedtest_tracker`. Its `APP_KEY` is prod's, so
-whatever the database holds encrypted with it stays readable.
+**Speedtest Tracker — database only.** Its `APP_KEY` is prod's, so whatever the database
+holds encrypted with it stays readable.
 
-**Sharkey — first run is the cutover.** It was never started on `apps`: its `url` is the
-instance's identity on the fediverse, so it only runs under `social.snyssen.be`. The
-restore is therefore also its first test. Order:
+**Sharkey — first run is the cutover.** It was never started during Phase A: its `url`
+is the instance's identity on the fediverse, so it only ever runs under
+`social.snyssen.be`. Its data comes from both tools: `prod-import sharkey` (Redis, which
+carries the job queue, so deliveries pending at the freeze go out from the new host) and
+`legacy-import sharkey-files` (the drive's files), then
+`postgres-restore … sharkey`. The hold keeps it down until all three are done.
 
-```sh
-prod-import sharkey      # Redis + drive files; check the snapshot has files first (--dry-run)
-postgres-restore --from /mnt/bulk/restore/prod-postgres sharkey
-# then deploy with domains.main = snyssen.be and autostart = true, which starts it
-```
-
-Things to check once it is up: log in, timelines load, an existing image displays (the
-drive's files), and a post reaches a remote follower. Redis carries the job queue across,
-so deliveries that were pending at the freeze go out from the new host.
-
-**Dawarich — database, then the geocoder.** `prod-import dawarich`, then
-`postgres-restore --from /mnt/bulk/restore/prod-dawarich dawarich`, which goes to its own
-PostGIS. Points imported from prod are already geocoded and keep their data. Reverse
-geocoding of new points needs Photon. While it is off, the imported database may still
-name `photon:2322` (Dawarich copies the setting from its environment into its own
-settings), so lookups go to a host that doesn't exist. In 1.17.0 a lookup that errors is
-retried three times and then dropped, leaving the point to catch up once Photon is on.
-Only an *empty* answer marks a point as geocoded for good. That depends on the geocoder
-raising on an unreachable host (read from the code, not tested).
+**Dawarich — database, then the geocoder.** `postgres-restore --from
+/mnt/bulk/restore/prod-dawarich dawarich` goes to its own PostGIS. Points imported from
+prod are already geocoded and keep their data. Reverse geocoding of new points needs
+Photon, which stays off until vmstore has room (A3). While it is off, the imported
+database may still name `photon:2322`, so lookups go to a host that doesn't exist. In
+1.17.0 a lookup that errors is retried three times and then dropped, leaving the point to
+catch up once Photon is on. `legacy-import dawarich-storage` brings the original import
+files, which prod backed up nowhere.
 
 **Matrix — database collation first.** Synapse refuses a database whose collation isn't
 `C`, and a restore can't change it: it comes from `CREATE DATABASE`. The databases stack
-now creates `matrix` that way (`cLocaleDbNames`), but only if it doesn't exist yet. If
-its provisioning logs `WARNING: database matrix has collation/ctype ...`, the database
-predates that: drop it (pgAdmin, or `DROP DATABASE matrix;` as the superuser) and restart
-`compose-databases` to recreate it. Then:
+creates `matrix` that way (`cLocaleDbNames`) when it doesn't exist yet, which on a fresh
+apps-01 it doesn't. If its provisioning logs `WARNING: database matrix has
+collation/ctype ...`, drop the database (pgAdmin, or `DROP DATABASE matrix;` as the
+superuser), restart `compose-databases` and restore again. apps-01 runs Matrix `live`:
+federation, push and the bridges are on, which is only safe because the legacy Synapse
+and bridges are gone for good. maubot is not carried over.
 
-```sh
-prod-import postgres matrix
-postgres-restore --from /mnt/bulk/restore/prod-postgres matrix matrix_mas matrix_discord matrix_signal matrix_whatsapp matrix_meta
-```
-
-On the test host it runs in restore-test mode: no federation, no push, no bridges. maubot
-is not carried over at all: it stays on prod, little used, and goes with it. That is enough to check that the restore is whole — log in through Element,
-recent messages and media load — without acting as prod anywhere. Logging in needs
-Authelia's database to be prod's too: MAS links each user to Authelia's `sub` for them,
-which is per-instance.
-
-**Syncthing — synced, not imported.** There is no `prod-import syncthing`: apps is a new
-device (its own ID, in `nix/data/syncthing.nix`), and it fills its folders from its
-peers. Restoring prod's files under it first would only invite `.sync-conflict` copies
-wherever they differ from the peers' current versions. What has to happen on the other
-devices instead:
-
-- The Nix hosts learn the `apps` device from `nix/data/syncthing.nix` on their next
-  rebuild, but only share a folder with it once `apps` is in that folder's `devices`.
-- The Pixel (and any other device not managed here) has to accept apps by hand, with
-  address `tcp://apps:22000` if discovery doesn't find it.
-- Apps' folders list the devices that carry each one, plus prod's own `sync.snyssen.be`
-  on every folder until the cutover, so apps gets a full copy from it. Remove it from
-  those lists and from `nix/data/syncthing.nix` once prod is gone (TODO in
-  `nix/hosts/apps/syncthing.nix`).
+**Syncthing — synced, not imported.** apps-01 is the Phase A VM's device renamed (same
+ID, from `nix/hosts/apps-01/data/syncthing.yaml`), and fills its folders from its peers.
+The Nix hosts learn the new name and address from `nix/data/syncthing.nix` on their next
+rebuild; the Pixel needs the address `tcp://apps-01:22000` by hand.
 
 **`monitoring` — Uptime Kuma is not migrated.** Gatus replaces it, with every check
-declared in `compose/monitoring/gatus-config.nix` and one push token in sops, so nothing
-needs restoring or re-matching. Prod's Uptime Kuma history stays on prod. Grafana's
-"Uptime Kuma" dashboard has to be replaced by its Gatus version at the cutover, along
-with any Grafana alert rules written against Kuma's `monitor_*` metrics.
+declared in `compose/monitoring/gatus-config.nix`. Grafana's "Uptime Kuma" dashboard has
+to be replaced by its Gatus version, along with any alert rules written against Kuma's
+`monitor_*` metrics.
 
 ## Open questions
 
-Things that need deciding or discovering before the day. Add to this as they surface.
-
-- **How the media disks move into the hypervisor pool.** The single largest open item;
-  ~10.6 TB that cannot practically go through restic.
-- **DNS cutover sequencing** — tracked separately as issue #153, but Phase B cannot be
-  scheduled without it.
-- **How long production's hardware stays untouched** after the final backup. Ideally
-  the disks are not wiped until the new setup has been verified, which conflicts with
-  needing that exact hardware.
+- ~~How the media disks move into the hypervisor pool~~ — resolved: they don't move.
+  They are in the legacy box already; `legacy-import` copies their data at disk speed,
+  and they join `bulk` once it is verified (A1).
+- ~~How long production's hardware stays untouched~~ — resolved: the data disks stay
+  untouched until A1, whatever the timing. Only the boot SSD and the parity disk are
+  wiped on D-day.
+- ~~DNS cutover sequencing~~ — resolved: Technitium is live (#170). apps-01 takes the
+  legacy box's LAN address and tailnet address, so the records don't change.
 - ~~Whether `attic` moves before or after~~ — resolved: retired, replaced by Garage.
-- **Known risk, accepted for the cutover: databases kept as plain files are copied
-  live.** Actual's SQLite, FoundryVTT's LevelDB worlds and the like are
-  snapshotted while their stacks run, as prod's autorestic always has (no failed
-  restore so far). Backrest's hooks can stop or dump them first; that is post-cutover
-  work, and the cutover itself relies on the existing backups.
-- **Rehearsal**: is there a way to dry-run the whole sequence on the test hypervisor
-  with a meaningful subset first? `prod-import --all --check` covers snapshot
-  resolution, but not the rebuild-and-restore path end to end.
+- **Known risk, accepted: databases kept as plain files were copied live** by prod's
+  autorestic (Actual's SQLite, FoundryVTT's LevelDB worlds). These come through
+  `prod-import`, as tested in Phase A. Backrest's hooks can stop or dump them first; that
+  is post-cutover work.
+- **Rehearsal** — partial. P5 rehearses growing a pool, P6 the disk copy, P7 shrinking
+  one, and Phase A rehearsed every `prod-import` group and database restore. Not
+  rehearsed: the D-day sequence end to end on the real hardware.

@@ -64,6 +64,18 @@ creation_rules:
           - *snyssen_gaming
           - *snyssen_purplehaze
           - *snyssen_blackfog
+  # Copied from hypervisor's for now. Step P4 of the Phase B runbook adds
+  # hypervisor-01's own key (&root_hypervisor_01) in place of *root_hypervisor here, then
+  # re-encrypts with `just sops-update-keys nix/hosts/hypervisor-01/data/secrets.yaml`.
+  - path_regex: nix/hosts/hypervisor-01/data/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - pgp:
+        age:
+          - *breakglass
+          - *root_hypervisor
+          - *snyssen_gaming
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
   - path_regex: nix/hosts/technitium-primary/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
@@ -80,7 +92,9 @@ creation_rules:
           - *root_technitium_secondary
           - *snyssen_purplehaze
           - *snyssen_blackfog
-  - path_regex: nix/hosts/apps/data/[^/]+\.(yaml|json|env|ini)$
+  # root_apps is the Phase A test VM's key. Building the apps-01 image (Phase B runbook,
+  # step D6) generates apps-01's own, which replaces it here.
+  - path_regex: nix/hosts/apps-01/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
         age:

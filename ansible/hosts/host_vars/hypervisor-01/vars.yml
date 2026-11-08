@@ -1,0 +1,65 @@
+ansible_user: "{{ vault_ansible_user }}"
+ansible_become_pass: "{{ vault_ansible_become_pass }}"
+
+# VM definitions managed by the libvirt-provision playbook (see host_vars/hypervisor for
+# the keys). haos and technitium-secondary move here from the test hypervisor as their
+# existing images (Phase B runbook, step D5), so neither is ever built or downloaded
+# here: provisioning uses an image already at `dest` as-is. Their MACs are unchanged.
+libvirt_vms:
+  # Home Assistant OS appliance (qcow2 image). The URL is only a fallback: it is fetched
+  # when nothing is at `dest`, i.e. if haos is rebuilt from scratch and restored from an
+  # HA backup instead of being moved.
+  - name: haos
+    vcpu: 2
+    ram_mb: 2048
+    mac_address: "52:54:00:12:34:56"
+    disk_gb: 64
+    disk_image:
+      url: "https://github.com/home-assistant/operating-system/releases/download/17.1/haos_ova-17.1.qcow2.xz"
+      dest: "/mnt/vmstore/haos/haos.qcow2"
+      checksum: "sha256:a4c320c38109357a5a3d7b42ee26c7cde4704197c9ea7f4c393f1ffca42fe376"
+    usb_devices:
+      # Nabu Casa ZBT-2, moved over with the VM
+      - vendor_id: "0x303a"
+        product_id: "0x831a"
+  # Technitium DNS secondary. Its disk only unlocks with
+  # /var/lib/vm-keys/technitium-secondary/luks.key, copied from the test hypervisor
+  # with the image (step D5); provisioning only generates a key when none is there.
+  - name: technitium-secondary
+    state: present
+    vcpu: 2
+    ram_mb: 2048
+    mac_address: "52:54:00:c0:01:02"
+    disk_gb: 32
+    virtiofs_luks_key:
+      enable: true
+    disk_image:
+      dest: "/mnt/vmstore/technitium-secondary/disk.qcow2"
+      build: false
+  - name: apps-01
+    vcpu: 6
+    # TODO(P2): 48 GiB per the migration plan's sizing; check it leaves the host enough
+    # once its RAM is known.
+    ram_mb: 49152
+    # Same MAC as the Phase A test VM (which is off for good by then): apps-01's static
+    # LAN address is matched on it (nix/hosts/apps-01/network.nix).
+    mac_address: "52:54:00:00:00:01"
+    # TODO(P2): size from the measured /home/snyssen/data and Docker footprint. The
+    # temporary vmstore is the 1 TB Kingston, shared with haos (31 GB) and
+    # technitium-secondary (10 GB), so at most ~850 for now. Only resizes up.
+    disk_gb: 700
+    virtiofs_luks_key:
+      enable: true
+    disk_image:
+      dest: "/mnt/vmstore/apps-01/disk.qcow2"
+      # Built by `just hypervisor-build-vm-images hypervisor-01` at step D6. Set back
+      # to false once it is deployed: rebuilding would mean new host keys.
+      build: true
+    # The i5-13400's iGPU (QuickSync), passed through for Jellyfin. Intel iGPUs sit at
+    # 0000:00:02.0; check with `lspci -nn` (step P2) and that it is alone in its IOMMU
+    # group (step D3).
+    pci_devices:
+      - domain: "0x0000"
+        bus: "0x00"
+        slot: "0x02"
+        function: "0x0"

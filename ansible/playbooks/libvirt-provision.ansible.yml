@@ -1,10 +1,25 @@
-- hosts: hypervisor
+# Provisions the VMs listed in the hypervisor's `libvirt_vms` (its host_vars).
+#
+#   libvirt_hypervisor  inventory host to act on (default hypervisor-01); the
+#                       `hypervisor-provision-vms` recipe's first argument
+#   libvirt_vms_only    optional VM names, comma-separated: provision only those, e.g.
+#                       to move VMs onto a new hypervisor one at a time, before the
+#                       others' images exist. A plain `-e libvirt_vms_only=haos,other`
+#                       survives the `just` recipe, which a JSON `-e '{...}'` does not
+#                       (just passes extra arguments to the shell unquoted).
+- name: Provision libvirt VMs
+  hosts: "{{ libvirt_hypervisor | default('hypervisor-01') }}"
   tasks:
     - name: Provision each libvirt VM
       ansible.builtin.include_role:
         name: libvirt_provision
       vars:
         vm: "{{ item }}"
-      loop: "{{ libvirt_vms }}"
+      loop: >-
+        {{
+          libvirt_vms
+          if libvirt_vms_only is not defined
+          else libvirt_vms | selectattr('name', 'in', libvirt_vms_only.split(',')) | list
+        }}
       loop_control:
         label: "{{ item.name }}"

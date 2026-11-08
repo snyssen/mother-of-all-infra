@@ -15,8 +15,12 @@
       {
           'OAUTH2_NAME': 'Authelia',
           'OAUTH2_DISPLAY_NAME': 'Authelia',
-          'OAUTH2_CLIENT_ID': '${config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_id"}',
-          'OAUTH2_CLIENT_SECRET': '${config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_secret"}',
+          'OAUTH2_CLIENT_ID': '${
+            config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_id"
+          }',
+          'OAUTH2_CLIENT_SECRET': '${
+            config.sops.placeholder."compose-stacks/databases/pgadmin/oidc/client_secret"
+          }',
           'OAUTH2_TOKEN_URL': 'https://auth.${config.domains.main}/api/oidc/token',
           'OAUTH2_AUTHORIZATION_URL': 'https://auth.${config.domains.main}/api/oidc/authorization',
           'OAUTH2_SERVER_METADATA_URL': 'https://auth.${config.domains.main}/.well-known/oauth-authorization-server',

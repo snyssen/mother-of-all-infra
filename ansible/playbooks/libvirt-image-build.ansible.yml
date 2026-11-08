@@ -5,6 +5,9 @@
 # 2. (Play 1) Build Disko images locally with LUKS key injection
 # 3. (Play 2) Copy images and keys to hypervisor storage
 # 4. (Play 3) Clean up SSH keys from admin host (on success)
+#
+# The hypervisor is the inventory host `libvirt_hypervisor` (default hypervisor-01), set
+# by the `hypervisor-build-vm-images` recipe's first argument.
 
 - name: "Authorize new VM host keys in SOPS configuration"
   hosts: localhost
@@ -12,7 +15,7 @@
   tasks:
     - name: Resolve VM definitions from hypervisor inventory
       ansible.builtin.set_fact:
-        _all_vms_list: "{{ hostvars[libvirt_image_build_target_hypervisor | default('hypervisor')].libvirt_vms | default([]) }}"
+        _all_vms_list: "{{ hostvars[libvirt_hypervisor | default('hypervisor-01')].libvirt_vms | default([]) }}"
 
     - name: Filter VMs with disk_image.build enabled
       ansible.builtin.set_fact:
@@ -176,7 +179,7 @@
     libvirt_image_build_pre_format_dst_default: /run/keys/luks.key
     libvirt_image_build_ssh_host_key_dst_default: /etc/ssh/ssh_host_ed25519_key
     libvirt_image_build_ssh_host_key_pub_dst_default: /etc/ssh/ssh_host_ed25519_key.pub
-    libvirt_image_build_target_hypervisor: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
+    libvirt_image_build_target_hypervisor: "{{ libvirt_hypervisor | default('hypervisor-01') }}"
     libvirt_image_build_workdir: "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}"
   tasks:
     - name: Resolve VM definitions from hypervisor inventory
@@ -369,7 +372,7 @@
               Original error: {{ ansible_failed_result.msg | default('unknown error') }}
 
 - name: Copy built images and keys to hypervisor
-  hosts: "{{ libvirt_image_build_hypervisor | default('hypervisor') }}"
+  hosts: "{{ libvirt_hypervisor | default('hypervisor-01') }}"
   gather_facts: false
   tasks:
     - name: Copy local artifacts to hypervisor

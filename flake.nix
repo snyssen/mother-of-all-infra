@@ -47,7 +47,7 @@
 
     # Traefik plugin sources, pinned here so the reverse-proxy stack can load them
     # from disk instead of downloading them at container start — see the localPlugins
-    # note in nix/hosts/apps/compose/reverse-proxy/docker-compose.yaml. `flake = false`
+    # note in nix/hosts/apps-01/compose/reverse-proxy/docker-compose.yaml. `flake = false`
     # because this is a plain Go source tree consumed as a store path, exactly like
     # tinted-schemes above. Pinning it as a flake input (rather than fetchFromGitHub)
     # keeps the version under Renovate's nix manager, which already owns flake.lock —

@@ -110,44 +110,35 @@ in
     # The dashboard is gated behind Authelia (forwardAuth, defined in the `auth` stack's
     # own dynamicConfig fragment) — argunix's own API route stays open, since it's the
     # coordinator API consumed by builders, not something a human logs into.
-    reverseProxy.dynamicConfig.argunix =
-      let
-        # argunix_domain = config.domains.main;
-        argunix_domain = "snyssen.be"; # keep this separate as of now because this is the only live application amidst a test VM.
-      in
-      ''
-        http:
-          routers:
-            argunix:
-              rule: "Host(`argunix.${argunix_domain}`)"
-              entryPoints:
-                - websecure
-              service: argunix
-              tls:
-                certResolver: le_argunix
-            # Only reachable under domains.main, not argunix_domain — avoids needing
-            # the dashboard itself to deal with the snyssen.be/snyssen1.xyz split
-            # (unlike argunix's own API route above, this one has no other consumer
-            # tying it to the permanent domain, so there's nothing to migrate later).
-            traefik-dashboard:
-              rule: "Host(`routing.${config.domains.main}`)"
-              entryPoints:
-                - websecure
-              service: api@internal
-              middlewares:
-                - authelia
-                - traefik-compress
-              tls:
-                certResolver: le_main
-          services:
-            argunix:
-              loadBalancer:
-                servers:
-                  - url: "http://host.docker.internal:8080"
-          middlewares:
-            traefik-compress:
-              compress: {}
-      '';
+    reverseProxy.dynamicConfig.argunix = ''
+      http:
+        routers:
+          argunix:
+            rule: "Host(`argunix.${config.domains.main}`)"
+            entryPoints:
+              - websecure
+            service: argunix
+            tls:
+              certResolver: le_main
+          traefik-dashboard:
+            rule: "Host(`routing.${config.domains.main}`)"
+            entryPoints:
+              - websecure
+            service: api@internal
+            middlewares:
+              - authelia
+              - traefik-compress
+            tls:
+              certResolver: le_main
+        services:
+          argunix:
+            loadBalancer:
+              servers:
+                - url: "http://host.docker.internal:8080"
+        middlewares:
+          traefik-compress:
+            compress: {}
+    '';
 
     compose-stacks.stacks.reverse-proxy = {
       restartTriggers = [

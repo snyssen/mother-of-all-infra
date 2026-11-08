@@ -12,14 +12,14 @@ Terraform. Single maintainer.
 - `nix/` — NixOS + Home Manager modules and per-host configs. Flake uses `numtide/blueprint` with `prefix = "nix/"`, so directory structure IS the flake output structure:
   - `nix/hosts/<host>/` — one dir per machine (`configuration.nix`, `hardware-configuration.nix`, `users/<user>.nix`, `data/secrets.yaml` for SOPS). Blueprint turns each into a `nixosConfigurations.<host>` (or `darwinConfigurations`) output.
   - `nix/modules/nixos/` and `nix/modules/home/` — reusable NixOS and Home Manager modules, one concern per file (e.g. `docker.nix`, `sops.nix`, `stylix.nix`).
-  - `nix/hosts/apps/compose/<stack>/` — the Nix successor to the `container_*` Ansible roles: a `default.nix` plus a `docker-compose.yaml` per stack, each realised as a `compose-<stack>.service` unit.
+  - `nix/hosts/apps-01/compose/<stack>/` — the Nix successor to the `container_*` Ansible roles: a `default.nix` plus a `docker-compose.yaml` per stack, each realised as a `compose-<stack>.service` unit.
   - `nix/devshell.nix` — the repo's dev shell.
 - `ansible/` — service deployment (legacy; see the note below):
   - `playbooks/` — named `<context>-<action>.ansible.yml` (e.g. `stacks-deploy.ansible.yml`, `server-reboot.ansible.yml`).
   - `roles/` — roles prefixed `container_<name>` each deploy one Docker Compose stack (`tasks/main.yml` templates a `docker-compose.yml` and manages that stack's volumes, config and secrets).
   - `hosts/` — inventories: `dev.yml` (default), `staging` equivalent, `prod.yml`, `test.yml`, plus `group_vars`/`host_vars`.
 - `terraform/` — provider IaC: `gandi/`, `ovh/` (each with `bootstrap/` + `infra/`).
-- `hypervisor/` — libvirt VMs driven via `virsh` over SSH to the `hypervisor` host.
+- `hypervisor/` — libvirt VMs driven via `virsh` over SSH to a hypervisor host: `hypervisor-01` (the reinstalled former prod box), or `hypervisor` (the Phase A test box, retired after the Phase B cutover).
 - `scripts/` — helper scripts invoked by `just` recipes and devshell hooks.
 - `docs/` — mkdocs site; preview with `just run-docs`.
 
@@ -30,7 +30,7 @@ configures those hosts, alongside the bare-metal and libvirt ones.
 
 **Ansible is legacy, but it is still what runs current production.** Service deployment is
 migrating to Nix, which will configure both the hosts and the apps on them — see
-`nix/hosts/apps/` and `docs/hypervisor/apps-migration-plan.md`. Ansible keeps a permanent
+`nix/hosts/apps-01/` and `docs/hypervisor/apps-migration-plan.md`. Ansible keeps a permanent
 but narrow role for imperative work that is awkward in Nix, chiefly building and
 provisioning the libvirt VM images. So treat `ansible/roles/container_*` as live-but-
 legacy: authoritative for prod today, while new service work generally belongs on the Nix
@@ -71,8 +71,8 @@ side. When the two disagree, ask which one the task means.
 
 ## Hypervisor
 
-- `just hypervisor-*` wrap `virsh` over SSH to the `hypervisor` host: `just hypervisor-vm-list`, `just hypervisor-vm-start <vm>` (also stop/reboot/destroy/console/info), plus `just hypervisor-btrfs-scrub <pool>` and usage/stats/devices.
-- Build VM disk images: `just hypervisor-build-vm-images`; provision: `just hypervisor-provision-vms` (both run ansible playbooks against `hosts/prod.yml`).
+- `just hypervisor-*` wrap `virsh` over SSH to a hypervisor, `hypervisor-01` unless given as the optional *last* argument: `just hypervisor-vm-list [host]`, `just hypervisor-vm-start <vm> [host]` (also stop/reboot/destroy/console/info), plus `just hypervisor-btrfs-scrub <pool> [host]` and usage/stats/devices.
+- Build VM disk images: `just hypervisor-build-vm-images <host>`; provision: `just hypervisor-provision-vms <host>` (both run ansible playbooks against `hosts/prod.yml`; the host is a required *first* argument, so they never act on a hypervisor by default).
 
 ## Secrets
 

@@ -2,6 +2,12 @@
 
 This document covers day-to-day operational procedures for the hypervisor host: VM lifecycle management, btrfs storage health checks, disk expansion and replacement, and common troubleshooting steps.
 
+The production hypervisor is `hypervisor-01`: the former prod box, reinstalled at the
+Phase B cutover ([apps-migration-phase-b.md](apps-migration-phase-b.md)). Until that
+cutover is over, the Phase A test box `hypervisor` exists too. The `just hypervisor-*`
+recipes act on `hypervisor-01` unless given another host as their last argument; the
+two playbook recipes take it as their required first argument.
+
 > **Architectural reference:** See [plan.md](plan.md) for the disk layout, network configuration, Disko/LUKS design decisions, and repository architecture overview.
 
 ---
@@ -22,7 +28,7 @@ All helpers below are available through the root `justfile`.  Run `just --list` 
 | `just hypervisor-vm-destroy <vm>` | Force-off a VM (hard power cut) |
 | `just hypervisor-vm-console <vm>` | Open a serial console to a VM |
 | `just hypervisor-vm-info <vm>` | Show detailed VM info |
-| `just hypervisor-provision-vms` | Re-run the Ansible libvirt provisioning playbook |
+| `just hypervisor-provision-vms hypervisor-01` | Re-run the Ansible libvirt provisioning playbook |
 
 ### btrfs / storage helpers
 
@@ -97,13 +103,13 @@ VNC access is also enabled on the LAN (`libvirtd.vncLanAccess = true`).  Use `vi
 
 ## VM Provisioning via Ansible
 
-All VM definitions live in `ansible/hosts/host_vars/hypervisor/vars.yml`.  The `libvirt_provision` role is idempotent — re-running the playbook is safe.
+All VM definitions live in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  The `libvirt_provision` role is idempotent — re-running the playbook is safe.
 
 > **For NixOS-based VMs:** See [nixos-vm-deployment.md](nixos-vm-deployment.md) for the complete two-playbook workflow (image build + provisioning) with SOPS key authorization and LUKS encryption.
 
 ### Adding a new VM
 
-1. Append an entry to `libvirt_vms` in `ansible/hosts/host_vars/hypervisor/vars.yml`.  See [plan.md — VM definitions](plan.md#vm-definitions) for the full schema.
+1. Append an entry to `libvirt_vms` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  See [plan.md — VM definitions](plan.md#vm-definitions) for the full schema.
 
    ```yaml
    libvirt_vms:
@@ -120,7 +126,7 @@ All VM definitions live in `ansible/hosts/host_vars/hypervisor/vars.yml`.  The `
 
 ### USB passthrough for Zigbee/Thread dongles
 
-To pass a USB adapter through to Home Assistant, add `usb_devices` to the `haos` VM definition in `ansible/hosts/host_vars/hypervisor/vars.yml`.
+To pass a USB adapter through to Home Assistant, add `usb_devices` to the `haos` VM definition in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.
 
 Example:
 
@@ -192,7 +198,7 @@ Use those values in `vars.yml` with the `0x` prefix.
 1. Run the playbook:
 
    ```sh
-   just hypervisor-provision-vms
+   just hypervisor-provision-vms hypervisor-01
    ```
 
 ### Removing a VM
@@ -209,7 +215,7 @@ Use those values in `vars.yml` with the `0x` prefix.
 2. Run the playbook:
 
    ```sh
-   just hypervisor-provision-vms
+   just hypervisor-provision-vms hypervisor-01
    ```
 
 The role will force-stop the domain, undefine it, and delete its storage directory.
@@ -290,250 +296,231 @@ sudo btrfs check --readonly /dev/mapper/crypt-vmstore-0
 
 ## Storage Layout Reference
 
-### LUKS mapper device names
+### LUKS containers and partition labels
 
-The Disko `btrfs-luks-raid1-pools` layout names LUKS containers as `crypt-<poolname>-<index>`.  Index 0 is the primary disk (the first entry in the `disks` list).
+The Disko `btrfs-luks-raid1-pools` layout gives each pool disk one GPT partition holding
+a LUKS container. At boot the initrd finds each container **by its GPT partition label**,
+and opens it under a fixed mapper name. Both come from the disk's index in the pool's
+`disks` list (index 0 is the first entry, the *primary*):
 
-| Pool | Mount point | LUKS devices |
-|------|-------------|--------------|
-| `vmstore` | `/mnt/vmstore` | `crypt-vmstore-0`, `crypt-vmstore-1` |
-| `bulk` | `/mnt/bulk` | `crypt-bulk-0`, `crypt-bulk-1` |
+| Index in `disks` | GPT partition label | Mapper name |
+|---|---|---|
+| 0 | `disk-<pool>-luks-<pool>` | `crypt-<pool>-0` |
+| 1 | `disk-0-before-<pool>-0-luks-<pool>` | `crypt-<pool>-1` |
+| 2 | `disk-0-before-<pool>-1-luks-<pool>` | `crypt-<pool>-2` |
+| *i* ≥ 1 | `disk-0-before-<pool>-<i-1>-luks-<pool>` | `crypt-<pool>-<i>` |
 
-To list all open LUKS devices on the hypervisor:
+A disk prepared by hand must carry exactly that label, or it is never unlocked at boot.
+To see what a host expects:
 
 ```sh
-ssh hypervisor ls /dev/mapper/
+nix eval --json .#nixosConfigurations.<host>.config.boot.initrd.luks.devices \
+  --apply 'd: builtins.mapAttrs (n: v: v.device) d'
 ```
+
+and what the disks carry: `lsblk -o NAME,PARTLABEL,SIZE,MOUNTPOINTS` on the host.
+
+A pool of **one** disk is formatted `single` (metadata `dup`): no redundancy. It is a
+temporary state, grown into RAID1 with the procedure below.
 
 ### USB keyfile
 
-All LUKS containers (OS disk, vmstore, bulk) use a keyfile stored on a VFAT USB stick.  The USB partition UUIDs are declared under `usbKeysIds` in `nix/hosts/hypervisor/configuration.nix`.  The keyfile filename defaults to the system name (`hypervisor`).
+All LUKS containers (OS disk, vmstore, bulk) use a keyfile stored on a VFAT USB stick.
+The USB partition UUIDs are declared under `usbKeysIds` in the host's
+`configuration.nix`. The keyfile is named after the host (`keyFilename` defaults to
+`system.name`): `/key/hypervisor-01` on hypervisor-01. One stick can carry the files of
+several hosts.
 
-If the USB key is absent at boot, `fallbackToPassword = true` causes the initrd to prompt for the LUKS passphrase on the console.
+If the USB key is absent at boot, the initrd prompts for the LUKS passphrase on the
+console.
 
 ---
 
 ## Adding a Disk to an Existing Pool
 
-This procedure expands a pool by adding a third (or further) device.  btrfs RAID1 continues to mirror all data across **at least two** of the available devices after rebalancing.
+This grows a pool by one disk. It is also how a one-disk pool becomes RAID1. Every step
+below runs on the hypervisor as root (`ssh root@hypervisor-01`), except the
+configuration change, which is a commit and a deploy from your machine.
 
-> **Prerequisites:** The new disk must be physically installed and visible under `/dev/disk/by-id/`.
-
-### 1. Identify the new disk
-
-```sh
-ssh hypervisor ls -la /dev/disk/by-id/ | grep -v part
-```
-
-Find the stable `by-id` path for the new disk (e.g. `ata-WDC_WD40EFZX-…`).
-
-### 2. Add the disk to the Nix configuration
-
-Edit `nix/hosts/hypervisor/configuration.nix` and append the new disk path to the target pool's `disks` list:
-
-```nix
-pools = {
-  vmstore = {
-    disks = [
-      "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
-      "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987"
-      "/dev/disk/by-id/nvme-new-disk-id-here"    # <-- new disk
-    ];
-    storageMedia = "ssd";
-  };
-};
-```
-
-The new disk's LUKS container will be named `crypt-<poolname>-<N>` where `N` is its zero-based index in the list (e.g. index 2 → `crypt-vmstore-2`).
-
-### 3. Set up LUKS on the new disk
-
-SSH into the hypervisor and prepare the new disk manually.  Replace `sdX` with the actual device node, `<poolname>` with the pool name, and `<N>` with the disk's index:
+### 1. Identify the new disk and its index
 
 ```sh
-# Partition the disk
-sudo parted /dev/sdX -- mklabel gpt
-sudo parted /dev/sdX -- mkpart "luks-<poolname>" 0% 100%
-
-# Format the partition with LUKS, using the USB keyfile
-sudo cryptsetup luksFormat /dev/sdX1 --key-file /key/hypervisor
-
-# Add the LUKS passphrase as a fallback (use the same passphrase as existing disks)
-sudo cryptsetup luksAddKey /dev/sdX1 --key-file /key/hypervisor
-
-# Open the LUKS container with the name the Nix config expects
-sudo cryptsetup open /dev/sdX1 crypt-<poolname>-<N> --key-file /key/hypervisor
+ls -l /dev/disk/by-id/ | grep -v -- -part
 ```
 
-> The USB keyfile is at `/key/hypervisor` only during initrd boot (when the stick is mounted).  If running on a live system, mount it first:
-> ```sh
-> sudo mkdir -p /key
-> sudo mount -o ro -U <USB-UUID> /key
-> ```
-> The USB UUID is listed under `usbKeysIds` in `nix/hosts/hypervisor/configuration.nix`.
-
-### 4. Add the device to the btrfs pool
+Note the new disk's `by-id` name, and its index: the number of disks the pool already
+lists. A second disk is index 1, a third index 2. Below, `NEW` is the disk, `POOL` the
+pool name, `I` the index:
 
 ```sh
-sudo btrfs device add /dev/mapper/crypt-<poolname>-<N> /mnt/<poolname>
+NEW=/dev/disk/by-id/ata-EXAMPLE_SERIAL
+POOL=bulk
+I=1
+LABEL="disk-0-before-$POOL-$((I - 1))-luks-$POOL"
+NAME="crypt-$POOL-$I"
+echo "$NEW -> $LABEL -> $NAME"
 ```
 
-Verify it was added:
+### 2. Partition it, with the label boot looks for
+
+**This erases the disk.** Check `$NEW` twice.
 
 ```sh
-sudo btrfs filesystem show /mnt/<poolname>
+sgdisk --zap-all "$NEW"
+sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
+udevadm settle
+ls -l "/dev/disk/by-partlabel/$LABEL"
 ```
 
-### 5. Rebuild and switch the NixOS configuration
+### 3. Create the LUKS container
 
-This applies the updated crypttab so the new LUKS container is opened automatically on future reboots:
+With the USB keyfile, plus the passphrase the other disks use as a fallback:
 
 ```sh
-just nix-remote-install switch hypervisor
+mkdir -p /key && mount -o ro /dev/disk/by-uuid/<a usbKeysIds entry> /key
+cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" "/key/$(hostname)"
+cryptsetup luksAddKey --key-file "/key/$(hostname)" "/dev/disk/by-partlabel/$LABEL"
+cryptsetup open --allow-discards --key-file "/key/$(hostname)" \
+  "/dev/disk/by-partlabel/$LABEL" "$NAME"
+umount /key
 ```
 
-### 6. Rebalance the pool
+(`--allow-discards` only for an SSD pool.) `luksAddKey` prompts for the new passphrase.
 
-After adding a disk, run a balance to redistribute data so all devices participate in RAID1 mirroring:
+### 4. Add the disk to the configuration
+
+Append it to the pool's `disks` in `nix/hosts/<host>/configuration.nix`, at index `I`,
+then deploy from your machine. That adds the container to the boot-time unlock list:
 
 ```sh
-# This can take a very long time on large pools; run inside tmux/screen
-ssh hypervisor sudo btrfs balance start -dconvert=raid1 -mconvert=raid1 /mnt/<poolname>
+just nix-remote-install switch hypervisor-01
+```
 
-# Monitor progress (in another terminal)
-ssh hypervisor sudo btrfs balance status /mnt/<poolname>
+### 5. Add the device to the btrfs pool
+
+```sh
+btrfs device add "/dev/mapper/$NAME" "/mnt/$POOL"
+btrfs filesystem show "/mnt/$POOL"
+```
+
+### 6. Convert or rebalance, in `screen`
+
+From one disk to two (the pool shows `Data, single`), convert to RAID1:
+
+```sh
+screen -S balance                     # Ctrl-a d detaches, screen -r balance re-attaches
+btrfs balance start -dconvert=raid1 -mconvert=raid1 "/mnt/$POOL"
+```
+
+Already RAID1, add `,soft` to rebalance only what needs it:
+`btrfs balance start -dconvert=raid1,soft -mconvert=raid1,soft "/mnt/$POOL"`.
+
+It rewrites the data and can take a day or more on a large HDD pool. The pool stays in
+use throughout. Follow it from another shell with `btrfs balance status "/mnt/$POOL"`.
+
+### 7. Prove it survives a reboot
+
+```sh
+reboot
+# then, once back:
+btrfs filesystem usage "/mnt/$POOL"     # Data and Metadata: RAID1
+ls /dev/mapper/                          # the new crypt-<pool>-<i> is there
 ```
 
 ---
 
 ## Replacing a Failing Disk
 
-Use this procedure when a disk shows I/O errors in `btrfs device stats` or SMART reports pending/reallocated sectors.
-
-> The pool remains fully available throughout the replacement because RAID1 has at least one good copy of every block.
+Use this procedure when a disk shows I/O errors in `btrfs device stats` or SMART reports
+pending/reallocated sectors. The pool stays available throughout, since RAID1 has at
+least one good copy of every block.
 
 ### 1. Identify the failing device
 
 ```sh
-just hypervisor-btrfs-stats vmstore   # or bulk
+just hypervisor-btrfs-stats bulk          # or vmstore
+just hypervisor-btrfs-devices bulk        # note the failing device's devid
+ssh root@hypervisor-01 smartctl -a /dev/disk/by-id/<failing-disk-id>
 ```
 
-Note which LUKS mapper device has non-zero error counters (e.g. `/dev/mapper/crypt-vmstore-1`).
+### 2. Prepare the replacement under the *same* index
 
-Confirm with SMART:
+The replacement takes the failing disk's place in the `disks` list, so it carries the
+same partition label. Physically install it, then follow steps 1–3 of
+[Adding a Disk](#adding-a-disk-to-an-existing-pool) with `I` set to the failing disk's
+index, except that the container is opened under a temporary name (the failing one is
+still open under the real one):
 
 ```sh
-ssh hypervisor sudo smartctl -a /dev/disk/by-id/<failing-disk-id>
+cryptsetup open --key-file "/key/$(hostname)" "/dev/disk/by-partlabel/$LABEL" "$NAME-new"
 ```
 
-Get the btrfs device ID of the failing device:
+Two disks now carry the same partition label, which is fine until the reboot in step 5:
+the old one is gone by then.
+
+### 3. Replace the device in the btrfs pool
 
 ```sh
-just hypervisor-btrfs-devices vmstore
-# Note the "devid" number next to /dev/mapper/crypt-vmstore-1
+btrfs replace start <failing-devid> "/dev/mapper/$NAME-new" "/mnt/$POOL"
+btrfs replace status "/mnt/$POOL"
 ```
 
-### 2. Install the replacement disk
+### 4. Update the configuration
 
-Physically install the new disk.  Identify its `by-id` path:
+Put the new disk's `by-id` path in place of the old one in `disks`, and deploy:
 
 ```sh
-ssh hypervisor ls -la /dev/disk/by-id/ | grep -v part
+just nix-remote-install switch hypervisor-01
 ```
 
-### 3. Set up LUKS on the replacement disk
+### 5. Remove the old disk and verify
 
-Use the same LUKS container name as the disk being replaced (this allows btrfs replace to target it correctly):
+Shut down, pull the failing disk, boot. The new container now opens as `$NAME`:
 
 ```sh
-# Partition
-sudo parted /dev/sdX -- mklabel gpt
-sudo parted /dev/sdX -- mkpart "luks-<poolname>" 0% 100%
-
-# LUKS format with keyfile
-sudo cryptsetup luksFormat /dev/sdX1 --key-file /key/hypervisor
-sudo cryptsetup luksAddKey /dev/sdX1 --key-file /key/hypervisor
-
-# Open with the same name as the failing container (it must be closed first)
-sudo cryptsetup close crypt-<poolname>-<N>   # close failing disk
-sudo cryptsetup open /dev/sdX1 crypt-<poolname>-<N> --key-file /key/hypervisor
+just hypervisor-btrfs-stats bulk
+just hypervisor-btrfs-scrub bulk
 ```
-
-### 4. Replace the device in the btrfs pool
-
-```sh
-# <src-devid> is the btrfs device ID from step 1
-sudo btrfs replace start <src-devid> /dev/mapper/crypt-<poolname>-<N> /mnt/<poolname>
-
-# Monitor progress
-sudo btrfs replace status /mnt/<poolname>
-```
-
-The replace operation copies all data from the mirror and then removes the old device from the pool.
-
-### 5. Update the Nix configuration
-
-Replace the old disk path with the new one in `nix/hosts/hypervisor/configuration.nix`:
-
-```nix
-disks = [
-  "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
-  "/dev/disk/by-id/ata-new-replacement-disk-id"   # updated
-];
-```
-
-Rebuild and switch:
-
-```sh
-just nix-remote-install switch hypervisor
-```
-
-### 6. Verify
-
-```sh
-just hypervisor-btrfs-stats vmstore
-just hypervisor-btrfs-scrub vmstore
-```
-
-All error counters should be zero and the scrub should finish clean.
 
 ---
 
 ## Removing a Disk from a Pool
 
-> **Warning:** After removal the pool has fewer mirror copies.  Ensure at least 2 devices remain for RAID1.  A balance is required to redistribute data before removing a device.
+RAID1 cannot go below two devices. To shrink a two-disk pool to one, convert it first.
 
-### 1. Rebalance to exclude the device
-
-Before removing, ensure no data is allocated exclusively on the target device by running a full rebalance:
+### 1. Convert, if this leaves a single disk
 
 ```sh
-ssh hypervisor sudo btrfs balance start -dconvert=raid1 -mconvert=raid1 /mnt/<poolname>
+btrfs balance start -dconvert=single -mconvert=dup "/mnt/$POOL"
 ```
+
+(The remaining disk must hold all the data on its own: check `btrfs filesystem usage`.)
 
 ### 2. Remove the device
 
 ```sh
-# <devid> is from `btrfs filesystem show`
-ssh hypervisor sudo btrfs device remove <devid> /mnt/<poolname>
-
-# Or by device path
-ssh hypervisor sudo btrfs device remove /dev/mapper/crypt-<poolname>-<N> /mnt/<poolname>
+btrfs device remove "/dev/mapper/crypt-$POOL-<i>" "/mnt/$POOL"
+cryptsetup close "crypt-$POOL-<i>"
 ```
 
-### 3. Close and disable the LUKS container
+### 3. Fix the remaining disks' labels, then the configuration
+
+Removing a disk shifts the index of every disk after it, and with it the partition label
+boot expects. Before rebooting, relabel each disk that moved, so it carries the label of
+its new index (table above):
 
 ```sh
-ssh hypervisor sudo cryptsetup close crypt-<poolname>-<N>
+sgdisk --change-name=1:"<new label>" /dev/disk/by-id/<disk>
 ```
 
-### 4. Update the Nix configuration
-
-Remove the disk path from the `disks` list in `nix/hosts/hypervisor/configuration.nix` and rebuild:
+Then remove the disk from `disks` and deploy with `boot`, not `switch`, since the mapper
+names change at the next boot:
 
 ```sh
-just nix-remote-install switch hypervisor
+just nix-remote-install boot hypervisor-01
 ```
+
+Shut down, pull the disk, boot, and check `btrfs filesystem show "/mnt/$POOL"`.
 
 ---
 
@@ -562,23 +549,23 @@ journalctl -b -p err | grep -i btrfs
 If the machine halts waiting for the USB key (or prompts for a passphrase on the console), check:
 
 1. The USB stick is inserted
-2. Its partition UUID matches `usbKeysIds` in `nix/hosts/hypervisor/configuration.nix`:
+2. Its partition UUID matches `usbKeysIds` in `nix/hosts/hypervisor-01/configuration.nix`:
    ```sh
    ls /dev/disk/by-uuid/
    ```
-3. The keyfile (`hypervisor`) is present on the VFAT partition
+3. The keyfile (named after the host, e.g. `hypervisor-01`) is present on the VFAT partition
 
 ### libvirtd fails to start a VM
 
 ```sh
 # Check the daemon
-ssh hypervisor systemctl status libvirtd.service
+ssh hypervisor-01 systemctl status libvirtd.service
 
 # Check libvirt logs
-ssh hypervisor sudo journalctl -u libvirtd -n 50
+ssh hypervisor-01 sudo journalctl -u libvirtd -n 50
 
 # Verify VM XML is valid
-ssh hypervisor sudo virsh define /mnt/vmstore/<vm>/domain.xml
+ssh hypervisor-01 sudo virsh define /mnt/vmstore/<vm>/domain.xml
 ```
 
 ### VM disk image is corrupt
@@ -586,22 +573,22 @@ ssh hypervisor sudo virsh define /mnt/vmstore/<vm>/domain.xml
 If a qcow2 image is suspect, check it with:
 
 ```sh
-ssh hypervisor sudo qemu-img check /mnt/vmstore/<vm>/<disk>.qcow2
+ssh hypervisor-01 sudo qemu-img check /mnt/vmstore/<vm>/<disk>.qcow2
 ```
 
-A non-zero exit code means corruption.  Restore from backup or re-provision with Ansible (`just hypervisor-provision-vms`).
+A non-zero exit code means corruption.  Restore from backup or re-provision with Ansible (`just hypervisor-provision-vms hypervisor-01`).
 
 ### btrfs balance stuck or very slow
 
 Balance speed depends on pool size and I/O load.  Monitor progress:
 
 ```sh
-ssh hypervisor sudo btrfs balance status /mnt/<poolname>
+ssh hypervisor-01 sudo btrfs balance status /mnt/<poolname>
 ```
 
 To pause and resume:
 
 ```sh
-ssh hypervisor sudo btrfs balance pause /mnt/<poolname>
-ssh hypervisor sudo btrfs balance resume /mnt/<poolname>
+ssh hypervisor-01 sudo btrfs balance pause /mnt/<poolname>
+ssh hypervisor-01 sudo btrfs balance resume /mnt/<poolname>
 ```

@@ -28,9 +28,11 @@ in
     "purplehaze" =
       onTailnet "purplehaze" "P2ECEG6-RRB6YZI-KFYZUBF-FBHSUSA-DQUZXH2-MCQXI3Z-HMFUPDV-7ACNIAJ";
     "blackfog" = onTailnet "blackfog" "EDMGHVH-55SKSKP-OHIK7JD-T4FZEAG-EHTZVCX-VT5W7CI-2OIGIFH-LMYQKAG";
-    # Identity generated ahead of deploy and kept in sops (nix/hosts/apps/data/syncthing.yaml),
+    # Identity generated ahead of deploy and kept in sops (nix/hosts/apps-01/data/syncthing.yaml),
     # so this ID is stable across rebuilds. Also open on every interface
     # (openFirewall), as the always-on peer LAN devices can reach too.
-    "apps" = onTailnet "apps" "CXWSL3E-MBCAS7N-CWMRP7O-FKY5JZZ-DOGS7RZ-YQPGHTV-NDGG42H-IMWAMQS";
+    # Was `apps` on the Phase A test VM; same identity, renamed with the host. Devices
+    # not managed here (the Pixel) need the new address, tcp://apps-01:22000, by hand.
+    "apps-01" = onTailnet "apps-01" "CXWSL3E-MBCAS7N-CWMRP7O-FKY5JZZ-DOGS7RZ-YQPGHTV-NDGG42H-IMWAMQS";
   };
 }

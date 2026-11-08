@@ -3,12 +3,12 @@
 # Copy secrets from the legacy Ansible Vault into a SOPS file, without the values ever
 # being printed, written to disk in plaintext, or passed on a command line. Built for
 # the apps migration (docs/hypervisor/apps-migration-plan.md), where every stack
-# carries some of its vault values over to nix/hosts/apps/data/<stack>.yaml.
+# carries some of its vault values over to nix/hosts/apps-01/data/<stack>.yaml.
 #
 # Usage: ./scripts/sops-from-vault.sh [--vault FILE] [--force] [--join SEP] <sops-file> <vault_var>=<sops/key/path>...
 #        ./scripts/sops-from-vault.sh --file [--force] <sops-file> <vault-encrypted-file>=<sops/key/path>...
 #
-#   just sops-from-vault nix/hosts/apps/data/actual-budget.yaml \
+#   just sops-from-vault nix/hosts/apps-01/data/actual-budget.yaml \
 #     vault_backbone__authelia__oidc_actual_budget_clientid=compose-stacks/actual-budget/oidc/client_id
 #
 # <vault_var> is a top-level key of the vault (the `vault_*` name, not the group_vars

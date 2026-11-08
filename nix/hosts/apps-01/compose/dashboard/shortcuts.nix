@@ -1,8 +1,7 @@
 # The launcher's shortcut tree, carried over verbatim from the legacy
 # `dashboard__shortcuts` (ansible/hosts/group_vars/apps/vars.yml). URLs are deliberately
 # left hardcoded rather than derived from config.domains.main: this is a launcher for the
-# whole fleet — prod, the test VM (see "Apps (test VM)") and outside services alike — so
-# rewriting them to the test domain would only point at things that don't exist there.
+# whole fleet, this host and outside services alike, not a list of this host's routes.
 #
 # Rendered to JSON in default.nix; webb-launcher reads it with js-yaml, and JSON is YAML.
 [
@@ -235,10 +234,6 @@
           {
             name = "Ingress";
             url = "https://ingress.snyssen.be";
-          }
-          {
-            name = "Apps (test VM)";
-            url = "https://routing.snyssen1.xyz";
           }
         ];
         name = "Reverse Proxies";

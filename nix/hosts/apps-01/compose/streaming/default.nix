@@ -381,9 +381,9 @@ in
       "mnt-bulk.mount"
       "streaming-storage-dirs.service"
     ];
-    # TODO: re-enable. Disabled after testing so the *arr apps don't act on media
-    # that isn't there yet (they would treat an empty library as "everything was
-    # deleted").
-    autostart = false;
+    # Must not start before the media is here: the *arr apps would treat an empty
+    # library as "everything was deleted". At the cutover the host-wide hold
+    # (`restoreHold`, ../../restore-hold.nix) keeps it down until legacy-import has
+    # finished.
   };
 }

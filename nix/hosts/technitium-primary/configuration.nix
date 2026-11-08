@@ -97,11 +97,8 @@
     varlogs.enable = true;
     journald.enable = true;
     nodeMetrics.enable = true;
-    # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
-    # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
     remoteWrite.endpoints = [
       "https://prometheus.snyssen.be/api/v1/write"
-      "https://prometheus.snyssen1.xyz/api/v1/write"
     ];
   };
 

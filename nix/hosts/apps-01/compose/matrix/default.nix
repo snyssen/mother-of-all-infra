@@ -8,8 +8,9 @@ let
   composeFile = "${./.}/docker-compose.yaml";
   sopsFile = ../../data/matrix.yaml;
 
-  # Whether this host acts as matrix.snyssen.be towards the outside world. Off until
-  # the Phase B cutover, and flipped back together with domains.main.
+  # Whether this host acts as matrix.snyssen.be towards the outside world. On: apps-01
+  # only ever runs as production. Turn it off to run a restore test anywhere prod's own
+  # Synapse is still live, never both at once.
   #
   # The homeserver's identity is fixed: server_name is matrix.snyssen.be, baked into
   # every user and room ID, and Synapse refuses to start on a database whose users
@@ -23,7 +24,7 @@ let
   #   sessions from the imported databases, alongside prod's own bridges. Not started.
   #
   # Clients still work: Element, MAS and the client API all run under domains.main.
-  live = false;
+  live = true;
 
   # The fixed half of the identity, written literally into the config files (user ID
   # regexes, permissions, double-puppet keys) rather than tokenized: it can never

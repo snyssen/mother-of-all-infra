@@ -5,10 +5,10 @@ one you are looking at:
 
 | | legacy | new |
 | --- | --- | --- |
-| host | `snyssen.be` (bare-metal Ubuntu) | `apps` (NixOS VM) |
+| host | `snyssen.be` (bare-metal Ubuntu) | `apps-01` (NixOS VM; `apps` during Phase A) |
 | tool | [autorestic](https://autorestic.vercel.app/) (restic wrapper) | [Backrest](https://github.com/garethgeorge/backrest) (restic wrapper) |
-| configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps/backrest.nix` |
-| credentials in | ansible-vault | sops (`nix/hosts/apps/data/<stack>.yaml`) |
+| configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps-01/backrest.nix` |
+| credentials in | ansible-vault | sops (`nix/hosts/apps-01/data/<stack>.yaml`) |
 | writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | `apps` repository (on-site) |
 | restores with | Ansible playbooks | generated on-host commands |
 
@@ -32,7 +32,7 @@ Backrest's `config.json` through `sops.templates`, never clicked together in its
 
 The module is split: `default.nix` holds the options, `service.nix` the service and
 rendered config, `restore.nix` the restore commands, `scripts/` the shell they run.
-`nix/hosts/apps/backrest.nix` is this host's actual repository and plan configuration.
+`nix/hosts/apps-01/backrest.nix` is this host's actual repository and plan configuration.
 
 Reached at `https://backrest.${domain}` behind Authelia, and also directly on port 9898
 from the tailnet (`openFirewall = true`) for when the reverse proxy is down. It has its
@@ -60,7 +60,7 @@ is unreachable.
 Plan boundaries mirror roughly one per stack, which is also the unit a restore is
 selected by. Everything shares one schedule (daily at 00:30) and one retention policy
 (daily 14 / weekly 4 / monthly 6 / yearly 1), matching the legacy config so behaviour
-does not silently change at cutover. See `nix/hosts/apps/backrest.nix` for the current
+does not silently change at cutover. See `nix/hosts/apps-01/backrest.nix` for the current
 list.
 
 Every plan reports each run to its own Gatus push endpoint, `backups_<plan>`: success
@@ -83,7 +83,7 @@ before assuming a gap:
 ### The restore commands
 
 Generated from the Nix config and living on `apps` itself, so a VM rebuilt from
-`nixosConfigurations.apps` has them with no extra setup. All run as root.
+`nixosConfigurations.apps-01` has them with no extra setup. All run as root.
 
 | command | what it does |
 | --- | --- |
@@ -274,59 +274,75 @@ running regularly — an untested backup is not a backup. A full rebuild is the 
 test; the [Phase B cutover](hypervisor/apps-migration-phase-b.md) is itself that
 rehearsal.
 
-### Full disaster recovery: rebuilding `apps` from scratch
+### Full disaster recovery: rebuilding `apps-01` from scratch
 
 > [!WARNING]
-> Boot the rebuilt host with `docker.service` and `backrest.service` **masked**, before
-> restoring anything. Otherwise every stack starts against empty data directories: Traefik
-> requests a fresh certificate for ~30 hostnames (Let's Encrypt's weekly limits turn a
-> second failed attempt into days without TLS), and — worse — Backrest's schedules fire and
-> back up the *empty* state over the good snapshots, after which retention starts forgetting
-> the originals. A DR rehearsal would then have destroyed the real backups.
+> A rebuilt host must boot with its services **held** (`restoreHold` in
+> `nix/hosts/apps-01/configuration.nix`, see `nix/hosts/apps-01/restore-hold.nix`).
+> Otherwise every stack starts against empty data directories: Traefik requests a fresh
+> certificate for ~30 hostnames (Let's Encrypt's weekly limits turn a second failed
+> attempt into days without TLS), apps initialise empty instances that the restore then
+> half-replaces, and — worse — Backrest's schedules fire and back up the *empty* state
+> over the good snapshots, after which retention starts forgetting the originals. A DR
+> rehearsal would then have destroyed the real backups.
+>
+> The hold replaces masking `docker.service` and `backrest.service` at the GRUB prompt,
+> which needed a console in time to catch the boot.
 
 0. **Prerequisites that are in no backup**: this git repository, an age identity that can
-   decrypt `nix/hosts/apps/data/*.yaml`, and the hypervisor with `/mnt/bulk/apps`
+   decrypt `nix/hosts/apps-01/data/*.yaml`, and the hypervisor with `/mnt/bulk/apps`
    intact. See the [key-management warning](#key-management-the-actual-single-point-of-failure)
    — this step is the real single point of failure, not the data.
-1. `just hypervisor-build-vm-images` — note this generates a **new** SSH host key, and
-   therefore a new `root_apps` age key.
-2. Add that key to `.sops.yaml` and run `just sops-update-keys-all`, then commit. **Not
-   optional**: without it sops-nix fails to decrypt and the restic repository password
-   never appears on the host, so nothing can be restored.
-3. `just hypervisor-provision-vms`.
-4. At the GRUB prompt press `e` and append to the kernel command line:
-
-   ```text
-   systemd.mask=docker.service systemd.mask=backrest.service
-   ```
-
-   Every `compose-*` unit has `requires=docker.service`, so this masks all of them, plus
-   cAdvisor, in one go. They land in `failed` with "Unit docker.service is masked" —
-   harmless; `systemctl reset-failed` afterwards.
-5. Sanity-check: `ls /run/secrets/backrest/repos/`, `tailscale status`, and `ls /mnt/bulk`
-   (which triggers the automount).
-6. Make sure the backup server is awake — it is wake-on-LAN'd and may be powered down.
-   Poll `http://backup.snyssen.be:8000/metrics` for a 200; allow up to ~5 minutes. **Keep
-   its IP and MAC address somewhere outside this repo**: in a real disaster, DNS for
-   `backup.snyssen.be` may be gone along with the production box. Alternatively point
-   `--repo-uri` at the off-site copy.
-7. **In tmux** — a few hundred GB over NFS-over-Tailscale takes hours and an SSH drop
-   would kill the run:
+1. Hold the services: in `nix/hosts/apps-01/configuration.nix`, set both
+   `restoreHold.stacks` and `restoreHold.backups` to `true`, and commit. The image is
+   built from the committed configuration, so the very first boot is held.
+2. Set `build: true` on `apps-01` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`,
+   then `just hypervisor-build-vm-images hypervisor-01`. This generates a **new** SSH
+   host key, and therefore a new `root_apps_01` age key.
+3. Add that key to `.sops.yaml` in place of the old one and run
+   `just sops-update-keys-all`, then commit. **Not optional**: without it sops-nix fails
+   to decrypt and the restic repository password never appears on the host, so nothing
+   can be restored.
+4. `just hypervisor-provision-vms hypervisor-01`. Set `build: false` back and commit.
+5. Sanity-check, on the VM: `ls /run/secrets/backrest/repos/`, `tailscale status`,
+   `ls /mnt/bulk` (which triggers the automount), and `systemctl list-units 'compose-*'`
+   (nothing running).
+6. Make sure the backup server answers: `curl -fsS http://backup.snyssen.be:8000/metrics`.
+   **Keep its IP address somewhere outside this repo**: in a real disaster, DNS for
+   `backup.snyssen.be` may be gone too. Alternatively point `--repo-uri` at the off-site
+   copy.
+7. **In `screen`**: a few hundred GB over NFS-over-Tailscale takes hours, and an SSH
+   drop would kill the run. `Ctrl-a d` detaches, `screen -r restore` re-attaches.
 
    ```sh
+   screen -S restore
    backrest-restore --all --dry-run    # review the per-filesystem size table
    backrest-restore --all
    ```
 
-8. `systemctl unmask docker.service backrest.service && reboot`. Everything then comes up
-   in dependency order, and `compose-databases` provisions roles and databases via its
-   `ExecStartPost`.
-9. `postgres-restore --all` to load the dumps that step 7 restored.
-10. Start the stacks whose `autostart` is deliberately off (see
-    `compose-stacks.stacks.<name>.autostart`), smoke-test the services, then
-    `systemctl start backrest.service`.
+8. Load the databases. The central cluster lives in the `databases` stack, which a held
+   host leaves stopped, so start it by hand first (it provisions roles and databases on
+   start, and creates the Docker networks the others use). Immich's and Dawarich's own
+   PostgreSQL need no starting: `postgres-restore` reaches them through their dump
+   sidecar, which starts only the database container. That container stays up
+   afterwards, so stop all three stacks again and let step 9 start everything in order:
 
-Steps 7 and 9 together are what `apps-restore` does.
+   ```sh
+   systemctl start compose-databases
+   postgres-restore --all
+   compose-immich down
+   compose-dawarich down
+   systemctl stop compose-databases
+   ```
+
+9. Release the stacks: set `restoreHold.stacks = false`, commit, then
+   `just nix-remote-install boot apps-01` and reboot, so everything starts in dependency
+   order. Smoke-test the services.
+10. Release the backups: set `restoreHold.backups = false`, commit,
+    `just nix-remote-install switch apps-01`, and watch the first backup run.
+
+Steps 7 and 8 together are what `apps-restore` does, minus the `compose-*` lines: it
+neither starts nor stops any stack for you.
 
 ---
 
@@ -425,7 +441,7 @@ Everything below applies to **both** systems — they are both restic repositori
 Any restic repository is directly usable with the plain `restic` CLI — no Backrest, no
 autorestic, no Ansible. Pull the repository URI and password from wherever they are
 declared (ansible-vault for autorestic's repos; the sops-decrypted
-`nix/hosts/apps/data/common.yaml` for `apps`'s), then:
+`nix/hosts/apps-01/data/common.yaml` for `apps`'s), then:
 
 ```sh
 export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # on-site REST server
@@ -461,7 +477,7 @@ stamps `plan:<planID>` and `created-by:<instanceID>`.
 ### Key management: the actual single point of failure
 
 > [!CAUTION]
-> The secrets files under `nix/hosts/apps/data/` can only be decrypted by the age keys listed in
+> The secrets files under `nix/hosts/apps-01/data/` can only be decrypted by the age keys listed in
 > `.sops.yaml` — in practice the SSH host keys of a couple of workstations. The restic
 > repository passwords live *inside* that file. If those machines are lost together with
 > everything else, the backups are intact and unreadable.
@@ -500,7 +516,7 @@ at our repositories.
 Repository URIs and passwords live in two places today, and this scenario assumes you
 can reach neither: the legacy autorestic repos in the ansible-vault managed
 `ansible/hosts/group_vars/apps/vault.yml`, and `apps`'s own in the sops-managed
-`nix/hosts/apps/data/common.yaml`. **That is exactly why the credentials also belong in
+`nix/hosts/apps-01/data/common.yaml`. **That is exactly why the credentials also belong in
 a password manager** — see the key-management warning above. Once connected, select the
 desired snapshot and browse and download files and directories directly.
 

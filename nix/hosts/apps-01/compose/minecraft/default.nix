@@ -2,17 +2,16 @@
 let
   composeFile = "${./.}/docker-compose.yaml";
 
-  # TODO: restore prod's sizing at the Phase B cutover — 8G heap / 8.2g limit for both
-  # servers. Shrunk here because the test VM has 8 GiB of RAM in total, shared with
-  # every other stack. The limit leaves headroom above the heap for the JVM itself.
+  # Prod's sizing, for both servers (the test VM ran them at 2G/1G heap). The limit
+  # leaves headroom above the heap for the JVM itself.
   memory = {
     main = {
-      heap = "2G";
-      limit = "2560m";
+      heap = "8G";
+      limit = "8.2g";
     };
     usw = {
-      heap = "1G";
-      limit = "1536m";
+      heap = "8G";
+      limit = "8.2g";
     };
   };
 in

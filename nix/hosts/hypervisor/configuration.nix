@@ -34,6 +34,9 @@
     flake.modules.nixos.nfs-exports
 
     ./network.nix
+    # Transitional, for the Phase B rehearsal (step P6) only: no data disks here, so it
+    # only ever runs with --sources. Delete with the host.
+    ../hypervisor-01/legacy-import.nix
   ];
 
   # Intel iGPU (QuickSync) passthrough for the `apps` VM's Jellyfin.
@@ -87,15 +90,11 @@
     varlogs.enable = true;
     journald.enable = true;
     nodeMetrics.enable = true;
-    # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
-    # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
     loki.endpoints = [
       "https://loki.snyssen.be/loki/api/v1/push"
-      "https://loki.snyssen1.xyz/loki/api/v1/push"
     ];
     remoteWrite.endpoints = [
       "https://prometheus.snyssen.be/api/v1/write"
-      "https://prometheus.snyssen1.xyz/api/v1/write"
     ];
   };
 
@@ -186,6 +185,7 @@
 
   environment.systemPackages = [
     pkgs.btop
+    pkgs.screen
   ];
 
   # TODO: make this part automatically defined

@@ -2,6 +2,10 @@
 
 This document covers the architecture, decisions, and phased task plan for migrating the current bare-metal Ubuntu apps server (managed by Ansible) to a NixOS VM named **`apps`** running under the hypervisor host.
 
+> **Names after Phase A.** The production VM is **`apps-01`** (`nix/hosts/apps-01/`), on
+> the reinstalled legacy box, **`hypervisor-01`**. `apps` and `hypervisor` below are the
+> Phase A test VM and test hypervisor, which the cutover retires.
+
 ---
 
 ## Background
@@ -17,7 +21,7 @@ The hypervisor is currently a test-bed running on secondary hardware.
 The migration is therefore **two-phased**:
 
 1. **Phase A (this plan):** Code-complete the `apps` VM config; test iteratively on the current hypervisor with partial data.
-2. **Phase B (future):** Final backup → wipe production server → install hypervisor config on it → recreate all VMs → restore data. **Has its own document: [apps VM migration — Phase B](apps-migration-phase-b.md)**, which holds the preconditions, the `prod-import` tooling and the cutover checklist. *(Also tracked as a separate issue.)*
+2. **Phase B:** Final backup → reinstall the production server as `hypervisor-01` (its two data disks kept) → move haos and technitium-secondary onto it → build `apps-01` → restore data. **Has its own document: [apps VM migration — Phase B](apps-migration-phase-b.md)**, the step-by-step runbook: preparation, D-day and afterwards. *(Also tracked as a separate issue.)*
 
 ---
 
@@ -28,12 +32,12 @@ The migration is therefore **two-phased**:
 | Hostname | `apps` |
 | Local app data (fast, OS disk) | `/var/lib/app-data` (btrfs root backed by vmstore SSD RAID-1 on hypervisor) |
 | Bulk app data (large, HDD) | `/mnt/bulk` — NFS mount of `/mnt/bulk/apps` exported by the hypervisor |
-| Compose file convention | `nix/hosts/apps/compose/${stack_name}/docker-compose.yaml` |
+| Compose file convention | `nix/hosts/apps-01/compose/${stack_name}/docker-compose.yaml` |
 | Docker networks | `web`, `db`, `ldap`, `monitoring` bridge networks pre-created by a new `docker-networks` NixOS module |
 | `lan` ipvlan network | **Not recreated.** Unifi works through Traefik's entrypoints as on prod (devices find it by the Inform Host and the `unifi` DNS name, not L2 discovery); Syncthing drops LAN discovery (relies on Tailscale/global relay instead) |
 | Monitoring | `grafana-alloy` (NixOS module) pushing node + cAdvisor metrics and logs via `remote_write`/Loki push, not `prometheus-node-exporter` pull — converted fleet-wide (`apps`, `ingress`, `technitium-{primary,secondary}`, and workstation hosts `blackfog`/`gaming`/`purplehaze`/`sninful`) so metrics/logs dual-ship to both the legacy Prometheus/Loki and the new `apps` stack during the migration. `cAdvisor` ended up as a `docker.cadvisor.enable` option on the existing `docker` module, not a dedicated module. Container logs are collected from the **journal** (Docker's journald driver), re-labelled into the legacy `job="containerlogs"` schema so one set of dashboards covers the legacy box and this one; enabling `grafana-alloy.containerlogs` also sets the daemon's `log-opts.labels-regex` (so compose labels become journal fields) and lifts `docker.service`'s log rate limit, since every container shares that unit's single bucket. |
 | Backups | **Backrest** (`pkgs.backrest`, native NixOS systemd service, config declaratively rendered via `sops.templates` — not `services.restic.backups`, and not containerized via `compose-stacks`, since it needs broad read access across every stack's data regardless of which uid owns it). Revised from the original `services.restic.backups` + "optional read-only `backrest` container" split after hands-on production use elsewhere showed Backrest's restore UI is worth making the primary tool, not a passive add-on. Still "just restic" underneath — DR via plain `restic` CLI against any repo URI/password in the (sops-decrypted) config works with zero dependency on Backrest itself. **`apps` backs itself up into its own repo** (`rest://.../apps/`), never into the production one, which stays registered read-only so prod snapshots remain browsable for restore-testing without `apps` being able to alter them. Restores are driven by generated on-host commands rather than an Ansible playbook — the Ansible group named `apps` is the *legacy* box, and the restore list is derived from `backrest.plans` so it cannot drift from what is actually backed up. See `docs/backups.md`. |
-| Secrets | SOPS-encrypted, one file per stack under `nix/hosts/apps/data/` (`<stack>.yaml`, plus `common.yaml` for host-wide ones); injected into compose stacks via `environmentFile`. Split per stack so a secret change restarts only its own stack. |
+| Secrets | SOPS-encrypted, one file per stack under `nix/hosts/apps-01/data/` (`<stack>.yaml`, plus `common.yaml` for host-wide ones); injected into compose stacks via `environmentFile`. Split per stack so a secret change restarts only its own stack. |
 | VM provisioning | `libvirt_provision` Ansible role (existing pattern) |
 | Iterative testing | Build an MVS (Minimum Viable System), then migrate stacks one-by-one on a test VM |
 | DNS stacks | **Excluded** — DNS migration is tracked separately (see issue #153) |
@@ -72,7 +76,7 @@ and `auth` (Authelia + lldap) — rather than one `backbone` stack; both are don
 | `s-pdf` | Stirling PDF tools | 🔁 Replaced by BentoPDF | ✅ Done (as `bentopdf`). Stirling 3.x turns login on by default (H2 user DB in `/configs`), and its OIDC support needs a two-step admin bootstrap with a 5-user free-plan cap — too much for a rarely used tool. BentoPDF (`bentopdf-simple` image) is a static site whose tools run in the browser, so documents are never uploaded: no volumes, no secrets, no backup plan, nothing to import. Same `pdf.<domain>` route and gate as prod — forwardAuth plus a `one_factor` access_control rule for any registered user, which is what keeps the public route to friends and family. Its browser side still pulls some WASM modules and OCR data from jsDelivr |
 | `foundryvtt` | FoundryVTT TTRPG platform | ✅ Migrate | ✅ Done. Straight port: account + admin key copied from the vault, data on `/var/lib/app-data/foundryvtt` (uid 1000 — the image's `node` user, with no root step to fix ownership), `backrest.plans.foundryvtt` with the stack stopped (worlds are LevelDB) and `prod-import foundryvtt`. Gated by forwardAuth with prod's `one_factor` rule for `group:foundry_player` — required now that access_control denies by default |
 | `minecraft` | Minecraft server | ✅ Migrate | 🚧 Code ready, not yet deployed. Both servers (main + `mc-usw`) behind mc-router, worlds on `/mnt/bulk` as the mapping rule says. Heap sizes and memory limits are a `memory` binding in `default.nix`, shrunk to 2G/1G for the 8 GiB test VM — restoring prod's 8G is on the Phase B checklist. The game goes through a `minecraft` TCP entrypoint on the reverse-proxy stack to mc-router, as on prod — first TCP router on this host, keeping the reverse-proxy the single place that lists every exposed port. Whitelist/ops copied from the vault with the new `sops-from-vault --join ,` (vault lists → the comma-separated strings the image takes). Prometheus `minecraft` job added; `backrest.plans.minecraft` and `prod-import minecraft` cover both worlds |
-| `syncthing` | File sync | ✅ Migrate (as NixOS module; not as Compose stack) | 🚧 Code ready, not yet deployed (`nix/hosts/apps/syncthing.nix`). Native `services.syncthing` through the shared module, which now carries everything a host needs: `deviceName` (folders default to every *other* device in `nix/data/syncthing.nix`), `identity.sopsFile` (cert/key from sops, so the device ID is fixed and known before deploy), `gui.address`, `openFirewall`, and per-device `addresses`. Other hosts' builds verified unchanged. Sync (22000 TCP/UDP) and local discovery (21027/udp) are opened by Syncthing itself, the one exception to the Traefik port rule — Traefik could only pass its end-to-end TLS through — and noted in compose/reverse-proxy. GUI on `sync.<domain>` behind Authelia's sysadmin rule (prod had none). Data synced from peers rather than imported; `backrest.plans.syncthing` covers it from then on |
+| `syncthing` | File sync | ✅ Migrate (as NixOS module; not as Compose stack) | 🚧 Code ready, not yet deployed (`nix/hosts/apps-01/syncthing.nix`). Native `services.syncthing` through the shared module, which now carries everything a host needs: `deviceName` (folders default to every *other* device in `nix/data/syncthing.nix`), `identity.sopsFile` (cert/key from sops, so the device ID is fixed and known before deploy), `gui.address`, `openFirewall`, and per-device `addresses`. Other hosts' builds verified unchanged. Sync (22000 TCP/UDP) and local discovery (21027/udp) are opened by Syncthing itself, the one exception to the Traefik port rule — Traefik could only pass its end-to-end TLS through — and noted in compose/reverse-proxy. GUI on `sync.<domain>` behind Authelia's sysadmin rule (prod had none). Data synced from peers rather than imported; `backrest.plans.syncthing` covers it from then on |
 | `team_wiki` | Wiki.js team wiki | ✅ Migrate | ✅ Done (as `team-wiki`). Stateless container — pages, assets and settings are all in its `team_wiki` database, so the central `databases` plan is its whole backup and there is no `prod-import` group. First stack on the team domain, so it also brings the team-domain Authelia portal from prod: a second session cookie domain, an `auth.<team>` route, `team_wiki_policy` and the `team_wiki` OIDC client (copied from the vault). On the test host `domains.team` is `snyssen2.xyz` — a separate domain, since Authelia rejects a cookie domain nested under `snyssen1.xyz` |
 | `rallly` | Meeting scheduler | ✅ Migrate | ✅ Done. Stateless container, everything in its `rallly` database (covered by the `databases` plan, no `prod-import` group). On `events.<team>`, logging in through the team-domain Authelia portal set up with `team_wiki`; adds `team_member_policy` and the `rallly` OIDC client. `/register` stays unrouted and email login/registration stay off, as on prod. SMTP comes from the shared `smtp/*` secrets |
 | `speedtest-tracker` | Speedtest tracker | ✅ Migrate | ✅ Done. OIDC checked and not available: no released version has it, only an [unmerged PR](https://github.com/alexjustesen/speedtest-tracker/pull/2801) against 2.x. Results and settings are in its `speedtest_tracker` database (covered by the `databases` plan, no `prod-import` group). `/config` is kept local at `/var/lib/app-data/speedtest-tracker` and, as on prod, not backed up. Behind forwardAuth with the sysadmin two-factor rule, as on prod. `APP_KEY` copied from the vault; SMTP from the shared `smtp/*` secrets |
@@ -106,6 +110,13 @@ detail:
       Grafana alerts. Kuma v2 with AutoKuma was tried first and dropped: its first-run
       setup can't be automated.
 - [x] **Delete the retired stacks' code** — `scrypted` and `attic` (see the inventory).
+- [x] **Cutover plan** — [Phase B](apps-migration-phase-b.md) is a runbook with
+      commands. The code it relies on is in: `hypervisor-01` (one-disk pools to start
+      with, `legacy-import` to copy the data off the legacy data disks), `apps-01`
+      (production values baked in, held at first boot by `restoreHold`), and the libvirt
+      playbooks and `hypervisor-*` recipes taking the hypervisor as an argument.
+- [ ] **Backrest onto production's repositories** (Phase B step D9): B2 copies, prune
+      and check policies. Needs designing before D-day.
 - Later, not needed for the cutover: the rest of the monitoring setup (dashboards,
   alert rules) declared in the repo as well.
 
@@ -115,7 +126,7 @@ detail:
 
 ### Per-stack inventory
 
-| Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps/data/<stack>.yaml`) | Target (`apps` / dedicated VM / retire) |
+| Stack | `/home/snyssen/data` dirs (size, purpose) | `/mnt/storage` dirs (size, purpose) | Inter-stack dependencies (DB/network/volumes) | Required secrets (to move into `nix/hosts/apps-01/data/<stack>.yaml`) | Target (`apps` / dedicated VM / retire) |
 |---|---|---|---|---|---|
 | `databases` | `/home/snyssen/data/databases/postgres/data` (size: live measure; PostgreSQL data), `/home/snyssen/data/databases/postgres/{servers.json,config_local.py}` (pgAdmin config) | `/mnt/storage/backups` (shared backup root), `/mnt/storage/backups/postgres` (Postgres dumps) | Uses `db` and `web` networks; `pgadmin` + `postgres_backups` depend on `postgres`; provides shared `postgres` for many stacks | `db__pg_password`, `db__pgadmin_password`, `db__pgadmin_email` | `apps` |
 | `monitoring` | `/home/snyssen/data/monitoring/prometheus` (Prometheus TSDB), `/home/snyssen/data/grafana/data` (Grafana DB), `/home/snyssen/data/monitoring/loki` (logs), `/home/snyssen/data/uptime` (Uptime Kuma state; not migrated, replaced by Gatus) | `/mnt/storage/prometheus` (Prometheus config/rules) | Uses `web`, `monitoring`, `db`; `umami` connects to `postgres`; consumes ntfy topic for alerts; OIDC via Authelia | `monitoring__umami_db_pass`, `monitoring__umami_app_secret`, `backbone__authelia__oidc_grafana_clientsecret`, `smtp__pass` | `apps` |
@@ -177,7 +188,7 @@ Collect live metrics from current apps host and fill:
 - Reservation target: `192.168.1.10` (DHCP server / static lease reference)
 - Collision check done: ✅
 
-### Secrets migration index (`nix/hosts/apps/data/<stack>.yaml`)
+### Secrets migration index (`nix/hosts/apps-01/data/<stack>.yaml`)
 
 Track every secret key/value that must move to SOPS:
 
@@ -285,7 +296,7 @@ differs slightly from the original plan — `disk_gb` grew from the planned `128
 
 ## apps Host Configuration Outline
 
-**Superseded — see the live `nix/hosts/apps/configuration.nix` instead of this
+**Superseded — see the live `nix/hosts/apps-01/configuration.nix` instead of this
 snippet.** The outline below was the pre-implementation sketch; actual imports
 diverged in a few ways worth calling out rather than re-syncing line-by-line (it will
 just drift again):
@@ -353,10 +364,10 @@ nfsMounts.mounts.bulk = {
 
 For each stack, the migration consists of:
 
-- [ ] Copy `docker-compose.yml` from Ansible role to `nix/hosts/apps/compose/<stack>/docker-compose.yaml`
+- [ ] Copy `docker-compose.yml` from Ansible role to `nix/hosts/apps-01/compose/<stack>/docker-compose.yaml`
 - [ ] Replace Jinja2 variables: `{{ docker_mounts_directory }}/X` → `/var/lib/app-data/X`, `/mnt/storage/X` → `/mnt/bulk/X`
 - [ ] Remove `lan` network references if present; add regular bridge networks as needed
-- [ ] Extract secrets into `nix/hosts/apps/data/<stack>.yaml` (SOPS-encrypted; one file per stack, `common.yaml` for host-wide ones). Values carried over unchanged go through `just sops-from-vault <file> <vault_var>=<sops/key/path>...`, which pipes them from `ansible-vault view` into `sops set --value-stdin` and compares them back, without ever printing them. Files a role ships whole and vault-encrypted (keys, typically) go through its `--file` mode instead: `just sops-from-vault --file <file> <encrypted-file>=<sops/key/path>...`. New secrets with no legacy value (fresh OIDC clients, bootstrap passwords) go through `just sops-gen-secret [--oidc-client] <file> <sops/key/path>`, which generates them straight into sops — client id, secret and Authelia digest together for `--oidc-client` — and never overwrites an existing key
+- [ ] Extract secrets into `nix/hosts/apps-01/data/<stack>.yaml` (SOPS-encrypted; one file per stack, `common.yaml` for host-wide ones). Values carried over unchanged go through `just sops-from-vault <file> <vault_var>=<sops/key/path>...`, which pipes them from `ansible-vault view` into `sops set --value-stdin` and compares them back, without ever printing them. Files a role ships whole and vault-encrypted (keys, typically) go through its `--file` mode instead: `just sops-from-vault --file <file> <encrypted-file>=<sops/key/path>...`. New secrets with no legacy value (fresh OIDC clients, bootstrap passwords) go through `just sops-gen-secret [--oidc-client] <file> <sops/key/path>`, which generates them straight into sops — client id, secret and Authelia digest together for `--oidc-client` — and never overwrites an existing key
 - [ ] Add `compose-stacks.stacks.<name>` entry in `configuration.nix`
 - [ ] Add `extraAfter = [ "mnt-bulk.mount" ]` for stacks using `/mnt/bulk`
 - [ ] **Keep all persistent state in bind mounts, never in a Docker named volume.** Backups are path-based (`backrest.plans`), so `/var/lib/docker/volumes` is invisible to them and always will be. Every named volume in use today is deliberately disposable (Redis caches, scratch audio); a stateful one would be silently unprotected.

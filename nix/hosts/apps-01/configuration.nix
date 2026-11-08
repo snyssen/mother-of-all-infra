@@ -10,6 +10,7 @@
   imports = [
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    ./network.nix
 
     flake.modules.nixos.sops
     flake.modules.nixos.cache
@@ -65,7 +66,8 @@
     ./compose/unifi/default.nix
     ./backrest.nix
     ./syncthing.nix
-    # Transitional: delete this line along with the file at the Phase B cutover.
+    ./restore-hold.nix
+    # Transitional: delete this with its file and ./prod-layout.nix once Phase B is done.
     ./prod-import.nix
   ];
 
@@ -170,15 +172,13 @@
     # the daemon's log-opts and lifts docker.service's log rate limit — see the option's
     # description in nix/modules/nixos/grafana-alloy.nix.
     containerlogs.enable = true;
-    # TODO: drop the *.snyssen1.xyz entries once domains.main returns to snyssen.be
-    # and the legacy *.snyssen.be entries once that box is decommissioned post-cutover.
+    # This host's own Loki and Prometheus. The snyssen.be entries the test VM also
+    # pushed to were the legacy box's, and now name this host.
     loki.endpoints = [
       "http://127.0.0.1:3100/loki/api/v1/push"
-      "https://loki.snyssen.be/loki/api/v1/push"
     ];
     remoteWrite.endpoints = [
       "http://127.0.0.1:9090/api/v1/write"
-      "https://prometheus.snyssen.be/api/v1/write"
     ];
   };
 
@@ -211,12 +211,12 @@
   # Storage #
   ###########
   # App data is stored in two main directories:
-  # - /mnt/bulk: NFS mount to hypervisor for bulk storage - Slow but large, HDD-backed
+  # - /mnt/bulk: NFS mount to hypervisor-01 for bulk storage - Slow but large, HDD-backed
   # - /var/lib/app-data: Local storage for app data - Fast but small, SSD-backed - lives on the VM disk image (stored in /mnt/vmstore in hypervisor)
   nfsMounts.enable = true;
   nfsMounts.mounts.bulk = {
     path = "/mnt/bulk";
-    host = "hypervisor";
+    host = "hypervisor-01";
     remotePath = "/mnt/bulk/apps";
     dependsOn.tailscale = true;
   };
@@ -256,7 +256,7 @@
   # The host side of the same boot window. Appended rather than prepended
   # (name_servers_append, not name_servers) so MagicDNS stays first once tailscaled
   # is up: unlike the containers, the host does need *.ts.net to resolve — the bulk
-  # NFS mount targets `hypervisor` by its tailnet name. Before tailscaled registers
+  # NFS mount targets `hypervisor-01` by its tailnet name. Before tailscaled registers
   # its resolver these are all resolv.conf has, so early-boot lookups work rather
   # than hanging; afterwards they sit behind MagicDNS as a genuine fallback. Note
   # glibc only ever consults the first three nameservers (MAXNS), so once MagicDNS
@@ -281,12 +281,19 @@
     ];
   };
 
-  domains.main = "snyssen1.xyz";
-  # Test counterpart of bigdouf.team, as snyssen1.xyz is for snyssen.be. Its own
-  # registrable domain rather than a subdomain of the main one, because Authelia refuses
-  # session cookie domains that share a scope (see auth/authelia-configuration.nix).
-  # TODO: back to bigdouf.team at the Phase B cutover.
-  domains.team = "snyssen2.xyz";
+  # Services held out of the boot targets while a restore lands on this host (see
+  # ./restore-hold.nix). Both on for the Phase B cutover: `stacks` until the restore is
+  # in (docs/hypervisor/apps-migration-phase-b.md, step D8), `backups` until it is
+  # verified (step D9).
+  restoreHold = {
+    stacks = true;
+    backups = true;
+  };
+
+  # Production domains. During Phase A the test VM ran on snyssen1.xyz/snyssen2.xyz;
+  # apps-01 is built for the cutover and only ever runs as production.
+  domains.main = "snyssen.be";
+  domains.team = "bigdouf.team";
 
   # Traefik routing for argunix now lives in ./compose/reverse-proxy/default.nix,
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized
@@ -331,7 +338,7 @@
     ];
     auto-optimise-store = true;
   };
-  system.name = "apps";
-  networking.hostName = "apps";
+  system.name = "apps-01";
+  networking.hostName = "apps-01";
   system.stateVersion = "25.11";
 }

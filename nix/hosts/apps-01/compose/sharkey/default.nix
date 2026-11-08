@@ -19,8 +19,8 @@ in
     content = ''
       # The instance's identity: every local actor, note and key is published under
       # this URL, and the rest of the fediverse knows them by it. Upstream's warning:
-      # once the instance has started, never change it. Hence `autostart = false`
-      # below until the cutover, when domains.main is snyssen.be again.
+      # once the instance has started, never change it. It only ever runs here under
+      # domains.main = snyssen.be, the instance's real name.
       url: https://${host}/
       port: 3000
 
@@ -92,13 +92,11 @@ in
       "web"
       "db"
     ];
-    # Down until the Phase B cutover. The url above is the instance's permanent
-    # identity, and the test domain is not it: started on apps today, Sharkey would
-    # either initialise a new instance under the test domain or, on imported data,
-    # serve prod's accounts under a name the rest of the fediverse doesn't know.
-    # prod-import and postgres-restore leave a stopped stack stopped, so both can run
-    # beforehand. Flip back to true along with domains.main.
-    autostart = false;
+    # Must not start before its data is here, or it would initialise a new, empty
+    # instance under the real name. At the cutover the host-wide hold
+    # (`restoreHold`, ../../restore-hold.nix) keeps it down until its data and database
+    # are in (`legacy-import sharkey-files`, `prod-import sharkey`, then
+    # `postgres-restore ... sharkey`).
     extraAfter = [
       "mnt-bulk.mount"
       "reverse-proxy-dynamic-config.service"
