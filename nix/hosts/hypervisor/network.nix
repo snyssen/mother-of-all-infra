@@ -10,14 +10,15 @@
 #   and can obtain a DHCP lease or be assigned a static IP independently,
 #   without requiring NAT or port-forwarding on the hypervisor.
 #
-# To change the physical NIC:
-#   Set `lanNic` below to match the actual interface name shown by `ip link`.
-#   Common alternatives: "enp3s0", "eth0".
+# The physical NIC is named by its MAC address (`lan0`), not by the kernel's
+# `enpXs0` name: that one comes from the PCIe bus number, which shifts when a disk
+# is added to or removed from an M.2 slot. Losing the NIC from the bridge cuts every
+# VM off the LAN while the host itself stays reachable. A changed `macAddress` only
+# applies at the next boot.
 { ... }:
 let
-  # Physical NIC to enslave to the bridge.
-  # Override this value if the actual interface name differs.
-  lanNic = "enp5s0";
+  lanNic = "lan0";
+  macAddress = "4c:cc:6a:0a:ab:0f"; # `ip -br link`
 in
 {
   networking = {
@@ -38,6 +39,10 @@ in
       # The physical NIC is enslaved to br0; it must not hold an IP itself.
       "${lanNic}".useDHCP = false;
     };
+  };
+  systemd.network.links."10-${lanNic}" = {
+    matchConfig.PermanentMACAddress = macAddress;
+    linkConfig.Name = lanNic;
   };
   systemd.network.networks."20-br0" = {
     matchConfig.Name = "br0";
