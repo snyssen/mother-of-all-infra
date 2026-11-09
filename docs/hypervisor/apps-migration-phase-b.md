@@ -664,6 +664,8 @@ backup.snyssen.be:
 8. Delete `~/phase-b/hypervisor-01-deploy` and `~/phase-b/hypervisor-01-luks-password.txt`
    from your machine.
 
+- [x] hypervisor-01 is booted on the new system
+
 ### D3. Check hypervisor-01
 
 ```sh
@@ -681,6 +683,8 @@ ip -br addr show br0                             # the host's LAN address is on 
 In the Tailscale admin console, **remove the legacy box's machine**. That frees its
 address, `100.114.242.89`, for apps-01 (D6).
 
+- [x] All checks are green on hypervisor-01
+
 ### D4. Start `legacy-import`
 
 It runs for many hours. Everything up to D7's database restores can happen alongside it.
@@ -692,15 +696,19 @@ legacy-import --check --all     # sizes, files on both disks, room on bulk
 ```
 
 Look at any `WARNING: … exist on both disks` (the copy from the second disk would win)
-before going on. Then the app data first, the media after:
+before going on. Then copy everything. `--all` takes the app data first and the media
+last (`legacy-import --list` shows the order), and a failed row doesn't stop the rest,
+so it can run unattended overnight. The log outlives screen's 100-line scrollback:
 
 ```sh
-legacy-import postgres immich dawarich dawarich-storage nextcloud photos paperless-media matrix minecraft recipes sharkey-files ; \
-legacy-import audiobooks movies tv music media-extra peertube-data
+legacy-import --all 2>&1 | tee /root/legacy-import.log
 ```
 
 Detach with `Ctrl-a d`; re-attach with `screen -r import`. Note every `FAIL` line in
-the summaries: each names the `prod-import` command that takes over (D7).
+the summary (`grep -E '^(FAIL|ok) ' /root/legacy-import.log`): each names the
+`prod-import` command that takes over (D7).
+
+- [ ] All data copied successfully
 
 ### D5. Move technitium-secondary, then haos
 
