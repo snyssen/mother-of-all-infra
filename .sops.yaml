@@ -10,6 +10,7 @@ keys: &all_keys
   - &snyssen_blackfog age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
   - &root_ingress age17gnf6sp839a0wlhd998vn0wv5rrcwle34pky8mfn5d8dymm99vtsm9xygx
   - &root_hypervisor age1ch6ewtc2v3v6u4jjznq860m3vkyvz0l3z889sjmfxpykm27xaf4q6e9p9n
+  - &root_hypervisor_01 age16p4ym33zpuz9r0cdz6r5y62npf9cyjyx6qfq9gj8dj2d4v8z6vrszjxhh9
   - &root_technitium_primary age1flln5jgw557ft9zff073ccer3hjcv344zaypm7gvrx9zlcnzsgws6ssrxg
   - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
   - &root_apps age1un9lm7u4whghrydmeyxhv9mmkt7tyhjejn0mhesfc6g3x60atflqna7lg7
@@ -73,6 +74,7 @@ creation_rules:
         age:
           - *breakglass
           - *root_hypervisor
+          - *root_hypervisor_01
           - *snyssen_gaming
           - *snyssen_purplehaze
           - *snyssen_blackfog
