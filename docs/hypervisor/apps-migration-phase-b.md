@@ -234,7 +234,7 @@ Read-only, on the legacy box:
 ssh snyssen.be
 lsblk -o NAME,SIZE,MODEL,SERIAL,MOUNTPOINTS      # which disk holds /: the boot SSD
 ls -l /dev/disk/by-id/ | grep -v -- -part        # its by-id name
-ip -br link                                      # the wired NIC, e.g. enp3s0
+ip -br link                                      # the wired NIC's MAC address
 lspci -nn | grep -iE 'vga|display'               # 00:02.0 ... [8086:xxxx]: the iGPU's id
 [ -d /sys/firmware/efi ] && echo UEFI || echo BIOS   # must be UEFI
 free -g                                          # RAM, for apps-01's share
@@ -257,7 +257,8 @@ Then fill in the `TODO(P2)` placeholders and commit:
 
 - [x] `nix/hosts/hypervisor-01/configuration.nix`: `mainDiskPath` (the boot SSD's
       `/dev/disk/by-id/…`) and the vfio-pci id (`8086:xxxx`).
-- [x] `nix/hosts/hypervisor-01/network.nix`: `lanNic`.
+- [x] `nix/hosts/hypervisor-01/network.nix`: `macAddress`. The NIC is named `lan0` by
+      its MAC, since its `enpXs0` name changes once the Kingston is fitted (D2).
 - [x] `ansible/hosts/host_vars/hypervisor-01/vars.yml`, `apps-01`:
   - `ram_mb`: leave the host at least 8 GB;
   - `disk_gb`: app-data plus Docker, with ~50% headroom, at most ~850 (the 1 TB vmstore
@@ -554,30 +555,51 @@ then the arrow keys or PgUp; `Esc` again to leave.
 
 ### D1. Freeze and final backup
 
-- [ ] Announce downtime to anyone else who uses the services.
-- [ ] Stop writing: pause anything that ingests data (paperless consume folder, `*arr`
+- [x] Announce downtime to anyone else who uses the services.
+- [x] Stop writing: pause anything that ingests data (paperless consume folder, `*arr`
       downloads, Syncthing, Immich mobile backup,sharkey).
-- [ ] UniFi: on the legacy controller, Settings → System → Advanced → **Inform Host**
+- [x] UniFi: on the legacy controller, Settings → System → Advanced → **Inform Host**
       must be the name `unifi.snyssen.be`, not the legacy box's IP, so devices follow
       DNS to apps-01. If it isn't, set it and wait for every device to show Online
       again.
-- [ ] UniFi: Settings → System → Backups → **download** a backup to your machine.
-- [ ] Home Assistant: download its newest backup to your machine. Its backups normally go
+- [x] UniFi: Settings → System → Backups → **download** a backup to your machine.
+- [x] Home Assistant: download its newest backup to your machine. Its backups normally go
       to the legacy Nextcloud, which is about to go down.
-- [ ] Run the final PostgreSQL dumps and confirm they are in the dump directories
+- [x] Run the final PostgreSQL dumps and confirm they are in the dump directories
       (`/mnt/storage/backups/{postgres,immich,dawarich}`). `legacy-import` copies these.
-- [ ] Run a final full autorestic backup, **and watch it finish**. Then disable
+- [x] Run a final full autorestic backup, **and watch it finish**. Then disable
       autorestic's cron.
-- [ ] `autorestic --ci check` on both backends, one last time.
-- [ ] Note the snapshot ID of every location. If a `prod-import` later resolves an older
+- [x] `autorestic --ci check` on both backends, one last time.
+- [x] Note the snapshot ID of every location. If a `prod-import` later resolves an older
       snapshot than these, something is wrong.
 
-```
+```yaml
 # Save snapshots IDs here:
-
+backup.snyssen.be:
+    tv: 5bc1f831
+    syncthing: f97acbb8
+    nextcloud: ad7806fe
+    music: 0b28883c
+    actual-budget: ac191c60
+    paperless-export: 4a4c099b
+    minecraft: 2c70f5c4
+    paperless: c5b33c6e
+    audiobooks: d9e4eaf8
+    sharkey: 0b123a9e
+    movies: 2e63f3ad
+    ntfy: bc06b10b
+    monitoring: 625011eb
+    foundryvtt: 22a675be
+    # mobilizon: 06a35bb4
+    matrix: 74aaf348
+    unifi: 506d6140
+    postgres: 4cb8227b
+    streaming-config: 3d0f1227
+    recipes: ecaab362
+    photos: cae29784
 ```
 
-- [ ] Shut down the Phase A VM for good. It shares apps-01's Syncthing identity and MAC,
+- [x] Shut down the Phase A VM for good. It shares apps-01's Syncthing identity and MAC,
       so the two must never run at once:
 
       ```sh
@@ -638,6 +660,8 @@ tailscale status                                 # joined
 ls -l /dev/disk/by-id/ | grep -E 'WWZ3XVDG|ZHZ12PTZ'   # both KEEP disks visible
 ls /sys/bus/pci/devices/0000:00:02.0/iommu_group/devices/   # only 0000:00:02.0
 basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)"   # vfio-pci
+bridge link                                      # lan0 master br0
+ip -br addr show br0                             # the host's LAN address is on br0
 ```
 
 In the Tailscale admin console, **remove the legacy box's machine**. That frees its
