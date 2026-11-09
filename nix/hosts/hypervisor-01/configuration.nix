@@ -103,6 +103,7 @@
         # named after this host (`/key/hypervisor-01`; keyFilename defaults to
         # system.name). Step P4 of the Phase B runbook writes it.
         usbKeysIds = [
+          "73A2-0467" # Kingston SD card
           "9FBA-884A" # Generic Flash Disk (no casing)
           "8B34-7D3C" # Philips 8GB
         ];

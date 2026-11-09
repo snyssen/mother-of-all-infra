@@ -621,7 +621,7 @@ backup.snyssen.be:
    passwd                                        # temporary, for nixos-anywhere
    ip -br addr                                   # note the IP
    lsblk -d -o NAME,SIZE,MODEL,SERIAL            # boot SSD, Kingston, 16 TB: nothing else
-   mkdir -m 0755 -p /key && mount -n -t vfat -o ro -U 8B34-7D3C /key   # or 9FBA-884A
+   mkdir -m 0755 -p /key && mount -n -t vfat -o ro -U 73A2-0467 /key   # or 9FBA-884A
    ls /key                                       # hypervisor-01 is there
    ```
 
