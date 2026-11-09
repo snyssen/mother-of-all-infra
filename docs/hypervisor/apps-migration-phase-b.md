@@ -553,6 +553,20 @@ If the connection drops while you are attached, the session detaches by itself;
 `screen -r <name>` gets it back. To scroll back through output: `Ctrl-a`, then `Esc`,
 then the arrow keys or PgUp; `Esc` again to leave.
 
+### Binary cache
+
+`cache.snyssen.be` is down from D1 until the stacks are back (D8), and every Nix command
+that lists it as a substituter (nixos-anywhere, `just nix-remote-install`, a `nix shell`
+on hypervisor-01) waits on it first. Leave it out, in every shell you use until D8, on
+your machine and on hypervisor-01:
+
+```sh
+export NIX_CONFIG="substituters = https://nix-community.cachix.org https://cache.nixos.org/"
+```
+
+Narrowing the list needs no trusted user: Nix accepts any subset of the substituters it
+is configured with. A new shell, or `unset NIX_CONFIG`, brings the cache back.
+
 ### D1. Freeze and final backup
 
 - [x] Announce downtime to anyone else who uses the services.
