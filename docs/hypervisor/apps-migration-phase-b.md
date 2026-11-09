@@ -97,9 +97,9 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
 
 ### Backups must be verified, not assumed
 
-- [ ] A **fresh, complete** autorestic run on production has finished, with no
+- [x] A **fresh, complete** autorestic run on production has finished, with no
       failures in `/var/log/autorestic`.
-- [ ] `autorestic --ci check` has passed recently on **both** backends
+- [x] `autorestic --ci check` has passed recently on **both** backends
       (`backup-snyssen-be` on-site and `snyssen-be-autorestic` on B2).
 - [x] Every `prod-import` group resolves against the real repository. From the Phase A
       `apps` VM, which has the same command:
@@ -224,7 +224,7 @@ technitium-secondary during P7.
 
 ### P1. Before you start
 
-- [ ] Every box in [Before you start](#before-you-start) is ticked.
+- [x] Every box in [Before you start](#before-you-start) is ticked.
 
 ### P2. Measure the legacy box
 
@@ -297,7 +297,7 @@ just sops-get-pubkey ~/phase-b/$H-age-temp     # prints age1...
 rm ~/phase-b/$H-age-temp
 ```
 
-- [ ] Keys generated
+- [x] Keys generated
 
 In `.sops.yaml`, add the printed key under `keys:` as `- &root_hypervisor_01 age1…`, and
 in the `nix/hosts/hypervisor-01/data/` rule replace `*root_hypervisor` with
@@ -309,7 +309,7 @@ just sops-update-keys nix/hosts/hypervisor-01/data/secrets.yaml
 
 Commit `.sops.yaml` and the re-encrypted file.
 
-- [ ] Key saved
+- [x] Key saved
 
 **USB keyfile.** The same two sticks unlock both hypervisors; each gets a second keyfile,
 named after the new host. Make it once and copy it to both sticks:
@@ -320,7 +320,7 @@ dd if=/dev/urandom of=~/phase-b/hypervisor-01 bs=512 count=1
 cp ~/phase-b/hypervisor-01 /run/media/$USER/<stick>/hypervisor-01 && sync
 ```
 
-- [ ] USB stick prepared and keys are backed up
+- [x] USB stick prepared and keys are backed up
 
 **LUKS fallback passphrase**, the one in the password manager, for nixos-anywhere:
 
@@ -328,13 +328,25 @@ cp ~/phase-b/hypervisor-01 /run/media/$USER/<stick>/hypervisor-01 && sync
 read -s > ~/phase-b/hypervisor-01-luks-password.txt
 ```
 
-- [ ] Fallback password is saved in passwords manager
+- [x] Fallback password is saved in passwords manager
 
 ### P5. Rehearse adding a disk (test hypervisor)
 
 Proves the [corrected procedure](overview.md#adding-a-disk-to-an-existing-pool) on a pool
 whose data doesn't matter, with the spare 2 TB WD20EZRZ still in the test box. If it
 isn't there any more, use any spare disk.
+
+Uses two disk tools:
+
+- `wipefs` (util-linux, on every NixOS host) erases filesystem, RAID and partition-table
+  signatures, so nothing recognises the old contents any more;
+- `sgdisk` (gptfdisk, the scriptable form of `gdisk`) edits GPT partition tables from
+  the command line: `--zap-all` destroys the table, `--new` creates a partition,
+  `--typecode`/`--change-name` set its type and partition label. The label is what boot
+  finds a pool's disks by.
+
+Both hypervisors' configs include `sgdisk` (and `screen`), and the NixOS installer has
+both tools.
 
 1. On the test hypervisor:
 
@@ -346,7 +358,7 @@ isn't there any more, use any spare disk.
    sgdisk --zap-all "$NEW"
    sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
    udevadm settle
-   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/9FBA-884A /key
    cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" /key/hypervisor
    cryptsetup luksAddKey --key-file /key/hypervisor "/dev/disk/by-partlabel/$LABEL"
    cryptsetup open --key-file /key/hypervisor "/dev/disk/by-partlabel/$LABEL" "$NAME"
@@ -378,7 +390,7 @@ isn't there any more, use any spare disk.
 
    Comment the line again, `just nix-remote-install boot hypervisor`, reboot.
 
-- [ ] Rehearsal done
+- [x] Rehearsal done
 
 ### P6. Rehearse `legacy-import` (test hypervisor)
 
@@ -387,26 +399,37 @@ loop images instead. The sample data is what Phase A already imported from produ
 in `/mnt/bulk/apps`. The rehearsal writes to `/mnt/bulk/rehearsal` (`--target`), never
 over it.
 
-1. Deploy the test hypervisor's current config, which brings the command (and `screen`,
-   used from P7 on): `just nix-remote-install switch hypervisor`.
+1. `legacy-import` came with P5's deploy: `ssh root@hypervisor legacy-import --list`.
 2. Build two "data disks", with one directory split across both as mergerfs did:
 
    ```sh
    ssh root@hypervisor
    mkdir -p /root/rehearsal && cd /root/rehearsal
-   truncate -s 20G disk1.img disk2.img
-   mkfs.ext4 -q -F disk1.img && mkfs.ext4 -q -F disk2.img
+   # Sparse: they only take the space written into them. The dumps alone are ~125 GB.
+   truncate -s 100G disk1.img disk2.img
+   # mkfs.ext4 (e2fsprogs) isn't installed: only this rehearsal needs it
+   nix shell nixpkgs#e2fsprogs -c sh -c 'mkfs.ext4 -q -F disk1.img && mkfs.ext4 -q -F disk2.img'
    mkdir -p d1 d2 && mount -o loop disk1.img d1 && mount -o loop disk2.img d2
    mkdir -p d1/recipes d2/minecraft d1/backups/postgres d2/backups/postgres
    cp -a /mnt/bulk/apps/recipes/mediafiles d1/recipes/
    cp -a /mnt/bulk/apps/minecraft/data d2/minecraft/
-   # half the dumps on each disk
+   # half the dump tiers (daily/, last/, …) on each disk: one directory split across both
    ls /mnt/bulk/apps/restore/prod-postgres | awk 'NR%2' | xargs -I{} cp -a /mnt/bulk/apps/restore/prod-postgres/{} d1/backups/postgres/
    ls /mnt/bulk/apps/restore/prod-postgres | awk '!(NR%2)' | xargs -I{} cp -a /mnt/bulk/apps/restore/prod-postgres/{} d2/backups/postgres/
    ```
 
    (If any of those sources is missing, use any other Phase A path under
    `/mnt/bulk/apps`; the point is real files in the legacy layout.)
+
+   If an image fills up anyway (`No space left on device`), grow it in place and re-run
+   the copy that failed. Here for `disk1.img`; `losetup -j disk1.img` names its loop
+   device:
+
+   ```sh
+   truncate -s 150G disk1.img
+   losetup -c /dev/loop0
+   nix shell nixpkgs#e2fsprogs -c resize2fs /dev/loop0
+   ```
 
 3. Run it:
 
@@ -433,9 +456,10 @@ over it.
 
    ```sh
    cd /root && umount rehearsal/d1 rehearsal/d2 && rm -r rehearsal /mnt/bulk/rehearsal
+   losetup -a                  # nothing left
    ```
 
-- [ ] Rehearsal done
+- [x] Rehearsal done
 
 ### P7. Take the Kingston NVMe out of the test hypervisor
 
@@ -452,11 +476,12 @@ running throughout the conversion and are only down for the final reboot.
      ssh root@hypervisor 'tar -C / -cSf - mnt/vmstore/technitium-secondary var/lib/vm-keys/technitium-secondary var/lib/libvirt/qemu/nvram/technitium-secondary_VARS.fd' > ~/phase-b/vm-copy/technitium-secondary.tar
      ```
 
-2. Check it fits: `Used` must be well under the WD's 465 GiB (it was 322 GiB at the time
-   of writing).
+2. Check it fits: `FS bytes used` must be well under the WD's 465 GiB (it was 312 GiB at
+   the time of writing). Not `btrfs filesystem usage`: its `Used` counts both RAID1 copies,
+   so it shows twice the data.
 
    ```sh
-   ssh root@hypervisor btrfs filesystem usage /mnt/vmstore | head -8
+   ssh root@hypervisor btrfs filesystem show /mnt/vmstore   # FS bytes used
    ```
 
 3. Convert and remove the Kingston (index 0, `crypt-vmstore-0`), in a `screen` session
@@ -503,7 +528,7 @@ running throughout the conversion and are only down for the final reboot.
 
    `crypt-vmstore-0` on the WD, and haos, technitium-secondary and apps running.
 
-- [ ] Kingston NVMe is out of hypervisor and ready to be put in hypervisor-01
+- [x] Kingston NVMe is out of hypervisor and ready to be put in hypervisor-01
 
 ## D — D-day
 
@@ -531,7 +556,7 @@ then the arrow keys or PgUp; `Esc` again to leave.
 
 - [ ] Announce downtime to anyone else who uses the services.
 - [ ] Stop writing: pause anything that ingests data (paperless consume folder, `*arr`
-      downloads, Syncthing, Immich mobile backup).
+      downloads, Syncthing, Immich mobile backup,sharkey).
 - [ ] UniFi: on the legacy controller, Settings → System → Advanced → **Inform Host**
       must be the name `unifi.snyssen.be`, not the legacy box's IP, so devices follow
       DNS to apps-01. If it isn't, set it and wait for every device to show Online
@@ -579,7 +604,8 @@ then the arrow keys or PgUp; `Esc` again to leave.
    ```
 
 5. From your machine, at the repo root, on the commit with P2–P4 in. `nix flake check`
-   passes on it and argunix is green:
+   passes on it, run locally: argunix is down until after the cutover (the Phase A VM
+   doesn't have the RAM for it), so it can't vouch for the commit:
 
    ```sh
    TARGET_IP=<the IP above>
@@ -611,7 +637,7 @@ btrfs filesystem usage /mnt/bulk | grep -E 'Data|Metadata'   # single / DUP
 tailscale status                                 # joined
 ls -l /dev/disk/by-id/ | grep -E 'WWZ3XVDG|ZHZ12PTZ'   # both KEEP disks visible
 ls /sys/bus/pci/devices/0000:00:02.0/iommu_group/devices/   # only 0000:00:02.0
-lspci -nnk -s 00:02.0 | grep 'in use'            # vfio-pci
+basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)"   # vfio-pci
 ```
 
 In the Tailscale admin console, **remove the legacy box's machine**. That frees its
@@ -749,6 +775,10 @@ there. To rebuild instead:
    ```sh
    just ansible-playbook technitium-setup -i hosts/prod.yml
    ```
+
+   argunix comes back with the stacks in D8. Once it does, check that
+   <https://argunix.snyssen.be> evaluates the latest commit: it is the first CI run since
+   the Phase A VM.
 
 ### D7. Restore
 

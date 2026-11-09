@@ -128,7 +128,7 @@
           vmstore = {
             disks = [
               # 1× 1 TB NVMe
-              "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
+              # "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
               # 2× 500 GB NVMe/SATA
               # TODO: re-enable to run pool extension test
               #! WARN: this disk might be failing (could not format it with Disko, lots of I/O errors), but it might also just be a SATA cable issue
@@ -186,6 +186,8 @@
   environment.systemPackages = [
     pkgs.btop
     pkgs.screen
+    # sgdisk, for the disk procedures in docs/hypervisor/overview.md
+    pkgs.gptfdisk
   ];
 
   # TODO: make this part automatically defined

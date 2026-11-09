@@ -194,6 +194,8 @@
   environment.systemPackages = [
     pkgs.btop
     pkgs.screen
+    # sgdisk, for the disk procedures in docs/hypervisor/overview.md
+    pkgs.gptfdisk
   ];
 
   # TODO: make this part automatically defined
