@@ -708,7 +708,7 @@ Detach with `Ctrl-a d`; re-attach with `screen -r import`. Note every `FAIL` lin
 the summary (`grep -E '^(FAIL|ok) ' /root/legacy-import.log`): each names the
 `prod-import` command that takes over (D6).
 
-- [ ] All data copied successfully
+- [x] All data copied successfully
 
 ### D5. Build and boot apps-01
 
@@ -774,6 +774,8 @@ your two keys in as root meanwhile, on the LAN address only (Tailscale SSH holds
    argunix comes back with the stacks in D7. Once it does, check that
    <https://argunix.snyssen.be> evaluates the latest commit: it is the first CI run since
    the Phase A VM.
+
+- [x] VM stands ready
 
 ### D6. Restore
 

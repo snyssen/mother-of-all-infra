@@ -40,6 +40,13 @@ in
           name: _: lib.nameValuePair "compose-${name}" { wantedBy = none; }
         ) config.compose-stacks.stacks
       ))
+      # Units that `requires` a stack and are wanted by multi-user.target pull it up
+      # with them, hold or not. (Units wanted by their own stack, like garage-website,
+      # need nothing here.)
+      (lib.mkIf cfg.stacks {
+        auth-lldap-bootstrap.wantedBy = none;
+        crowdsec-machine-bootstrap.wantedBy = none;
+      })
       (lib.mkIf cfg.backups { backrest.wantedBy = none; })
     ];
 

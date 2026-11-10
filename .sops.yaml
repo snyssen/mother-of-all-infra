@@ -13,7 +13,7 @@ keys: &all_keys
   - &root_hypervisor_01 age16p4ym33zpuz9r0cdz6r5y62npf9cyjyx6qfq9gj8dj2d4v8z6vrszjxhh9
   - &root_technitium_primary age1flln5jgw557ft9zff073ccer3hjcv344zaypm7gvrx9zlcnzsgws6ssrxg
   - &root_technitium_secondary age1wflhsef62cr7syf3cza5jkj4ylhrqj93yzpn862xxscp9g838caq09uzy8
-  - &root_apps age1un9lm7u4whghrydmeyxhv9mmkt7tyhjejn0mhesfc6g3x60atflqna7lg7
+  - &root_apps_01 age1am2ek6wpxenvgayvt0f2s6knpjkn6kqv85v7xxmhct3pz3a5yftq6aj8vx
   - &root_argunix age1lz26wpeeq7jnl9h40p2pexde8syzxmsen53v3xxg8hcx84zpjvnqj6kust
 creation_rules:
   # host specific secrets
@@ -94,14 +94,12 @@ creation_rules:
           - *root_technitium_secondary
           - *snyssen_purplehaze
           - *snyssen_blackfog
-  # root_apps is the Phase A test VM's key. Building the apps-01 image (Phase B runbook,
-  # step D5) generates apps-01's own, which replaces it here.
   - path_regex: nix/hosts/apps-01/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
         age:
           - *breakglass
-          - *root_apps
+          - *root_apps_01
           - *snyssen_purplehaze
           - *snyssen_blackfog
   - path_regex: nix/hosts/argunix/data/[^/]+\.(yaml|json|env|ini)$
