@@ -69,6 +69,8 @@
     ./restore-hold.nix
     # Transitional: delete this with its file and ./prod-layout.nix once Phase B is done.
     ./prod-import.nix
+    # Transitional: delete this with its file once Tailscale SSH works again (D8).
+    ./cutover-root-ssh.nix
   ];
 
   disko =

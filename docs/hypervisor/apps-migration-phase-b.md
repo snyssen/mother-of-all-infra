@@ -769,6 +769,12 @@ there. To rebuild instead:
 
 ### D6. Build and boot apps-01
 
+Until D8, reach apps-01 as root over its LAN address, `ssh root@192.168.1.10`, wherever
+this runbook says `ssh apps-01`. Tailscale SSH re-authenticates through Authelia, which
+runs on apps-01 and is down until then; `nix/hosts/apps-01/cutover-root-ssh.nix` lets
+your two keys in as root meanwhile, on the LAN address only (Tailscale SSH holds port
+22 on the tailnet one).
+
 1. Build the image:
 
    ```sh
@@ -885,8 +891,8 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
    push, then:
 
    ```sh
-   just nix-remote-install boot apps-01
-   ssh apps-01 sudo reboot
+   just nix-remote-install boot apps-01 192.168.1.10
+   ssh root@192.168.1.10 reboot
    ```
 
    Everything starts in dependency order. Traefik requests its certificates once, for
@@ -898,6 +904,9 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
    - [ ] Every service answers on its real hostname, over TLS, with a valid certificate,
          from the LAN, the tailnet, and outside (through ingress).
    - [ ] Authelia login works, including a second factor and at least one OIDC client.
+   - [ ] Tailscale SSH works again (`ssh apps-01`, through Authelia). Then delete
+         `nix/hosts/apps-01/cutover-root-ssh.nix` and its import, commit, and
+         `just nix-remote-install switch apps-01`.
    - [ ] Nextcloud: files present, a desktop client syncs, CalDAV/CardDAV resolves.
    - [ ] Immich: assets present *and* thumbnails render (a restored database with absent
          files looks fine until you scroll).
