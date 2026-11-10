@@ -830,6 +830,8 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
 4. Wait for `legacy-import`'s second command (the media) to finish, so the `*arr` apps
    never see an empty library.
 
+- [x] All data has been imported
+
 ### D7. Release the stacks, then verify
 
 1. In `nix/hosts/apps-01/configuration.nix`, set `restoreHold.stacks = false`. Commit,
@@ -846,30 +848,30 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
    wizard, and upload the `.unf` downloaded in D1.
 3. Fix what the per-stack notes below say needs fixing (the `*arr` root folders, …).
 4. Verify, before decommissioning anything:
-   - [ ] Every service answers on its real hostname, over TLS, with a valid certificate,
+   - [x] Every service answers on its real hostname, over TLS, with a valid certificate,
          from the LAN, the tailnet, and outside (through ingress).
-   - [ ] Authelia login works, including a second factor and at least one OIDC client.
-   - [ ] Tailscale SSH works again (`ssh apps-01`, through Authelia). Then delete
+   - [x] Authelia login works, including a second factor and at least one OIDC client.
+   - [x] Tailscale SSH works again (`ssh apps-01`, through Authelia). Then delete
          `nix/hosts/apps-01/cutover-root-ssh.nix` and its import, commit, and
          `just nix-remote-install switch apps-01`.
-   - [ ] Nextcloud: files present, a desktop client syncs, CalDAV/CardDAV resolves.
-   - [ ] Immich: assets present *and* thumbnails render (a restored database with absent
+   - [x] Nextcloud: files present, a desktop client syncs, CalDAV/CardDAV resolves.
+   - [x] Immich: assets present *and* thumbnails render (a restored database with absent
          files looks fine until you scroll).
-   - [ ] Paperless: documents searchable, OCR runs on a new upload.
-   - [ ] Jellyfin plays something; check the playback info for hardware (QSV)
+   - [x] Paperless: documents searchable, OCR runs on a new upload.
+   - [x] Jellyfin plays something; check the playback info for hardware (QSV)
          transcoding.
-   - [ ] Matrix: log in through Element, recent messages and media load, a message
+   - [x] Matrix: log in through Element, recent messages and media load, a message
          reaches someone on another server, the bridges connect.
-   - [ ] Sharkey: log in, timelines load, an existing image displays, a post reaches a
+   - [x] Sharkey: log in, timelines load, an existing image displays, a post reaches a
          remote follower.
-   - [ ] UniFi: every device **Online**. They come back by themselves once
+   - [x] UniFi: every device **Online**. They come back by themselves once
          `unifi.snyssen.be` resolves to apps-01 on the LAN, which it does from the
          start (`*.snyssen.be` → `192.168.1.10`).
-   - [ ] Syncthing: the Pixel has `apps-01` with address `tcp://apps-01:22000` (edit
+   - [x] Syncthing: the Pixel has `apps-01` with address `tcp://apps-01:22000` (edit
          the device by hand), and the folders are filling from the peers.
-   - [ ] Monitoring: Grafana dashboards populated, Gatus checks green. The Grafana
+   - [x] Monitoring: Grafana dashboards populated, Gatus checks green. The Grafana
          "Uptime Kuma" dashboard replaced by its Gatus version.
-   - [ ] ntfy delivers to your phone, from each kind of sender (each one uses its own
+   - [x] ntfy delivers to your phone, from each kind of sender (each one uses its own
          ntfy user, carried over from prod):
      - Grafana (`monitoring` user, through `grafana-to-ntfy`): Alerting → Contact
        points → the ntfy contact point → **Test**.

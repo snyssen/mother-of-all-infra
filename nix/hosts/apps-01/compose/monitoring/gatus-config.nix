@@ -92,7 +92,7 @@ let
         enabled = config.compose-stacks.stacks.sharkey.autostart;
       }
     )
-    (http "foundryvtt" "https://dnd.${domain}")
+    (gated "foundryvtt" "http://foundryvtt:30000/api/status" "https://dnd.${domain}")
     (keyword "jellyfin" "https://streaming.${domain}/health" "Healthy")
     # These live in the vpn container's network namespace, so that is their address.
     # The *arr apps' /ping needs no API key.
@@ -118,7 +118,9 @@ let
     # Prod's s-pdf, now bentopdf on the same host name.
     (gated "s-pdf" "http://bentopdf:8080" "https://pdf.${domain}")
     (http "speedtest" "https://speedtest.${domain}")
-    (http "speedtest-tracker" "https://speedtest-tracker.${domain}")
+    (gated "speedtest-tracker" "http://speedtest-tracker:80/api/healthcheck"
+      "https://speedtest-tracker.${domain}"
+    )
     (http "recipes" "https://recipes.${domain}")
     {
       name = "recipes admin route";

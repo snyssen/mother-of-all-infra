@@ -222,8 +222,11 @@
     remotePath = "/mnt/bulk/apps";
     dependsOn.tailscale = true;
   };
+  # Root-owned: under a parent owned by a regular user, systemd-tmpfiles refuses to
+  # touch any root-owned subdirectory (an "unsafe path transition"), so each stack's
+  # own `d` rules below it would silently do nothing.
   systemd.tmpfiles.rules = [
-    "d /var/lib/app-data 0755 snyssen users -"
+    "d /var/lib/app-data 0755 root root -"
   ];
 
   docker.networks = [
@@ -288,7 +291,7 @@
   # in (docs/hypervisor/apps-migration-phase-b.md, step D7), `backups` until it is
   # verified (step D8).
   restoreHold = {
-    stacks = true;
+    stacks = false;
     backups = true;
   };
 
