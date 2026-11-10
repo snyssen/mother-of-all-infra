@@ -292,7 +292,7 @@
   # verified (step D8).
   restoreHold = {
     stacks = false;
-    backups = true;
+    backups = false;
   };
 
   # Production domains. During Phase A the test VM ran on snyssen1.xyz/snyssen2.xyz;

@@ -919,6 +919,8 @@ repositories is apps-01's restored state. Autorestic's snapshots stay as they ar
    Every `backups_*` Gatus check is green by then.
 5. Re-enable ingest (consume folders, download clients, mobile backup).
 
+- [ ] Backups have been re-enabled
+
 ### D9. Move technitium-secondary, then haos
 
 Not urgent: both keep running on the test hypervisor until then, and nothing in
