@@ -9,7 +9,7 @@ one you are looking at:
 | tool | [autorestic](https://autorestic.vercel.app/) (restic wrapper) | [Backrest](https://github.com/garethgeorge/backrest) (restic wrapper) |
 | configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps-01/backrest.nix` |
 | credentials in | ansible-vault | sops (`nix/hosts/apps-01/data/<stack>.yaml`) |
-| writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | the same two repositories, from the cutover (Phase B step D9) |
+| writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | the same two repositories, from the cutover (Phase B step D8) |
 | restores with | Ansible playbooks | generated on-host commands |
 
 Both are restic underneath, so both are readable with the plain `restic` CLI and with

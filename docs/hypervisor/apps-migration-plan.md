@@ -118,7 +118,7 @@ detail:
 - [x] **Backrest onto production's repositories**: every plan into prod's on-site repo
       and, as `<plan>-offsite`, into its B2 repo (movies, tv and the media prod never
       backed up stay on-site only), with check and prune policies and Gatus heartbeats
-      for both. Configured now, held off until Phase B step D9.
+      for both. Configured now, held off until Phase B step D8.
 - Later, not needed for the cutover: the rest of the monitoring setup (dashboards,
   alert rules) declared in the repo as well.
 

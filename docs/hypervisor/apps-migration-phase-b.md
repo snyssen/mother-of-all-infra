@@ -74,7 +74,7 @@ and owners `prod-import` was tested with during Phase A are therefore exactly th
 compose stack, no Backrest and no data-acting timer. Every unit still exists, so you
 start `compose-databases` by hand for the database restore, and the restore tools leave
 stopped units stopped. Releasing a hold is a commit, a deploy with `boot` and a reboot
-(steps D8 and D9). It replaces masking units at the GRUB prompt, which needs a console in
+(steps D7 and D8). It replaces masking units at the GRUB prompt, which needs a console in
 time to catch the boot.
 
 ## Before you start
@@ -89,7 +89,7 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
 - [x] **`grafana-to-ntfy` on apps-01.** Prod relays Grafana alerts to ntfy through it.
       Now in apps-01's monitoring stack, with the `monitoring` ntfy user's password
       copied from the vault into `nix/hosts/apps-01/data/ntfy.yaml`. Its test is the
-      Grafana line of D8's ntfy check.
+      Grafana line of D7's ntfy check.
 - [x] The Backrest design for after the cutover: production's two repositories, B2
       twins, check and prune policies (`nix/hosts/apps-01/backrest.nix`, described in
       [the backups doc](../backups.md#two-repositories-productions-own)), with the
@@ -251,7 +251,7 @@ uploaded through the web UI's Imports page, and exports generated from it. It is
 `watched` import folder. The points themselves are all in the database, so it only
 matters if you uploaded something you can't download again. Production backs it up
 nowhere; `legacy-import dawarich-storage` copies it, and apps-01's `dawarich` plan backs
-it up from D9 on. If it is empty, drop that group from the D4 command.
+it up from D8 on. If it is empty, drop that group from the D4 command.
 
 Then fill in the `TODO(P2)` placeholders and commit:
 
@@ -555,9 +555,9 @@ then the arrow keys or PgUp; `Esc` again to leave.
 
 ### Binary cache
 
-`cache.snyssen.be` is down from D1 until the stacks are back (D8), and every Nix command
+`cache.snyssen.be` is down from D1 until the stacks are back (D7), and every Nix command
 that lists it as a substituter (nixos-anywhere, `just nix-remote-install`, a `nix shell`
-on hypervisor-01) waits on it first. Leave it out, in every shell you use until D8, on
+on hypervisor-01) waits on it first. Leave it out, in every shell you use until D7, on
 your machine and on hypervisor-01:
 
 ```sh
@@ -681,13 +681,13 @@ ip -br addr show br0                             # the host's LAN address is on 
 ```
 
 In the Tailscale admin console, **remove the legacy box's machine**. That frees its
-address, `100.114.242.89`, for apps-01 (D6).
+address, `100.114.242.89`, for apps-01 (D5).
 
 - [x] All checks are green on hypervisor-01
 
 ### D4. Start `legacy-import`
 
-It runs for many hours. Everything up to D7's database restores can happen alongside it.
+It runs for many hours. Everything up to D6's database restores can happen alongside it.
 
 ```sh
 ssh root@hypervisor-01
@@ -706,70 +706,13 @@ legacy-import --all 2>&1 | tee /root/legacy-import.log
 
 Detach with `Ctrl-a d`; re-attach with `screen -r import`. Note every `FAIL` line in
 the summary (`grep -E '^(FAIL|ok) ' /root/legacy-import.log`): each names the
-`prod-import` command that takes over (D7).
+`prod-import` command that takes over (D6).
 
 - [ ] All data copied successfully
 
-### D5. Move technitium-secondary, then haos
+### D5. Build and boot apps-01
 
-From your machine. Each VM: shut down on the old box, copy its disk image, NVRAM (UEFI
-boot entries) and, for technitium-secondary, its disk key, then provision it on
-hypervisor-01. The copy goes through your machine, so the two servers need no trust
-between them; `tar -S` keeps the images sparse.
-
-**technitium-secondary** (the NUC keeps serving DNS meanwhile):
-
-```sh
-VM=technitium-secondary
-FILES="mnt/vmstore/$VM/disk.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd var/lib/vm-keys/$VM/luks.key"
-ssh root@hypervisor "virsh shutdown $VM"
-until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
-ssh root@hypervisor "virsh autostart --disable $VM"
-ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
-diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
-     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
-just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
-```
-
-Check: `dig @192.168.1.3 snyssen.be` answers, and the Technitium cluster page on the NUC
-shows the secondary in sync.
-
-**haos** (home automation is down for ~10 minutes):
-
-```sh
-VM=haos
-FILES="mnt/vmstore/$VM/haos.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd"
-ssh root@hypervisor "virsh shutdown $VM"
-until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
-ssh root@hypervisor "virsh autostart --disable $VM"
-ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
-diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
-     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
-```
-
-Move the ZBT-2 USB dongle from the test hypervisor to hypervisor-01, then:
-
-```sh
-just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
-```
-
-Check: Home Assistant answers at `https://hass.snyssen.be`, and a Zigbee device responds.
-
-**If a move misbehaves**: shut the new copy down
-(`just hypervisor-vm-stop <vm> hypervisor-01`), then
-`ssh root@hypervisor "virsh autostart <vm>; virsh start <vm>"`. The old files are still
-there. To rebuild instead:
-
-- **haos**: delete `/mnt/vmstore/haos/haos.qcow2` on hypervisor-01 and provision again
-  (it downloads a fresh HAOS image), then restore the backup downloaded in D1.
-- **technitium-secondary**: set `build: true` for it in
-  `ansible/hosts/host_vars/hypervisor-01/vars.yml` and follow D6's build steps for it
-  (new key → `.sops.yaml` → re-encrypt `nix/hosts/technitium-secondary/data/*`). The
-  cluster re-syncs its zones from the NUC.
-
-### D6. Build and boot apps-01
-
-Until D8, reach apps-01 as root over its LAN address, `ssh root@192.168.1.10`, wherever
+Until D7, reach apps-01 as root over its LAN address, `ssh root@192.168.1.10`, wherever
 this runbook says `ssh apps-01`. Tailscale SSH re-authenticates through Authelia, which
 runs on apps-01 and is down until then; `nix/hosts/apps-01/cutover-root-ssh.nix` lets
 your two keys in as root meanwhile, on the LAN address only (Tailscale SSH holds port
@@ -828,11 +771,11 @@ your two keys in as root meanwhile, on the LAN address only (Tailscale SSH holds
    just ansible-playbook technitium-setup -i hosts/prod.yml
    ```
 
-   argunix comes back with the stacks in D8. Once it does, check that
+   argunix comes back with the stacks in D7. Once it does, check that
    <https://argunix.snyssen.be> evaluates the latest commit: it is the first CI run since
    the Phase A VM.
 
-### D7. Restore
+### D6. Restore
 
 On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
 
@@ -863,7 +806,7 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
    Immich and Dawarich don't need starting: `postgres-restore` reaches them with
    `docker compose run` on their dump sidecar, and that starts only the sidecar's
    database container, not the app. That container is left running afterwards, so the
-   last lines below stop all three stacks again; step D8 starts everything in order.
+   last lines below stop all three stacks again; step D7 starts everything in order.
 
    ```sh
    systemctl start compose-databases
@@ -885,7 +828,7 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
 4. Wait for `legacy-import`'s second command (the media) to finish, so the `*arr` apps
    never see an empty library.
 
-### D8. Release the stacks, then verify
+### D7. Release the stacks, then verify
 
 1. In `nix/hosts/apps-01/configuration.nix`, set `restoreHold.stacks = false`. Commit,
    push, then:
@@ -935,7 +878,7 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
      - UnifiedPush (anonymous `up*` topics): with Matrix live, a message from another
        account raises a notification from Element on the phone.
 
-### D9. Release the backups
+### D8. Release the backups
 
 apps-01's Backrest is already configured for production's two repositories (see
 [the backups doc](../backups.md#two-repositories-productions-own)): every plan into the
@@ -971,6 +914,78 @@ repositories is apps-01's restored state. Autorestic's snapshots stay as they ar
 
    Every `backups_*` Gatus check is green by then.
 5. Re-enable ingest (consume folders, download clients, mobile backup).
+
+### D9. Move technitium-secondary, then haos
+
+Not urgent: both keep running on the test hypervisor until then, and nothing in
+D1–D8 depends on where they run. Do it once the stacks are back, or days later; only A2
+needs it done.
+
+Both are commented out of `libvirt_vms` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`
+until their move, so no earlier provisioning run can start a second haos (same MAC as
+the one still running) or a technitium-secondary with no disk image. Each move below
+uncomments its own entry.
+
+From your machine. Each VM: shut down on the old box, copy its disk image, NVRAM (UEFI
+boot entries) and, for technitium-secondary, its disk key, then provision it on
+hypervisor-01. The copy goes through your machine, so the two servers need no trust
+between them; `tar -S` keeps the images sparse.
+
+**technitium-secondary** (the NUC keeps serving DNS meanwhile):
+
+Uncomment its entry in `ansible/hosts/host_vars/hypervisor-01/vars.yml`, commit and push
+(the playbook's safety check wants a clean tree in sync with upstream). Then:
+
+```sh
+VM=technitium-secondary
+FILES="mnt/vmstore/$VM/disk.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd var/lib/vm-keys/$VM/luks.key"
+ssh root@hypervisor "virsh shutdown $VM"
+until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
+ssh root@hypervisor "virsh autostart --disable $VM"
+ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
+diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
+     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
+just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
+```
+
+Check: `dig @192.168.1.3 snyssen.be` answers, and the Technitium cluster page on the NUC
+shows the secondary in sync.
+
+**haos** (home automation is down for ~10 minutes):
+
+Uncomment its entry in `ansible/hosts/host_vars/hypervisor-01/vars.yml`, commit and push
+(the playbook's safety check wants a clean tree in sync with upstream). Then:
+
+```sh
+VM=haos
+FILES="mnt/vmstore/$VM/haos.qcow2 var/lib/libvirt/qemu/nvram/${VM}_VARS.fd"
+ssh root@hypervisor "virsh shutdown $VM"
+until ssh root@hypervisor "virsh domstate $VM" | grep -q 'shut off'; do sleep 5; done
+ssh root@hypervisor "virsh autostart --disable $VM"
+ssh root@hypervisor "tar -C / -cSf - $FILES" | ssh root@hypervisor-01 "tar -C / -xSpf -"
+diff <(ssh root@hypervisor "cd / && sha256sum $FILES") \
+     <(ssh root@hypervisor-01 "cd / && sha256sum $FILES") && echo IDENTICAL
+```
+
+Move the ZBT-2 USB dongle from the test hypervisor to hypervisor-01, then:
+
+```sh
+just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
+```
+
+Check: Home Assistant answers at `https://hass.snyssen.be`, and a Zigbee device responds.
+
+**If a move misbehaves**: shut the new copy down
+(`just hypervisor-vm-stop <vm> hypervisor-01`), then
+`ssh root@hypervisor "virsh autostart <vm>; virsh start <vm>"`. The old files are still
+there. To rebuild instead:
+
+- **haos**: delete `/mnt/vmstore/haos/haos.qcow2` on hypervisor-01 and provision again
+  (it downloads a fresh HAOS image), then restore the backup downloaded in D1.
+- **technitium-secondary**: set `build: true` for it in
+  `ansible/hosts/host_vars/hypervisor-01/vars.yml` and follow D5's build steps for it
+  (new key → `.sops.yaml` → re-encrypt `nix/hosts/technitium-secondary/data/*`). The
+  cluster re-syncs its zones from the NUC.
 
 ## A — Afterwards
 
@@ -1216,7 +1231,7 @@ for them.
    - drop the Phase A repository's password, which nothing reads any more:
      `sops unset nix/hosts/apps-01/data/common.yaml '["backrest"]["repos"]["apps"]'`.
 9. Destroy the Phase A test repository on the backup server
-   (`rest:http://backup.snyssen.be:8000/apps/`), once D9 has produced good snapshots.
+   (`rest:http://backup.snyssen.be:8000/apps/`), once D8 has produced good snapshots.
 
 ### A3. Last steps
 

@@ -69,7 +69,7 @@
     ./restore-hold.nix
     # Transitional: delete this with its file and ./prod-layout.nix once Phase B is done.
     ./prod-import.nix
-    # Transitional: delete this with its file once Tailscale SSH works again (D8).
+    # Transitional: delete this with its file once Tailscale SSH works again (D7).
     ./cutover-root-ssh.nix
   ];
 
@@ -285,8 +285,8 @@
 
   # Services held out of the boot targets while a restore lands on this host (see
   # ./restore-hold.nix). Both on for the Phase B cutover: `stacks` until the restore is
-  # in (docs/hypervisor/apps-migration-phase-b.md, step D8), `backups` until it is
-  # verified (step D9).
+  # in (docs/hypervisor/apps-migration-phase-b.md, step D7), `backups` until it is
+  # verified (step D8).
   restoreHold = {
     stacks = true;
     backups = true;

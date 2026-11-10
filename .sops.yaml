@@ -95,7 +95,7 @@ creation_rules:
           - *snyssen_purplehaze
           - *snyssen_blackfog
   # root_apps is the Phase A test VM's key. Building the apps-01 image (Phase B runbook,
-  # step D6) generates apps-01's own, which replaces it here.
+  # step D5) generates apps-01's own, which replaces it here.
   - path_regex: nix/hosts/apps-01/data/[^/]+\.(yaml|json|env|ini)$
     key_groups:
       - pgp:
