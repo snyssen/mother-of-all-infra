@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "direnv",
+      "args": ["exec", ".", "mcp-grafana", "-disable-write"]
+    }
+  }
+}

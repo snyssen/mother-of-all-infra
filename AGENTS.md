@@ -40,6 +40,7 @@ side. When the two disagree, ask which one the task means.
 
 - Enter the devshell with `nix develop`, or install direnv (`.envrc` auto-loads the flake). Devshell packages: `nixfmt`, `nixd`, `just`, `pre-commit`, `ansible`, `ansible-lint`, `terraform`, `sops`, `age`, `ssh-to-age`, `openstackclient`.
 - First run: `just setup` → installs pre-commit hooks, Ansible Galaxy collections/roles (`ansible/requirements.yml`), and prompts for the Ansible Vault passphrase (written to `.envrc.private`, never committed).
+- Grafana MCP server: `.mcp.json` registers `grafana` (read-only, `-disable-write`) against `GRAFANA_URL` from `.envrc`. It launches through `direnv exec`, so it needs direnv even when the devshell is entered another way. The only per-user step is `just grafana-mcp-setup`, which stores a Grafana service account token (Viewer role is enough) in `.envrc.private`.
 - List all tasks: `just --list`. The root `justfile` imports `ansible/ansible.just`, `nix/nix.just`, `terraform/terraform.just`, `hypervisor/hypervisor.just`.
 - On every devshell load, `scripts/git-main-safety-check.sh warn` runs (throttled fetch) to warn if the tree is behind/dirty.
 - **`just` recipes take positional arguments, not `name=value`.** `just nix-build blackfog`, not `just nix-build host=blackfog` — the latter is accepted silently and passes the literal string `host=blackfog` through. Check a signature with `just --list`, and dry-run anything you are unsure of with `just --dry-run <recipe> <args>`.

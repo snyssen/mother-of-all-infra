@@ -18,6 +18,7 @@ pkgs.mkShell {
     yq-go # scripts/sops-from-vault.sh
     authelia # scripts/sops-gen-secret.sh (random values and OIDC client secret digests)
     openstackclient
+    mcp-grafana # .mcp.json
   ];
 
   # Add environment variables

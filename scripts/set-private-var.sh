@@ -48,7 +48,7 @@ fi
 # Replace existing export line if present, otherwise append
 if grep -Eq "$EXPORT_GREP" "$TARGET"; then
   # Replace in-place without creating a backup
-  sed -E -i "s|^[[:space:]]*export[[:space:]]+ANSIBLE_VAULT_PASSPHRASE[[:space:]]*=.*|$new_line|" "$TARGET"
+  sed -E -i "s|^[[:space:]]*export[[:space:]]+$VAR[[:space:]]*=.*|$new_line|" "$TARGET"
   echo "Replaced existing $VAR in $TARGET."
 else
   # Append to file

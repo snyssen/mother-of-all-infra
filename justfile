@@ -56,6 +56,10 @@ sops-set-stdin file key:
 sops-gen-secret +args:
   scripts/sops-gen-secret.sh {{args}}
 
+# Store a Grafana service account token for the Grafana MCP server in .mcp.json
+grafana-mcp-setup:
+  scripts/set-private-var.sh GRAFANA_SERVICE_ACCOUNT_TOKEN
+
 # Run mkdocs website locally
 run-docs:
   nix run .#docs
