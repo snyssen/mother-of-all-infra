@@ -152,7 +152,16 @@ in
         }
       '';
       alloy_nodeMetrics = ''
-        prometheus.exporter.unix "default" { }
+        // node_exporter's systemd collector is off by default here too. It feeds
+        // Grafana's "Crowdsec bouncers status" alert (node_systemd_unit_state), so it
+        // is narrowed to those units: every unit, five states each, on every host,
+        // would be a lot of series for one alert.
+        prometheus.exporter.unix "default" {
+          enable_collectors = ["systemd"]
+          systemd {
+            unit_include = "crowdsec-.+-bouncer\\.service"
+          }
+        }
 
         prometheus.scrape "node" {
           targets         = prometheus.exporter.unix.default.targets
