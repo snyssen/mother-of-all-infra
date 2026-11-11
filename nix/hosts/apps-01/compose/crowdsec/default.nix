@@ -11,7 +11,11 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/app-data/crowdsec/data 0755 root root -"
     "d /var/lib/app-data/crowdsec/hub 0755 root root -"
-    "d /var/lib/app-data/crowdsec-web-ui 0755 root root -"
+    # The web UI drops from root to uid 1000 (gosu node) before opening its SQLite
+    # database, so it needs to own this directory and everything in it — Z also
+    # re-owns any files already created or restored there as root.
+    "d /var/lib/app-data/crowdsec-web-ui 0755 1000 1000 -"
+    "Z /var/lib/app-data/crowdsec-web-ui - 1000 1000 -"
   ];
 
   sops.secrets = {
