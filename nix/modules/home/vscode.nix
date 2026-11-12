@@ -15,6 +15,10 @@ in
   };
 
   config = {
+    home.packages = with pkgs; [
+      # Required by todo-tree extension
+      ripgrep
+    ];
     programs.vscode = {
       enable = true;
       package = if cfg.useUnstable then pkgs.unstable.vscode.fhs else pkgs.vscode.fhs;

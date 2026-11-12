@@ -165,7 +165,6 @@ in
 
   environment.systemPackages = [
     pkgs.jq
-    pkgs.ripgrep
     pkgs.chromium
   ];
 
