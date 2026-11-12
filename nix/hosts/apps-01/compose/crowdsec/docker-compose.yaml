@@ -8,6 +8,7 @@ services:
     volumes:
       - ./crowdsec/config.yaml.local:/etc/crowdsec/config.yaml.local:ro
       - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d:ro
+      - ./crowdsec/self-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/self-whitelist.yaml:ro
       # Only the declared static config is mounted read-only — the enable-symlinks for
       # collections/parsers installed via COLLECTIONS below land in the container's own
       # writable layer, reinstalled fresh (idempotently) on every start, not a

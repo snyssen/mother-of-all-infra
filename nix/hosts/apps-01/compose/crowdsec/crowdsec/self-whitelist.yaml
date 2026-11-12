@@ -1,0 +1,16 @@
+# apps-01 never gets banned by its own CrowdSec. Its services reach each other through
+# Traefik on its own tailnet address, and some of that traffic looks like an attack:
+# argunix pushing to the Nix cache (s3.snyssen.be) does a HEAD before every upload, and
+# the run of 404s for paths not cached yet trips crowdsecurity/http-probing. The ban
+# that followed made the firewall bouncer drop everything from this address, cutting
+# the argunix builder off from its coordinator and the bouncer off from the LAPI.
+#
+# crowdsecurity/whitelists only covers RFC1918, not Tailscale's 100.64.0.0/10. The
+# address is apps-01's tailnet IP, the same one ingress forwards to (appsServerIp in
+# nix/hosts/ingress/traefik-configuration.nix).
+name: snyssen/apps-01-self-whitelist
+description: "Never ban apps-01's own tailnet address"
+whitelist:
+  reason: "apps-01 itself"
+  ip:
+    - "100.114.242.89"
