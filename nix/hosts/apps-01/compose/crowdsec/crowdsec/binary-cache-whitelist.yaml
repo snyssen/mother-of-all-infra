@@ -1,0 +1,19 @@
+# Normal Nix binary cache traffic, which the HTTP scenarios read as an attack. Clients
+# look up many paths that aren't cached, so runs of 404s are expected (http-probing),
+# and a substitution or a push is a burst of non-static requests (http-crawl-non_statics).
+#
+# Matched on the Traefik router: this host's access log is Traefik's common log format,
+# from which crowdsecurity/traefik-logs extracts the router but not the requested host.
+# Routers from compose/garage/default.nix.
+#
+# - garage-s3-web (cache.snyssen.be): the public, read-only cache. Nothing to find there.
+# - garage-s3-api (s3.snyssen.be): uploads, by argunix and `just nix-build-cache`. Garage
+#   answers anything not signed with a valid key with 401/403, so those still count:
+#   someone without a key can't be anything but probing.
+name: snyssen/binary-cache-whitelist
+description: "Ignore expected Nix binary cache traffic"
+whitelist:
+  reason: "Nix binary cache"
+  expression:
+    - evt.Meta.traefik_router_name == 'garage-s3-web@file'
+    - evt.Meta.traefik_router_name == 'garage-s3-api@file' && evt.Meta.http_status not in ['401', '403']
