@@ -7,6 +7,28 @@
 let
   composeFile = "${./.}/docker-compose.yaml";
 
+  # Transmission's settings.json, installed like sabnzbd.ini (see
+  # streaming-download-clients-config below). Only what differs from Transmission's
+  # defaults: it fills in the rest, and writes the full file back on shutdown.
+  transmissionSettings = pkgs.writeText "transmission-settings.json" (
+    builtins.toJSON {
+      # TRaSH Guides layout (ansible/roles/container_streaming/README.md): the *arr
+      # apps mount the same /data, and add their category (movies, tv, music) below it.
+      download-dir = "/data/torrent";
+      incomplete-dir-enabled = false;
+      # Group-writable, so anything in group 100 can manage the files too.
+      umask = "002";
+      # Reached only through Traefik, behind Authelia, or by the *arr apps sharing the
+      # vpn container's network: no RPC login, as on prod.
+      rpc-authentication-required = false;
+      rpc-whitelist-enabled = false;
+      rpc-host-whitelist-enabled = true;
+      rpc-host-whitelist = "torrent.${config.domains.main}";
+      # No UPnP/NAT-PMP to speak to from inside the VPN tunnel. The peer port comes
+      # from ProtonVPN through gluetun instead, set at runtime by transmission-peer-port.
+      port-forwarding-enabled = false;
+    }
+  );
 in
 {
   # Local (fast SSD) app-data dirs only — everything under /mnt/bulk is handled by
@@ -65,6 +87,24 @@ in
     "compose-stacks/streaming/audiobookshelf/oidc/client_secret_hash" = {
       sopsFile = ../../data/streaming.yaml;
     };
+    "compose-stacks/streaming/usenet/server/host" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/usenet/server/port" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/usenet/server/user" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/usenet/server/password" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/usenet/api_key" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
+    "compose-stacks/streaming/usenet/nzb_key" = {
+      sopsFile = ../../data/streaming.yaml;
+    };
   };
 
   # All six values (plus the Postgres passwords and smtp/* referenced below) are
@@ -105,6 +145,35 @@ in
 
     POSTGRES_PASSWORD=${config.sops.placeholder."compose-stacks/databases/postgres/passwords/audiomuse"}
   '';
+
+  sops.templates."sabnzbd.ini".content = import ./sabnzbd-config.nix { inherit config; };
+
+  # Both download clients keep their settings in a file they rewrite on shutdown, in a
+  # /config that also holds their state (queue, resume files), so the files can't be
+  # mounted read-only. They are copied in instead, before every start of the stack, as
+  # the legacy role's template task did for sabnzbd.ini. PartOf ties this to the stack:
+  # restarting compose-streaming stops the clients (which save their files) before this
+  # runs again, so the repo's version always wins over edits made in the web UIs.
+  systemd.services.streaming-download-clients-config = {
+    description = "Install the streaming download clients' configuration";
+    after = [ "streaming-storage-dirs.service" ];
+    requires = [ "streaming-storage-dirs.service" ];
+    before = [ "compose-streaming.service" ];
+    requiredBy = [ "compose-streaming.service" ];
+    partOf = [ "compose-streaming.service" ];
+    restartTriggers = [ config.sops.templates."sabnzbd.ini".content ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "streaming-download-clients-config" ''
+        set -euo pipefail
+        install -m 0600 -o 33 -g 100 ${
+          config.sops.templates."sabnzbd.ini".path
+        } /mnt/bulk/usenet/sabnzbd.ini
+        install -m 0600 -o 33 -g 100 ${transmissionSettings} /mnt/bulk/torrent/settings.json
+      '';
+    };
+  };
 
   # /mnt/bulk subpaths can't go through ordinary tmpfiles rules (see the comment
   # above) — this unit creates them after the NFS mount is actually up, mirroring the
@@ -361,12 +430,55 @@ in
             customFrameOptionsValue: "allow-from https://streaming.${config.domains.main}"
   '';
 
+  # ProtonVPN forwards one port to the vpn container (VPN_PORT_FORWARDING), chosen by
+  # the provider and liable to change whenever gluetun reconnects. Transmission has to
+  # listen on, and announce, that exact port for peers to reach it. gluetun writes the
+  # port to a file; this copies it into Transmission through transmission-remote, which
+  # the image ships. Setting it is idempotent, so a timer keeps the two in step without
+  # tracking changes. Done from the host because gluetun's own up-command can't do
+  # Transmission's RPC session handshake with the tools in its image.
+  systemd.services.transmission-peer-port = {
+    description = "Point Transmission's peer port at the port ProtonVPN forwards";
+    after = [ "compose-streaming.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecCondition = pkgs.writeShellScript "transmission-peer-port-condition" ''
+        ${pkgs.docker}/bin/docker compose --project-name streaming -f ${composeFile} \
+          ps --status running --services | ${pkgs.gnugrep}/bin/grep -qx torrent
+      '';
+      ExecStart = pkgs.writeShellScript "transmission-peer-port" ''
+        set -euo pipefail
+        compose() {
+          ${pkgs.docker}/bin/docker compose --project-name streaming -f ${composeFile} "$@"
+        }
+        port="$(compose exec -T vpn cat /tmp/gluetun/forwarded_port)"
+        if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+          echo "gluetun has no forwarded port yet" >&2
+          exit 1
+        fi
+        compose exec -T torrent transmission-remote localhost:9091 --port "$port"
+        echo "Transmission peer port set to $port"
+      '';
+    };
+  };
+
+  systemd.timers.transmission-peer-port = {
+    description = "Keep Transmission's peer port on the forwarded port";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "3min";
+      OnUnitActiveSec = "5min";
+    };
+  };
+
   compose-stacks.stacks.streaming = {
     restartTriggers = [
       ../../data/streaming.yaml
       ../../data/databases.yaml
       ../../data/common.yaml
       config.sops.templates."compose-streaming.env".content
+      config.sops.templates."sabnzbd.ini".content
+      transmissionSettings
     ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-streaming.env".path;
@@ -380,6 +492,7 @@ in
       "reverse-proxy-dynamic-config.service"
       "mnt-bulk.mount"
       "streaming-storage-dirs.service"
+      "streaming-download-clients-config.service"
     ];
     # Must not start before the media is here: the *arr apps would treat an empty
     # library as "everything was deleted". At the cutover the host-wide hold

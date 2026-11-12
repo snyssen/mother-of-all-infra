@@ -145,7 +145,9 @@ if [ "$FILES" -eq 1 ]; then
 elif [ -n "$JOIN" ]; then
   vault_value() { printf '%s' "$VAULT_JSON" | SEP="$JOIN" yq -p=json -o=json -I=0 "$(vault_expr "$1") | join(strenv(SEP))"; }
 else
-  vault_value() { printf '%s' "$VAULT_JSON" | yq -p=json -o=json -I=0 "$(vault_expr "$1")"; }
+  # Numbers and booleans become strings: sops-nix only installs string values, and
+  # fails the whole activation's secrets on any other type (a port, say).
+  vault_value() { printf '%s' "$VAULT_JSON" | yq -p=json -o=json -I=0 "$(vault_expr "$1") | with(select(tag == \"!!int\" or tag == \"!!float\" or tag == \"!!bool\"); . = to_string)"; }
 fi
 # The same encoding read back from the SOPS file. `sops decrypt --extract` would be the
 # obvious tool, but it prints scalars raw and without a final newline, so it cannot be
