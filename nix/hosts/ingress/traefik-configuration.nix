@@ -30,8 +30,6 @@ let
     team = "bigdouf.team";
     umami = "umami.snyssen.be";
     dawarich = "location.snyssen.be";
-
-    # Note: this lives on the apps host
     argunix = "argunix.snyssen.be";
   };
   proxiedTCPServices = {

@@ -304,13 +304,15 @@
   # via the shared reverse-proxy.dynamicConfig mechanism, alongside the containerized
   # Traefik instance that replaces this host's previous native one.
 
-  argunix.enable = false; # TODO: re-enable once we have more RAM available
   argunix.mode = "both";
   argunix.coordinator = {
     # Only reached through reverse-proxy now (see its argunix dynamic-config
     # fragment) via the docker-bridge firewall trust rule in docker.nix — no longer
     # needs its own port open to the WAN.
     api.openFirewall = false;
+    # Not the module's default 8080: reverse-proxy publishes the host's 8080 for UniFi's
+    # inform port, which the devices are configured with.
+    api.listenPort = 8090;
     builderEnrollment.tokenFile = config.sops.secrets."argunix/builder_enrollment/token".path;
     forges.github = {
       tokenFile = config.sops.secrets."argunix/forges/github/token".path;

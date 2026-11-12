@@ -105,7 +105,7 @@ in
     };
 
     # argunix is a native process (not a container), reachable from inside the Traefik
-    # container via host.docker.internal. Its direct debug port (8080) is retired here —
+    # container via host.docker.internal. Its direct debug port is retired here —
     # it's only reached through Traefik now, over its own hostname with TLS.
     # The dashboard is gated behind Authelia (forwardAuth, defined in the `auth` stack's
     # own dynamicConfig fragment) — argunix's own API route stays open, since it's the
@@ -134,7 +134,7 @@ in
           argunix:
             loadBalancer:
               servers:
-                - url: "http://host.docker.internal:8080"
+                - url: "http://host.docker.internal:${toString config.argunix.coordinator.api.listenPort}"
         middlewares:
           traefik-compress:
             compress: {}
