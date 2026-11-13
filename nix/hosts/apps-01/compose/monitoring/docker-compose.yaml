@@ -74,6 +74,9 @@ services:
       - /var/lib/app-data/monitoring/loki:/loki
     networks:
       - monitoring
+      # Traefik's network: without it the `loki` router has no way to reach this
+      # container and every push from another host gets a 502.
+      - web
     # Routed through reverse-proxy (see default.nix's `loki` router, tailnet-whitelist
     # gated) so tailnet hosts other than this one can push logs in too — it has no
     # built-in auth (auth_enabled: false), hence the IP allowlist instead of Authelia.
