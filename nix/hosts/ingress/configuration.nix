@@ -77,10 +77,12 @@
     advertiseConnector = true;
   };
   crowdsec-firewall-bouncer.apiKeyPath = config.sops.secrets."crowdsec-firewall-bouncer/api_key".path;
+  traefik.metrics.enable = true;
   grafana-alloy = {
     varlogs.enable = true;
     journald.enable = true;
     nodeMetrics.enable = true;
+    traefikMetrics.enable = true;
     remoteWrite.endpoints = [
       "https://prometheus.snyssen.be/api/v1/write"
     ];

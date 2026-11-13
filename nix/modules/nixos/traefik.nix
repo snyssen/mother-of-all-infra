@@ -5,6 +5,18 @@ in
 {
   options.traefik = {
     ping.enable = lib.mkEnableOption "the ping endpoint for health checks.";
+    metrics = {
+      enable = lib.mkEnableOption "Prometheus metrics, on a loopback-only entrypoint";
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8082;
+        description = ''
+          Port of the `metrics` entrypoint, bound to 127.0.0.1 only: the host's own
+          Grafana Alloy scrapes it (see grafana-alloy.traefikMetrics) and pushes the
+          series on, so nothing outside the host needs to reach it.
+        '';
+      };
+    };
     letsencrypt = {
       email = lib.mkOption {
         default = "admin@snyssen.be";
@@ -108,6 +120,10 @@ in
                 );
               };
             }
+            # Not asDefault, so no router attaches to it by accident.
+            (lib.mkIf cfg.metrics.enable {
+              metrics.address = "127.0.0.1:${builtins.toString cfg.metrics.port}";
+            })
             (builtins.mapAttrs (entrypointName: entrypoint: {
               address = ":${builtins.toString entrypoint.port}/tcp";
             }) cfg.tcpEntrypoints)
@@ -131,6 +147,12 @@ in
           api.dashboard = true;
           ping = lib.mkIf cfg.ping.enable {
             entryPoint = "websecure";
+          };
+          metrics.prometheus = lib.mkIf cfg.metrics.enable {
+            entryPoint = "metrics";
+            # Per-router series too, not just per entrypoint and service: one router per
+            # proxied hostname, so this is what shows which public routes get traffic.
+            addRoutersLabels = true;
           };
           accesslog = {
             filePath = "/var/log/traefik/access.log";

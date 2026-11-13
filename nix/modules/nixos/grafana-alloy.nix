@@ -39,6 +39,14 @@ in
         `docker.cadvisor.port`.
       '';
     };
+    traefikMetrics = {
+      enable = lib.mkEnableOption "scraping a host-native Traefik's metrics (see traefik.metrics)";
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8082;
+        description = "Port of Traefik's loopback `metrics` entrypoint (traefik.metrics.port).";
+      };
+    };
     loki.endpoints = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "https://loki.snyssen.be/loki/api/v1/push" ];
@@ -238,6 +246,29 @@ in
           }
         }
       '';
+      # Same shape as alloy_cadvisorMetrics: `instance` set on the target, `job` by a
+      # relabel. apps-01's containerised Traefik is scraped by Prometheus directly as
+      # job="traefik", instance="traefik:8080", so the two stay apart by instance.
+      alloy_traefikMetrics = ''
+        prometheus.scrape "traefik" {
+          targets = [{
+            __address__ = "127.0.0.1:${toString cfg.traefikMetrics.port}",
+            instance    = "${cfg.hostname}",
+          }]
+          forward_to      = [prometheus.relabel.traefik.receiver]
+          // See the comment on prometheus.scrape "node" above.
+          scrape_interval = "15s"
+        }
+
+        prometheus.relabel "traefik" {
+          forward_to = [prometheus.remote_write.default.receiver]
+          rule {
+            action       = "replace"
+            target_label = "job"
+            replacement  = "traefik"
+          }
+        }
+      '';
       alloy_remoteWrite = ''
         prometheus.remote_write "default" {
           ${lib.concatMapStrings (url: ''
@@ -331,6 +362,7 @@ in
         ${if cfg.journald.enable then alloy_journald else ""}
         ${if cfg.nodeMetrics.enable then alloy_nodeMetrics else ""}
         ${if cfg.cadvisorMetrics.enable then alloy_cadvisorMetrics else ""}
+        ${if cfg.traefikMetrics.enable then alloy_traefikMetrics else ""}
         ${if cfg.remoteWrite.endpoints != [ ] then alloy_remoteWrite else ""}
         ${alloy_loki}
       '';
