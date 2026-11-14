@@ -70,7 +70,7 @@ services:
     mem_limit: 2g
 
   paperless_gotenberg:
-    image: docker.io/gotenberg/gotenberg:8.38@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
+    image: docker.io/gotenberg/gotenberg:9.3@sha256:04eaccf4c512167381c8084dfc35e3cda4dd7e8ea605e5fd9fcf3bd83917566c
     container_name: paperless_gotenberg
     restart: unless-stopped
     networks:
