@@ -7,7 +7,7 @@
 # they can follow the hardware (the test VM cannot fit prod's 8G per server).
 services:
   minecraft:
-    image: itzg/minecraft-server:2026.10.1@sha256:d12aed7e35981dfe259b60fbfee77d23a19b5898a7a31dca298d18b47b7b5776
+    image: itzg/minecraft-server:2026.11.0@sha256:8d5080d8dcd0a2629c2e4f248678373a337a40537ad6ef2857c7dbcda6e3eadd
     restart: unless-stopped
     networks:
       - internal
@@ -46,7 +46,7 @@ services:
     mem_limit: ${MC_MAIN_MEM_LIMIT}
 
   mc-usw:
-    image: itzg/minecraft-server:2026.10.1@sha256:d12aed7e35981dfe259b60fbfee77d23a19b5898a7a31dca298d18b47b7b5776
+    image: itzg/minecraft-server:2026.11.0@sha256:8d5080d8dcd0a2629c2e4f248678373a337a40537ad6ef2857c7dbcda6e3eadd
     restart: unless-stopped
     networks:
       - internal
@@ -83,7 +83,7 @@ services:
   # route the game protocol by name (it isn't TLS), hence HostSNI(`*`) on its side and
   # mc-router picking the server from the hostname in the handshake.
   mc-router:
-    image: itzg/mc-router:1.49.0@sha256:76697861c41e7d64880accf0d25e953a3c2d871e6f5f0922d7c830ffcb2b75ab
+    image: itzg/mc-router:1.56.0@sha256:75aa00d729ff73ca004cd482ce6272d4f4f662aa4a1192333a14a50449eceeda
     restart: unless-stopped
     depends_on:
       - minecraft
