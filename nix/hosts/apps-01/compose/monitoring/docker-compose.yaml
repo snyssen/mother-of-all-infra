@@ -130,7 +130,7 @@ services:
   # (`/<topic>?template=grafana`). Kept so the imported contact point works unchanged.
   # TODO: remove and configure Grafana to contact to ntfy directly
   grafana-to-ntfy:
-    image: kittyandrew/grafana-to-ntfy@sha256:f0d9d5181abc67af71de2dffa19b4971f9e9214de69ac85a43fba218f9071102
+    image: kittyandrew/grafana-to-ntfy@sha256:e47e095d9de010f14aa9bb052c45f2b0216f2b880e78fb14a2b58806a09bd1d4
     restart: unless-stopped
     # Forwarded bare, as for Grafana above: the topic name and password are secrets.
     environment:
