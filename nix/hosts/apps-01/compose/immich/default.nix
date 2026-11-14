@@ -14,9 +14,6 @@ in
     "compose-stacks/immich/db/password" = {
       sopsFile = ../../data/immich.yaml;
     };
-    "compose-stacks/immich/db_dump_healthcheck_id" = {
-      sopsFile = ../../data/immich.yaml;
-    };
     "compose-stacks/immich/oidc/client_id" = {
       sopsFile = ../../data/immich.yaml;
     };
@@ -41,9 +38,8 @@ in
   # directory into the store and hands over its path.
   sops.templates."compose-immich.env".content = ''
     IMMICH_DB_PASSWORD=${config.sops.placeholder."compose-stacks/immich/db/password"}
-    IMMICH_DB_DUMP_HEALTHCHECK_ID=${
-      config.sops.placeholder."compose-stacks/immich/db_dump_healthcheck_id"
-    }
+    GATUS_URL=https://uptime.${config.domains.main}
+    GATUS_PUSH_TOKEN=${config.sops.placeholder."compose-stacks/monitoring/gatus/push_token"}
     DB_BACKUP_HOOKS_PATH=${../databases/hooks}
   '';
 
@@ -71,6 +67,8 @@ in
   compose-stacks.stacks.immich = {
     restartTriggers = [
       ../../data/immich.yaml
+      # The Gatus push token, for the dump sidecar's hook.
+      ../../data/monitoring.yaml
       config.sops.templates."compose-immich.env".content
     ];
     inherit composeFile;

@@ -38,9 +38,6 @@ in
     "compose-stacks/dawarich/db/password" = {
       sopsFile = ../../data/dawarich.yaml;
     };
-    "compose-stacks/dawarich/db_dump_healthcheck_id" = {
-      sopsFile = ../../data/dawarich.yaml;
-    };
     "compose-stacks/dawarich/secret_key_base" = {
       sopsFile = ../../data/dawarich.yaml;
     };
@@ -64,9 +61,8 @@ in
     DAWARICH_HOST=${host}
     MAIN_DOMAIN=${config.domains.main}
     DAWARICH_DB_PASSWORD=${config.sops.placeholder."compose-stacks/dawarich/db/password"}
-    DAWARICH_DB_DUMP_HEALTHCHECK_ID=${
-      config.sops.placeholder."compose-stacks/dawarich/db_dump_healthcheck_id"
-    }
+    GATUS_URL=https://uptime.${config.domains.main}
+    GATUS_PUSH_TOKEN=${config.sops.placeholder."compose-stacks/monitoring/gatus/push_token"}
     DAWARICH_SECRET_KEY_BASE=${config.sops.placeholder."compose-stacks/dawarich/secret_key_base"}
     DAWARICH_OIDC_CLIENT_ID=${config.sops.placeholder."compose-stacks/dawarich/oidc/client_id"}
     DAWARICH_OIDC_CLIENT_SECRET=${config.sops.placeholder."compose-stacks/dawarich/oidc/client_secret"}
@@ -105,6 +101,8 @@ in
     restartTriggers = [
       ../../data/dawarich.yaml
       ../../data/common.yaml
+      # The Gatus push token, for the dump sidecar's hook.
+      ../../data/monitoring.yaml
       config.sops.templates."compose-dawarich.env".content
     ];
     inherit composeFile;

@@ -172,6 +172,22 @@ let
     inherit token;
     heartbeat.interval = "26h";
   }) (lib.attrNames config.backrest.plans)
+  # One per postgres-backup-local dump sidecar (databases, immich, dawarich), pushed by
+  # their shared hook (compose/databases/hooks), as prod pushed to healthchecks.io. They
+  # dump every 4 hours; 5h gives an hour of leeway.
+  ++
+    map
+      (stack: {
+        name = "postgres-${stack}";
+        group = "backups";
+        inherit token;
+        heartbeat.interval = "5h";
+      })
+      [
+        "databases"
+        "immich"
+        "dawarich"
+      ]
   # The repos' check and prune runs (repoHeartbeats in backrest.nix), each a day past its
   # schedule there: weekly on-site, monthly off-site.
   ++

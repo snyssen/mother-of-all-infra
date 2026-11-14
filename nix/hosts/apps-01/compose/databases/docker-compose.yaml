@@ -69,7 +69,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
       TZ: Europe/Brussels
-      HEALTHCHECK_ID: ${HEALTHCHECK_ID}
+      GATUS_URL: ${GATUS_URL}
+      GATUS_PUSH_TOKEN: ${GATUS_PUSH_TOKEN}
+      GATUS_ENDPOINT_KEY: backups_postgres-databases
       SCHEDULE: 30 */4 * * *
       # These dumps are themselves picked up by restic (see the backrest module) —
       # their only job is a quick local restore of *recent* data; anything older
@@ -83,7 +85,7 @@ services:
       BACKUP_KEEP_MONTHS: "0"
     volumes:
       - /mnt/bulk/backups/postgres:/backups
-      - ./hooks:/hooks
+      - ./hooks:/hooks:ro
 
   pgadmin:
     image: dpage/pgadmin4:9.18@sha256:c332c5f6dfba995d9ebc4af261d93506d6876085d712eaaa3defc8dd1a3f26de

@@ -66,9 +66,6 @@ in
       "compose-stacks/databases/pgadmin/password" = {
         sopsFile = ../../data/databases.yaml;
       };
-      "compose-stacks/databases/pg_dump_healthcheck_id" = {
-        sopsFile = ../../data/databases.yaml;
-      };
       "compose-stacks/databases/pgadmin/oidc/client_id" = {
         sopsFile = ../../data/databases.yaml;
       };
@@ -98,7 +95,8 @@ in
     DB_NAMES_C_LOCALE=${lib.concatStringsSep "," cLocaleDbNames}
     PGADMIN_DEFAULT_EMAIL=${config.sops.placeholder."compose-stacks/databases/pgadmin/email"}
     PGADMIN_DEFAULT_PASSWORD=${config.sops.placeholder."compose-stacks/databases/pgadmin/password"}
-    HEALTHCHECK_ID=${config.sops.placeholder."compose-stacks/databases/pg_dump_healthcheck_id"}
+    GATUS_URL=https://uptime.${config.domains.main}
+    GATUS_PUSH_TOKEN=${config.sops.placeholder."compose-stacks/monitoring/gatus/push_token"}
     PGADMIN_CONFIG_LOCAL_PATH=${config.sops.templates."pgadmin-config_local.py".path}
   ''
   + lib.concatMapStringsSep "\n" (
@@ -133,6 +131,8 @@ in
   compose-stacks.stacks.databases = {
     restartTriggers = [
       ../../data/databases.yaml
+      # The Gatus push token, for postgres_backups' hook.
+      ../../data/monitoring.yaml
       config.sops.templates."compose-databases.env".content
       config.sops.templates."pgadmin-config_local.py".content
     ];

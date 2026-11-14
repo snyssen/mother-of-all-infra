@@ -1,0 +1,30 @@
+#!/bin/sh
+# Hook for prodrigestivill/postgres-backup-local, shared by the databases, immich and
+# dawarich dump sidecars. The image runs it as `run-parts -a <action> /hooks`, and
+# Debian's run-parts silently skips any file whose name contains a dot: keep this file
+# extensionless, or it never runs.
+#
+# Reports each dump's outcome to the sidecar's Gatus external endpoint, the in-container
+# counterpart of gatus-push.nix (see compose/monitoring). Expects GATUS_URL,
+# GATUS_PUSH_TOKEN and GATUS_ENDPOINT_KEY in the environment. Gatus has no "started"
+# signal, so pre-backup does nothing; a dump that never runs shows as a missed heartbeat.
+
+set -eu
+
+push() {
+	echo "Reporting success=${1} to Gatus endpoint ${GATUS_ENDPOINT_KEY}"
+	# Token from stdin so it stays out of the process list. A failed push only warns: a
+	# monitoring hiccup must not fail the dump itself, and Gatus flags the missing
+	# heartbeat anyway.
+	printf 'Authorization: Bearer %s\n' "${GATUS_PUSH_TOKEN}" |
+		curl -fsS -m 10 --retry 3 -o /dev/null -H @- -X POST \
+			"${GATUS_URL}/api/v1/endpoints/${GATUS_ENDPOINT_KEY}/external?success=${1}" ||
+		echo "Warning: Gatus push failed" >&2
+}
+
+# Possible actions: error, pre-backup, post-backup
+case "${1}" in
+"error") push false ;;
+"post-backup") push true ;;
+*) ;;
+esac

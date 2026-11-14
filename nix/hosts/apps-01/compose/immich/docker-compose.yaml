@@ -75,7 +75,9 @@ services:
       POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
       POSTGRES_EXTRA_OPTS: "--format c" # So we can use pg_restore to restore the database
       TZ: Europe/Brussels
-      HEALTHCHECK_ID: ${IMMICH_DB_DUMP_HEALTHCHECK_ID}
+      GATUS_URL: ${GATUS_URL}
+      GATUS_PUSH_TOKEN: ${GATUS_PUSH_TOKEN}
+      GATUS_ENDPOINT_KEY: backups_postgres-immich
       SCHEDULE: 30 */4 * * *
       # Same retention as the central dumps (see compose/databases): these exist for a
       # quick restore of *recent* data, and anything older belongs in a restic snapshot.
