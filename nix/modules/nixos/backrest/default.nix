@@ -9,6 +9,7 @@
 #   default.nix  — the options describing repos, plans and users (this file)
 #   service.nix  — the systemd service and the config.json rendered from those options
 #   restore.nix  — the restore commands generated from those same options
+#   forget.nix   — bulk "forget everything before <date>" commands, per repo side
 #   paths.nix    — the couple of on-disk paths service.nix and restore.nix must agree on
 #
 # Everything is declared here rather than through Backrest's own UI, so the repos and
@@ -186,6 +187,7 @@ in
   imports = [
     ./service.nix
     ./restore.nix
+    ./forget.nix
   ];
 
   options.backrest = {

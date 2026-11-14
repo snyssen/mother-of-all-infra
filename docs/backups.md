@@ -31,7 +31,8 @@ setup it is fully declarative — repositories and plans are Nix options rendere
 Backrest's `config.json` through `sops.templates`, never clicked together in its UI.
 
 The module is split: `default.nix` holds the options, `service.nix` the service and
-rendered config, `restore.nix` the restore commands, `scripts/` the shell they run.
+rendered config, `restore.nix` the restore commands, `forget.nix` the bulk-forget
+commands, `scripts/` the shell they run.
 `nix/hosts/apps-01/backrest.nix` is this host's actual repository and plan configuration.
 
 Reached at `https://backrest.${domain}` behind Authelia, and also directly on port 9898
@@ -52,9 +53,10 @@ already stored: the first backups upload next to nothing, which matters most for
 billed by volume. The whole history stays in one place, and Backrest's UI browses
 autorestic's snapshots as easily as its own.
 
-**Autorestic's snapshots are never touched.** A plan's retention only forgets snapshots
-tagged with that plan *and* `created-by:apps-01`, which autorestic's (`ar:location:*`)
-are not, so the final pre-cutover state is kept for good. A repo-level `forgetPolicy`
+**Retention never touches autorestic's snapshots.** A plan's retention only forgets
+snapshots tagged with that plan *and* `created-by:apps-01`, which autorestic's
+(`ar:location:*`) are not, so the pre-cutover history stays until it is removed by hand
+with [`backrest-forget`](#forgetting-old-snapshots-by-hand). A repo-level `forgetPolicy`
 would forget every snapshot in the repo, grouped by tags, so neither repo has one, and
 neither should ever get one.
 
@@ -303,6 +305,37 @@ path. Seconds, writes nothing, exits non-zero on a problem. This is the check wo
 running regularly — an untested backup is not a backup. A full rebuild is the fidelity
 test; the [Phase B cutover](hypervisor/apps-migration-phase-b.md) is itself that
 rehearsal.
+
+### Forgetting old snapshots by hand
+
+Backrest's UI forgets one snapshot at a time, and plan retention never reaches
+snapshots another tool made. For clearing out history in bulk, autorestic's in
+particular:
+
+| command | repositories |
+| --- | --- |
+| `backrest-forget` | the ones the primary plans write to (on-site) |
+| `backrest-forget-offsite` | the ones the `-offsite` mirrors write to (B2) |
+
+```sh
+backrest-forget --before 2026-07-01 --dry-run     # list what would go
+backrest-forget --before 2026-07-01               # same list, then confirm
+backrest-forget-offsite --before "6 months ago" --tag ar:location:nextcloud
+```
+
+`--before` takes anything `date(1)` understands. A bare date means the *start* of that
+day, the opposite of `--at`, so `--before 2026-07-01` keeps everything from the 1st on.
+`--tag` and `--host` narrow the selection and go to restic unchanged: repeat `--tag` to
+OR tags, comma-join them to AND.
+
+**Everything before the cutoff goes**, including the final snapshot of a series that
+has stopped, such as an autorestic location or a removed plan. To keep one, move the
+cutoff earlier, or narrow the run with `--tag`, and check the list with `--dry-run`
+first.
+
+Forgetting frees no space. The repository's scheduled prune reclaims it (see the table
+above), or start one from the repository's page in Backrest. On B2 the freed data is
+then hidden for 30 days before it is deleted.
 
 ### Full disaster recovery: rebuilding `apps-01` from scratch
 
