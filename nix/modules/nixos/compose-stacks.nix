@@ -84,6 +84,7 @@ in
       name: stack:
       let
         dockerNetworkUnits = map (network: "docker-network-${network}.service") stack.dockerNetworks;
+        compose = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"}";
       in
       lib.nameValuePair "compose-${name}" {
         description = "Docker Compose stack: ${name}";
@@ -100,11 +101,21 @@ in
         ++ dockerNetworkUnits;
         wantedBy = [ ] ++ lib.lists.optional stack.autostart "multi-user.target";
         inherit (stack) restartTriggers;
+        # A changed unit is reloaded on switch, not stopped and started: a restart runs
+        # the old unit's `down` first, so the stack stayed down for the whole image pull.
+        # The reload pulls while the old containers still run, then recreates them.
+        # --force-recreate keeps the restart's semantics: several stacks bind-mount sops
+        # renders at stable paths, whose changes `up -d` alone would not see.
+        reloadIfChanged = true;
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
-          ExecStart = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} up -d --remove-orphans";
-          ExecStop = "${pkgs.docker}/bin/docker compose --project-name ${lib.escapeShellArg name} -f ${lib.escapeShellArg "${stack.composeFile}"} down";
+          ExecStart = "${compose} up -d --remove-orphans";
+          ExecReload = [
+            "${compose} pull --quiet"
+            "${compose} up -d --remove-orphans --force-recreate"
+          ];
+          ExecStop = "${compose} down";
           # Default (90s) is close to the edge for stacks with many containers — the
           # 18-container `streaming` stack measured ~65-70s for a full graceful
           # `docker compose down` during a real host-reboot test. Give real headroom
