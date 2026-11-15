@@ -97,27 +97,6 @@
         ];
         name = "Storage";
       }
-      {
-        children = [
-          {
-            name = "DnD - Saltmarsh";
-            url = "https://dnd-saltmarsh.notes.snyssen.be";
-          }
-          {
-            name = "DnD - Bahut";
-            url = "https://dnd-bahut.notes.snyssen.be";
-          }
-          {
-            name = "DnD - Yanwning Portal";
-            url = "https://dnd-yp.notes.snyssen.be";
-          }
-          {
-            name = "ME - En Eaux Troubles";
-            url = "https://me-eet.notes.snyssen.be";
-          }
-        ];
-        name = "Notes";
-      }
     ];
     icon_classes = "las la-folder-open";
     name = "Documents";
