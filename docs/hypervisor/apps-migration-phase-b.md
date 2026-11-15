@@ -957,6 +957,8 @@ just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
 Check: `dig @192.168.1.3 snyssen.be` answers, and the Technitium cluster page on the NUC
 shows the secondary in sync.
 
+- [x] `technitium-secondary` was migrated successfully
+
 **haos** (home automation is down for ~10 minutes):
 
 Uncomment its entry in `ansible/hosts/host_vars/hypervisor-01/vars.yml`, commit and push
@@ -980,6 +982,8 @@ just hypervisor-provision-vms hypervisor-01 -e libvirt_vms_only=$VM
 ```
 
 Check: Home Assistant answers at `https://hass.snyssen.be`, and a Zigbee device responds.
+
+- [x] `haos` was migrated successfully
 
 **If a move misbehaves**: shut the new copy down
 (`just hypervisor-vm-stop <vm> hypervisor-01`), then
