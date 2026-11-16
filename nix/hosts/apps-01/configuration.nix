@@ -216,11 +216,14 @@
   # - /mnt/bulk: NFS mount to hypervisor-01 for bulk storage - Slow but large, HDD-backed
   # - /var/lib/app-data: Local storage for app data - Fast but small, SSD-backed - lives on the VM disk image (stored in /mnt/vmstore in hypervisor)
   nfsMounts.enable = true;
+  # By hypervisor-01's static LAN IP, not a hostname: nearly every stack needs this
+  # mount, so it must not depend on DNS or tailscaled. A bare `hypervisor-01` resolved
+  # through systemd-resolved can come back as the `.lan` address as easily as the
+  # tailnet one, which is how this once broke.
   nfsMounts.mounts.bulk = {
     path = "/mnt/bulk";
-    host = "hypervisor-01";
+    host = "192.168.1.13";
     remotePath = "/mnt/bulk/apps";
-    dependsOn.tailscale = true;
   };
   # Root-owned: under a parent owned by a regular user, systemd-tmpfiles refuses to
   # touch any root-owned subdirectory (an "unsafe path transition"), so each stack's
@@ -260,8 +263,7 @@
 
   # The host side of the same boot window. Appended rather than prepended
   # (name_servers_append, not name_servers) so MagicDNS stays first once tailscaled
-  # is up: unlike the containers, the host does need *.ts.net to resolve — the bulk
-  # NFS mount targets `hypervisor-01` by its tailnet name. Before tailscaled registers
+  # is up: unlike the containers, the host does need *.ts.net to resolve. Before tailscaled registers
   # its resolver these are all resolv.conf has, so early-boot lookups work rather
   # than hanging; afterwards they sit behind MagicDNS as a genuine fallback. Note
   # glibc only ever consults the first three nameservers (MAXNS), so once MagicDNS

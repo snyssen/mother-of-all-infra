@@ -1,5 +1,31 @@
 # Network Overview
 
+## LAN addressing
+
+The LAN is `192.168.1.0/24`. The DHCP scope (`technitium_dns_setup_dhcp_scopes` in
+`ansible/hosts/group_vars/technitium/vars.yml`) excludes `.1`–`.20`, which hold every
+statically addressed machine, split in two:
+
+- `.1`–`.9`: network appliances (router, DNS servers, access points, …)
+- `.10`–`.20`: servers
+
+| Address         | Host                   | Notes                                                        |
+| --------------- | ---------------------- | ------------------------------------------------------------ |
+| `192.168.1.1`   | router                 | gateway                                                      |
+| `192.168.1.2`   | `technitium-primary`   | DNS (bare metal)                                             |
+| `192.168.1.3`   | `technitium-secondary` | DNS (VM)                                                     |
+| `192.168.1.10`  | `apps-01`              | app server (VM on `hypervisor-01`)                           |
+| `192.168.1.11`  | `backup`               |                                                              |
+| `192.168.1.12`  | `haos`                 | Home Assistant OS                                            |
+| `192.168.1.13`  | `hypervisor-01`        | static on `br0`; target of `apps-01`'s bulk NFS mount        |
+| `.14`–`.20`     | free                   | next servers                                                 |
+| `.21`–`.254`    | DHCP pool              | reservations live in the scope's `reservedLeases`            |
+
+Servers are addressed statically in their own config (e.g. `systemd.network.networks` in
+`nix/hosts/<host>/network.nix`), not through DHCP reservations. Anything that has to work
+before tailscaled or DNS are up, such as `apps-01`'s `/mnt/bulk` NFS mount, should target
+these addresses directly rather than a hostname.
+
 ## DNS Setup
 
 ![Network diagram showing how DNS is resolved at different layers](./network.svg)

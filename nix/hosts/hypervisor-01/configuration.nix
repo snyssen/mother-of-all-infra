@@ -190,7 +190,16 @@
     # lanCidr defaults to "192.168.1.0/24" — override here if your LAN differs
     lanCidr = "100.64.0.0/10"; # Tailnet IP range
     exports = [
-      { path = "/mnt/bulk/apps"; }
+      {
+        path = "/mnt/bulk/apps";
+        # apps-01 mounts this over the LAN (by this host's static 192.168.1.13), so
+        # the mount survives tailscaled or DNS being down. Only apps-01's own LAN
+        # address is allowed, not the whole /24: exports get no_root_squash.
+        clients = [
+          "100.64.0.0/10"
+          "192.168.1.10/32"
+        ];
+      }
     ];
   };
 
