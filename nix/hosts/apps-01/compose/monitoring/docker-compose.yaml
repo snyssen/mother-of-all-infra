@@ -76,6 +76,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - ./loki/rules:/etc/loki/rules/fake:ro
       - /var/lib/app-data/monitoring/loki:/loki
     networks:
       - monitoring

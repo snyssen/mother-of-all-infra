@@ -9,6 +9,7 @@ pkgs.runCommand "monitoring-check"
     nativeBuildInputs = [
       pkgs.prometheus.cli # promtool
       pkgs.prometheus-alertmanager # amtool
+      pkgs.grafana-loki # lokitool
     ];
   }
   ''
@@ -16,5 +17,9 @@ pkgs.runCommand "monitoring-check"
     promtool check rules prometheus/rules/*.yml
     promtool test rules prometheus/tests/*.test.yml
     amtool check-config alertmanager.yml
+    # lint parses the LogQL, but rewrites the file it lints: run it on a copy.
+    cp -r loki/rules "$TMPDIR/loki-rules"
+    chmod -R u+w "$TMPDIR/loki-rules"
+    lokitool rules lint "$TMPDIR"/loki-rules/*.yml
     touch $out
   ''

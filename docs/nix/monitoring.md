@@ -13,13 +13,15 @@ go through the repo.
 | Alert rules | `prometheus/rules/alerts.yml` |
 | Recording rules | `prometheus/rules/recording.yml` |
 | Alert rule unit tests | `prometheus/tests/alerts.test.yml` |
+| Log-based alert rules (Loki ruler) | `loki/rules/alerts.yml` |
 | Alert routing, inhibition, receivers | `alertmanager.yml` |
 | ntfy message format (title, priority, links) | `../ntfy/alertmanager-template.nix` |
 | Grafana datasources | `grafana/provisioning/datasources/datasources.yaml` |
 | Grafana dashboards | `grafana/dashboards/<folder>/<name>.json` |
 
 The `monitoring` flake check (`nix/checks/monitoring.nix`, part of `just nix-check`)
-validates the rules, runs their unit tests and checks the Alertmanager config.
+validates the rules, runs their unit tests, lints the Loki rules' LogQL and checks the
+Alertmanager config.
 
 ## Alerts
 
@@ -46,6 +48,11 @@ becomes a link to that Grafana dashboard in the notification.
 
 To add or change a rule, edit `alerts.yml`, add a case to `alerts.test.yml`, then run
 `nix build .#checks.x86_64-linux.monitoring`.
+
+Prefer metrics. When only the logs show a problem (a CrowdSec bouncer whose pulls the
+API rejects, say), put the rule in `loki/rules/alerts.yml` instead: Loki's ruler sends it
+to the same Alertmanager, with the same labels and annotations. Loki rules have no unit
+tests; the check only lints their LogQL.
 
 ### Silencing
 

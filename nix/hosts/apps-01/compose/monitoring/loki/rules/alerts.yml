@@ -1,0 +1,27 @@
+# Log-based alert rules, evaluated by Loki's ruler and sent to the same Alertmanager as
+# the Prometheus rules (../../prometheus/rules/alerts.yml), with the same `severity` and
+# `priority` labels and annotations. Use one only when no metric shows the problem.
+groups:
+  - name: crowdsec
+    rules:
+      # CrowdsecBouncerDown (Prometheus) only sees the unit's state. A bouncer that is
+      # running but can't pull decisions (rejected key, LAPI unreachable) keeps
+      # enforcing the bans it already has, and silently stops getting new ones. The
+      # LAPI's own metrics can't show that either: a bouncer it doesn't accept has no
+      # series there at all. The bouncer logs every failed pull, every 10 seconds.
+      - alert: CrowdsecBouncerApiErrors
+        expr: |
+          sum by (host, unit) (
+            count_over_time({job="journald", unit=~"crowdsec-.+-bouncer\\.service"} |= "level=error" [5m])
+          ) > 0
+        # Long enough to ride out a LAPI restart or a deploy of its host.
+        for: 15m
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.unit }} on {{ $labels.host }} cannot pull CrowdSec decisions"
+          description: >-
+            The bouncer keeps enforcing the decisions it already has, but gets no new
+            ones. A 403 / "access forbidden" means the LAPI does not accept its API key.
+          dashboard_uid: snzr5f7
