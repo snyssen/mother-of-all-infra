@@ -305,6 +305,20 @@ services:
     restart: unless-stopped
     networks:
       - web
+    # The apps below share this container's network namespace, and with it this
+    # /etc/hosts. They have no network endpoint of their own, so Docker's DNS has no
+    # name for them: these let them reach each other by service name (Bazarr's
+    # Sonarr/Radarr settings, say) instead of the lookup leaking to the LAN resolvers,
+    # which are unreachable through the tunnel.
+    extra_hosts:
+      - torrent:127.0.0.1
+      - usenet:127.0.0.1
+      - sonarr:127.0.0.1
+      - radarr:127.0.0.1
+      - lidarr:127.0.0.1
+      - prowlarr:127.0.0.1
+      - bazarr:127.0.0.1
+      - pinchflat:127.0.0.1
     volumes:
       - /var/lib/app-data/gluetun:/gluetun
     environment:
