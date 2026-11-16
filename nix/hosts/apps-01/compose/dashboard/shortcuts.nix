@@ -272,6 +272,10 @@
             name = "Backblaze";
             url = "https://secure.backblaze.com/b2_buckets.htm";
           }
+          {
+            name = "Binary cache (garage)";
+            url = "https://garage.snyssen.be/";
+          }
         ];
         name = "Tools";
       }
