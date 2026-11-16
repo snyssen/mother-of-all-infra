@@ -1,0 +1,47 @@
+# Alertmanager: routes the alerts Prometheus fires (prometheus/rules/alerts.yml).
+#
+# Secrets come in as files rather than being written in here (see default.nix), so this
+# file stays plain and `amtool check-config` can check it as-is (nix/checks/monitoring.nix).
+#
+# Silences are managed from Grafana (Alerting > Silences), through its provisioned
+# `alertmanager` datasource; every ntfy notification links to a pre-filled one.
+
+route:
+  receiver: ntfy
+  # severity is in there so that one notification never mixes a warning with a critical
+  # alert: the ntfy priority is taken from the group's common `priority` label.
+  group_by: [alertname, instance, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Dead man's switch: healthchecks.io alerts when these pings stop.
+    - matchers: [alertname="Watchdog"]
+      receiver: deadman
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+
+receivers:
+  - name: ntfy
+    webhook_configs:
+      # ntfy's own topic URL, rendered by sops since the topic name is the secret; its
+      # `alertmanager-grafana` template (compose/ntfy) formats the message and sets the
+      # priority. Reached on the shared `monitoring` network, so alerts don't depend on
+      # the reverse proxy being up.
+      - url_file: /etc/alertmanager/secrets/ntfy_url
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: monitoring
+            password_file: /etc/alertmanager/secrets/ntfy_password
+  - name: deadman
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/deadman_url
+        send_resolved: false
+
+inhibit_rules:
+  # A critical alert mutes the warning level of the same check (they share an alertname).
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="warning"]
+    equal: [alertname, instance, device]

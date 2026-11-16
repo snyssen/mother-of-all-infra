@@ -1,0 +1,123 @@
+# Alert rules, evaluated by Prometheus and routed by Alertmanager (alertmanager.yml).
+#
+# Every rule carries two labels:
+#   severity  what the alert means: warning | error | critical. A warning and a critical
+#             level of the same check share their alertname, and Alertmanager's inhibit
+#             rule mutes the warning while the critical one fires.
+#   priority  the ntfy priority it is delivered with: min | low | default | high | urgent.
+#             Set per rule rather than derived from severity, on purpose: not every
+#             critical alert deserves to wake anyone up.
+#
+# Annotations: `summary` (one line), optional `description`, and `dashboard_uid`, which
+# the ntfy template turns into a link to that Grafana dashboard.
+#
+# Tests: ../tests/alerts.test.yml, run by the `monitoring` flake check.
+groups:
+  - name: hardware
+    rules:
+      - alert: FilesystemUsage
+        expr: |
+          (
+            sum by (instance, device) (node_filesystem_size_bytes{mountpoint!~"/run.*|/boot.*"})
+            - sum by (instance, device) (node_filesystem_avail_bytes{mountpoint!~"/run.*|/boot.*"})
+          )
+          / sum by (instance, device) (node_filesystem_size_bytes{mountpoint!~"/run.*|/boot.*"})
+          * 100 > 75
+        for: 5m
+        labels:
+          severity: warning
+          priority: low
+        annotations: &filesystem_annotations
+          summary: "{{ $labels.device }} on {{ $labels.instance }} is {{ $value | printf \"%.0f\" }}% full"
+          dashboard_uid: cdhmlrmcs2txcb
+      - alert: FilesystemUsage
+        expr: |
+          (
+            sum by (instance, device) (node_filesystem_size_bytes{mountpoint!~"/run.*|/boot.*"})
+            - sum by (instance, device) (node_filesystem_avail_bytes{mountpoint!~"/run.*|/boot.*"})
+          )
+          / sum by (instance, device) (node_filesystem_size_bytes{mountpoint!~"/run.*|/boot.*"})
+          * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          priority: high
+        annotations: *filesystem_annotations
+
+      - alert: CpuTemperature
+        expr: node_hwmon_temp_celsius{chip="platform_coretemp_0", sensor="temp1"} > 85
+        for: 5m
+        labels:
+          severity: warning
+          priority: low
+        annotations: &cpu_temperature_annotations
+          summary: "CPU on {{ $labels.instance }} is at {{ $value | printf \"%.0f\" }}°C"
+          dashboard_uid: cdhmlrmcs2txcb
+      - alert: CpuTemperature
+        expr: node_hwmon_temp_celsius{chip="platform_coretemp_0", sensor="temp1"} > 100
+        for: 5m
+        labels:
+          severity: critical
+          priority: urgent
+        annotations: *cpu_temperature_annotations
+
+  - name: uptime
+    rules:
+      # A restarted container gets a new id, hence a new container_last_seen series:
+      # more than 4 series for one name within 10 minutes means it keeps restarting.
+      - alert: ContainerRestartLoop
+        expr: count by (instance, name) (count_over_time(container_last_seen{name!=""}[10m])) - 1 > 3
+        for: 30s
+        labels:
+          severity: warning
+          priority: min
+        annotations:
+          summary: "{{ $labels.name }} on {{ $labels.instance }} restarted {{ $value }} times in 10 minutes"
+          dashboard_uid: b2915c74-bd32-4b38-88ac-37fa532073cd
+
+      # Gatus notifies no one itself: its check results are scraped and alerted on here.
+      - alert: EndpointDown
+        expr: min by (group, name) (gatus_results_endpoint_success) < 1
+        for: 30s
+        labels:
+          severity: error
+          priority: default
+        annotations:
+          summary: "{{ $labels.group }}/{{ $labels.name }} is failing its Gatus check"
+          dashboard_uid: CN8E-vZ7k1
+
+      - alert: CrowdsecBouncerDown
+        expr: node_systemd_unit_state{name=~"crowdsec-.+-bouncer.service", state=~"deactivating|failed|inactive"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.name }} is {{ $labels.state }} on {{ $labels.instance }}"
+          description: >-
+            The bouncer is not applying CrowdSec's decisions anymore. Restart the service
+            to protect the node again.
+
+      # Grafana's alert rules flagged a query that stopped returning data (NoData);
+      # Prometheus rules just go quiet instead, so a scrape target going down is caught
+      # here. Hosts pushing through Alloy produce no `up == 0` when they turn off, so
+      # powered-down workstations do not trip this.
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+
+  - name: meta
+    rules:
+      # Dead man's switch: always firing, routed to healthchecks.io, which alerts when the
+      # pings stop. Covers the whole pipeline (Prometheus, rule evaluation, Alertmanager).
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: Always firing, to prove the alerting pipeline works end to end.

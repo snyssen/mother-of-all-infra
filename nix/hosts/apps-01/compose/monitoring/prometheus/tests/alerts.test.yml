@@ -1,0 +1,146 @@
+# promtool unit tests for ../rules/alerts.yml, run by the `monitoring` flake check
+# (nix/checks/monitoring.nix). Outside the rules folder on purpose: Prometheus loads
+# every *.yml in there.
+rule_files:
+  - ../rules/alerts.yml
+
+evaluation_interval: 30s
+
+tests:
+  # Warning at 80% full, both levels at 97%.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_size_bytes{instance="apps", device="/dev/sda1", mountpoint="/"}'
+        values: "100x20"
+      - series: 'node_filesystem_avail_bytes{instance="apps", device="/dev/sda1", mountpoint="/"}'
+        values: "20x9 3x10"
+      # Excluded mount points never alert, however full.
+      - series: 'node_filesystem_size_bytes{instance="apps", device="tmpfs", mountpoint="/run/user/1000"}'
+        values: "100x20"
+      - series: 'node_filesystem_avail_bytes{instance="apps", device="tmpfs", mountpoint="/run/user/1000"}'
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: FilesystemUsage
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: apps
+              device: /dev/sda1
+            exp_annotations:
+              summary: "/dev/sda1 on apps is 80% full"
+              dashboard_uid: cdhmlrmcs2txcb
+      - eval_time: 18m
+        alertname: FilesystemUsage
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: apps
+              device: /dev/sda1
+            exp_annotations:
+              summary: "/dev/sda1 on apps is 97% full"
+              dashboard_uid: cdhmlrmcs2txcb
+          - exp_labels:
+              severity: critical
+              priority: high
+              instance: apps
+              device: /dev/sda1
+            exp_annotations:
+              summary: "/dev/sda1 on apps is 97% full"
+              dashboard_uid: cdhmlrmcs2txcb
+
+  - interval: 1m
+    input_series:
+      - series: 'node_hwmon_temp_celsius{instance="apps", chip="platform_coretemp_0", sensor="temp1"}'
+        values: "90x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: CpuTemperature
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: CpuTemperature
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: apps
+              chip: platform_coretemp_0
+              sensor: temp1
+            exp_annotations:
+              summary: "CPU on apps is at 90°C"
+              dashboard_uid: cdhmlrmcs2txcb
+
+  # Five container ids for one name within 10 minutes.
+  - interval: 1m
+    input_series:
+      - series: 'container_last_seen{instance="apps", name="flappy", id="/docker/1"}'
+        values: "1 1 _ _ _ _ _ _ _ _ _ _"
+      - series: 'container_last_seen{instance="apps", name="flappy", id="/docker/2"}'
+        values: "_ _ 1 1 _ _ _ _ _ _ _ _"
+      - series: 'container_last_seen{instance="apps", name="flappy", id="/docker/3"}'
+        values: "_ _ _ _ 1 1 _ _ _ _ _ _"
+      - series: 'container_last_seen{instance="apps", name="flappy", id="/docker/4"}'
+        values: "_ _ _ _ _ _ 1 1 _ _ _ _"
+      - series: 'container_last_seen{instance="apps", name="flappy", id="/docker/5"}'
+        values: "_ _ _ _ _ _ _ _ 1 1 1 1"
+      - series: 'container_last_seen{instance="apps", name="steady", id="/docker/6"}'
+        values: "1x11"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ContainerRestartLoop
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: min
+              instance: apps
+              name: flappy
+            exp_annotations:
+              summary: "flappy on apps restarted 4 times in 10 minutes"
+              dashboard_uid: b2915c74-bd32-4b38-88ac-37fa532073cd
+
+  - interval: 30s
+    input_series:
+      - series: 'gatus_results_endpoint_success{group="apps", name="nextcloud", instance="gatus:8080"}'
+        values: "1 0 0 0"
+      - series: 'gatus_results_endpoint_success{group="apps", name="jellyfin", instance="gatus:8080"}'
+        values: "1 1 1 1"
+    alert_rule_test:
+      - eval_time: 90s
+        alertname: EndpointDown
+        exp_alerts:
+          - exp_labels:
+              severity: error
+              priority: default
+              group: apps
+              name: nextcloud
+            exp_annotations:
+              summary: "apps/nextcloud is failing its Gatus check"
+              dashboard_uid: CN8E-vZ7k1
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="gatus", instance="gatus:8080"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: default
+              job: gatus
+              instance: gatus:8080
+            exp_annotations:
+              summary: "gatus target gatus:8080 is down"
+
+  - interval: 1m
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels:
+              severity: none
+            exp_annotations:
+              summary: Always firing, to prove the alerting pipeline works end to end.

@@ -15,7 +15,9 @@ services:
     volumes:
       # Rendered by sops (prometheus-config.nix): some scrape jobs carry secrets.
       - ${PROMETHEUS_CONFIG_PATH}:/etc/prometheus/prometheus.yml:ro
-      - ./node_rules.yml:/etc/prometheus/node_rules.yml:ro
+      # Recording and alert rules (prometheus/rules/*.yml), tested by the `monitoring`
+      # flake check.
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - /var/lib/app-data/monitoring/prometheus:/prometheus
     # Loopback only: this host's own Alloy (host-native) pushes here directly.
     # Tailnet hosts push through Traefik's prometheus-write router instead (see
@@ -32,13 +34,17 @@ services:
       - web
     volumes:
       - /var/lib/app-data/monitoring/grafana:/var/lib/grafana
+      # Datasources and dashboards are provisioned from the repo (grafana/), and
+      # read-only in the UI: edit them here, see docs/nix/monitoring.md.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana-dashboards:ro
     # Values that are themselves secrets (or could contain arbitrary characters) are
     # forwarded bare rather than via ${VAR} compose interpolation, which would
     # mis-parse a literal `$` in a password; the env file below already combines
     # them into the exact values Grafana expects.
     environment:
-      - GF_INSTALL_PLUGINS=volkovlabs-rss-datasource
       - GF_SERVER_ROOT_URL
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana-dashboards/home.json
       - GF_ANALYTICS_ENABLED=false
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
@@ -119,29 +125,27 @@ services:
       timeout: 5s
       retries: 5
 
-  # Relays Grafana alerts to ntfy. Grafana's contact point lives in its database,
-  # imported from prod, and reaches this by the name prod's container had
-  # (grafana-to-ntfy, port 8080), authenticating with BAUTH_*: the `monitoring` user, as
-  # on prod. Same image and settings as the legacy container_monitoring role, except
-  # that it reaches ntfy directly on the shared `monitoring` network rather than
-  # through Traefik, so alerts don't depend on the reverse proxy being up.
-  #
-  # Upstream now calls it unnecessary: ntfy >= 2.14 takes Grafana webhooks itself
-  # (`/<topic>?template=grafana`). Kept so the imported contact point works unchanged.
-  # TODO: remove and configure Grafana to contact to ntfy directly
-  grafana-to-ntfy:
-    image: kittyandrew/grafana-to-ntfy@sha256:e47e095d9de010f14aa9bb052c45f2b0216f2b880e78fb14a2b58806a09bd1d4
+  # Routes the alerts Prometheus fires (prometheus/rules/alerts.yml) to ntfy, and the
+  # Watchdog to healthchecks.io. Its config (alertmanager.yml) holds no secret itself:
+  # each is a file sops renders, mounted where the config expects it. No UI is routed:
+  # alerts and silences are handled from Grafana, through its `alertmanager` datasource.
+  alertmanager:
+    image: quay.io/prometheus/alertmanager:v0.35.0@sha256:5f6e66c01bd610aef6dd671642a52eee775fd3a89bd8788ebada33efaf373d10
     restart: unless-stopped
-    # Forwarded bare, as for Grafana above: the topic name and password are secrets.
-    environment:
-      - NTFY_URL
-      - NTFY_BAUTH_USER=monitoring
-      - NTFY_BAUTH_PASS
-      - BAUTH_USER=monitoring
-      - BAUTH_PASS
-      - MARKDOWN=true
     networks:
       - monitoring
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERTMANAGER_NTFY_URL_PATH}:/etc/alertmanager/secrets/ntfy_url:ro
+      - ${ALERTMANAGER_NTFY_PASSWORD_PATH}:/etc/alertmanager/secrets/ntfy_password:ro
+      - ${ALERTMANAGER_DEADMAN_URL_PATH}:/etc/alertmanager/secrets/deadman_url:ro
+      # Silences and the notification log, so a restart neither forgets a silence nor
+      # re-sends everything.
+      - /var/lib/app-data/monitoring/alertmanager:/alertmanager
+    mem_limit: 128m
 
 networks:
   monitoring:

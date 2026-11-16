@@ -1,0 +1,46 @@
+# Grafana datasources, provisioned (and so read-only in the UI).
+#
+# The uids are the ones these datasources already had in Grafana's database, imported
+# from prod: every dashboard JSON (../../dashboards) refers to them, and Grafana updates
+# the existing rows in place rather than creating duplicates.
+apiVersion: 1
+
+# Left over from prod and used by nothing: scrutiny's InfluxDB (no such container
+# anymore), a test RSS feed and the built-in test datasource.
+deleteDatasources:
+  - name: influxdb
+    orgId: 1
+  - name: xkcd
+    orgId: 1
+  - name: TestData
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: Lxg23YOVk
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+
+  - name: Loki
+    uid: ae16b72e-51f7-45d8-a6a5-5a12e1d7b35a
+    type: loki
+    access: proxy
+    url: http://loki:3100
+
+  # Shows the alerts Prometheus fires and manages their silences (Alerting > Silences).
+  # Name and uid are both `alertmanager`, because the silence links in ntfy
+  # notifications (compose/ntfy/alertmanager-template.nix) name it that way.
+  - name: alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    jsonData:
+      implementation: prometheus
+      # Grafana's own alert rules are gone: nothing to forward.
+      handleGrafanaManagedAlerts: false

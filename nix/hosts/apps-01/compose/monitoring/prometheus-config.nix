@@ -21,8 +21,8 @@ in
     - job_name: "traefik"
       static_configs:
         - targets: ["traefik:8080"]
-    # Gatus's check results (gatus_results_*), which Grafana alerts on: Gatus itself
-    # notifies no one. See gatus-config.nix.
+    # Gatus's check results (gatus_results_*), which prometheus/rules/alerts.yml alerts
+    # on: Gatus itself notifies no one. See gatus-config.nix.
     - job_name: "gatus"
       scrape_interval: 30s
       static_configs:
@@ -70,6 +70,12 @@ in
       static_configs:
         - targets: ["healthchecks.io"]
 
+  # Recording and alert rules, mounted from prometheus/rules (see docker-compose.yaml).
   rule_files:
-    - node_rules.yml
+    - /etc/prometheus/rules/*.yml
+
+  alerting:
+    alertmanagers:
+      - static_configs:
+          - targets: ["alertmanager:9093"]
 ''

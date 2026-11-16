@@ -4,7 +4,8 @@
 # Gatus replaces prod's Uptime Kuma. Kuma's monitors could only be created through its
 # API (prod's Ansible collection does, and supports v1 only), while Gatus's config *is*
 # the monitor list. It does no notifying: `alerting` is left out, Prometheus scrapes
-# its /metrics and Grafana alerts, as with every other metric.
+# its /metrics and alerts on them (prometheus/rules/alerts.yml), as with every other
+# metric.
 #
 # The checks are prod's, one for one (their Ansible `uptime_kuma.monitor` tasks), on this
 # host's domains. Not carried over: `Semaphore UI` (retired).

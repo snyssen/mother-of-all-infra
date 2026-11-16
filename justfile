@@ -60,6 +60,10 @@ sops-gen-secret +args:
 grafana-mcp-setup:
   scripts/set-private-var.sh GRAFANA_SERVICE_ACCOUNT_TOKEN
 
+# Export Grafana dashboards into the repo for provisioning (all already in the repo, or the given uids)
+grafana-dashboards-export *uids:
+  scripts/grafana-dashboards-export.sh {{uids}}
+
 # Run mkdocs website locally
 run-docs:
   nix run .#docs

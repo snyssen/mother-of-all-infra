@@ -13,6 +13,7 @@ in
     "d /var/lib/app-data/monitoring/grafana 0700 472 472 -"
     "d /var/lib/app-data/monitoring/loki 0700 10001 10001 -"
     "d /var/lib/app-data/monitoring/gatus 0700 0 0 -"
+    "d /var/lib/app-data/monitoring/alertmanager 0700 65534 65534 -"
   ];
 
   sops.secrets = {
@@ -37,10 +38,31 @@ in
     };
     # The `monitoring` ntfy user's plaintext password, carried over from the legacy
     # vault next to the hash ntfy itself is provisioned with (compose/ntfy). The topic
-    # is declared there too; its placeholder is used below.
+    # is declared there too; its placeholder is used below. Alertmanager (nobody,
+    # 65534) reads it as its basic auth password_file.
     "compose-stacks/ntfy/users/monitoring/password" = {
       sopsFile = ../../data/ntfy.yaml;
+      uid = 65534;
+      gid = 65534;
     };
+    # healthchecks.io ping URL for Alertmanager's dead man's switch (the Watchdog alert).
+    "compose-stacks/monitoring/alertmanager/deadman_url" = {
+      sopsFile = ../../data/monitoring.yaml;
+      uid = 65534;
+      gid = 65534;
+    };
+  };
+
+  # Alertmanager's ntfy webhook, as a file of its own: the topic name is the secret. The
+  # query selects ntfy's alertmanager-grafana template (compose/ntfy), which sets the
+  # title, priority and links. No trailing newline, so it is used verbatim as the URL.
+  sops.templates."alertmanager-ntfy-url" = {
+    content = "http://ntfy:80/${
+      config.sops.placeholder."compose-stacks/ntfy/topics/monitoring"
+    }?template=alertmanager-grafana&markdown=yes";
+    uid = 65534;
+    gid = 65534;
+    mode = "0400";
   };
 
   # Readable by Prometheus's own user (nobody, 65534) and nothing else.
@@ -75,9 +97,13 @@ in
     APP_SECRET=${config.sops.placeholder."compose-stacks/monitoring/umami/app_secret"}
     PROMETHEUS_CONFIG_PATH=${config.sops.templates."prometheus.yml".path}
     GATUS_CONFIG_PATH=${config.sops.templates."gatus.yaml".path}
-    NTFY_URL=http://ntfy:80/${config.sops.placeholder."compose-stacks/ntfy/topics/monitoring"}
-    NTFY_BAUTH_PASS=${config.sops.placeholder."compose-stacks/ntfy/users/monitoring/password"}
-    BAUTH_PASS=${config.sops.placeholder."compose-stacks/ntfy/users/monitoring/password"}
+    ALERTMANAGER_NTFY_URL_PATH=${config.sops.templates."alertmanager-ntfy-url".path}
+    ALERTMANAGER_NTFY_PASSWORD_PATH=${
+      config.sops.secrets."compose-stacks/ntfy/users/monitoring/password".path
+    }
+    ALERTMANAGER_DEADMAN_URL_PATH=${
+      config.sops.secrets."compose-stacks/monitoring/alertmanager/deadman_url".path
+    }
   '';
 
   # Grafana logs in via its own Authelia OIDC (see the `auth` stack). Prometheus and
@@ -221,6 +247,7 @@ in
       config.sops.templates."compose-monitoring.env".content
       config.sops.templates."prometheus.yml".content
       config.sops.templates."gatus.yaml".content
+      config.sops.templates."alertmanager-ntfy-url".content
     ];
     inherit composeFile;
     environmentFile = config.sops.templates."compose-monitoring.env".path;

@@ -25,6 +25,8 @@ services:
     volumes:
       - /var/lib/app-data/ntfy/cache:/var/cache/ntfy
       - /var/lib/app-data/ntfy/auth:/ntfy/auth
+      # Message templates, built by default.nix (ntfy's default template-dir).
+      - ${NTFY_TEMPLATES_PATH}:/etc/ntfy/templates:ro
     healthcheck:
       test:
         [

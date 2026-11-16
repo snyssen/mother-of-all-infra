@@ -6,6 +6,11 @@
 }:
 let
   composeFile = "${./.}/docker-compose.yaml";
+
+  # ntfy's template-dir: message templates selected per publish with `?template=<name>`.
+  templates = pkgs.writeTextDir "alertmanager-grafana.yml" (
+    import ./alertmanager-template.nix { grafanaUrl = "https://monitor.${config.domains.main}"; }
+  );
 in
 {
   systemd.tmpfiles.rules = [
@@ -59,6 +64,7 @@ in
       config.sops.placeholder."compose-stacks/ntfy/topics/monitoring"
     }:rw,hass:${config.sops.placeholder."compose-stacks/ntfy/topics/hass"}:rw,streaming:streaming:rw
     NTFY_AUTH_TOKENS=streaming:${config.sops.placeholder."compose-stacks/ntfy/users/streaming/token"}
+    NTFY_TEMPLATES_PATH=${templates}
   '';
 
   # No Authelia/crowdsec-waf gating — ntfy enforces its own per-topic auth (see
