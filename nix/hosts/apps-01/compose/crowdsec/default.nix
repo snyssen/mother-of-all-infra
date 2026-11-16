@@ -37,6 +37,14 @@ in
     "compose-stacks/crowdsec/waf_bouncer/api_key" = {
       sopsFile = ../../data/crowdsec.yaml;
     };
+    # The `ingress` host's firewall bouncer key: the same value as that host's own
+    # `crowdsec-firewall-bouncer/api_key` (nix/hosts/ingress/data/secrets.yaml),
+    # registered here so the LAPI accepts it. Legacy prod registered it outside the
+    # repo, so it did not survive the move to this host: the bouncer got 403s from
+    # then on.
+    "compose-stacks/crowdsec/ingress_bouncer/api_key" = {
+      sopsFile = ../../data/crowdsec.yaml;
+    };
     "compose-stacks/crowdsec/webui/lapi_user" = {
       sopsFile = ../../data/crowdsec.yaml;
     };
@@ -71,6 +79,7 @@ in
   sops.templates."compose-crowdsec.env".content = ''
     BOUNCER_KEY_firewall=${config.sops.placeholder."compose-stacks/crowdsec/firewall_bouncer/api_key"}
     BOUNCER_KEY_traefik=${config.sops.placeholder."compose-stacks/crowdsec/waf_bouncer/api_key"}
+    BOUNCER_KEY_ingress=${config.sops.placeholder."compose-stacks/crowdsec/ingress_bouncer/api_key"}
     CROWDSEC_LAPI_PASSWORD=${config.sops.placeholder."compose-stacks/crowdsec/webui/lapi_password"}
     CROWDSEC_WEBUI_CONFIG_PATH=${config.sops.templates."crowdsec-web-ui-configuration.yml".path}
     CROWDSEC_OIDC_CLIENT_SECRET_PATH=${
