@@ -14,7 +14,7 @@ libvirt_vms:
   # when nothing is at `dest`, i.e. if haos is rebuilt from scratch and restored from an
   # HA backup instead of being moved.
   - name: haos
-    vcpu: 2
+    vcpu: 1
     ram_mb: 2048
     mac_address: "52:54:00:12:34:56"
     disk_gb: 64
@@ -31,7 +31,7 @@ libvirt_vms:
   # with the image (step D9); provisioning only generates a key when none is there.
   - name: technitium-secondary
     state: present
-    vcpu: 2
+    vcpu: 1
     ram_mb: 2048
     mac_address: "52:54:00:c0:01:02"
     disk_gb: 32
@@ -41,7 +41,7 @@ libvirt_vms:
       dest: "/mnt/vmstore/technitium-secondary/disk.qcow2"
       build: false
   - name: apps-01
-    vcpu: 6
+    vcpu: 12
     ram_mb: 49152
     # Same MAC as the Phase A test VM (which is off for good by then): apps-01's static
     # LAN address is matched on it (nix/hosts/apps-01/network.nix).
