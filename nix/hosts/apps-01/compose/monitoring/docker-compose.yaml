@@ -44,7 +44,6 @@ services:
     # them into the exact values Grafana expects.
     environment:
       - GF_SERVER_ROOT_URL
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana-dashboards/home.json
       - GF_ANALYTICS_ENABLED=false
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
