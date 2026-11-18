@@ -1018,7 +1018,7 @@ copy of the legacy layout**; the backup server keeps the restic one.
    sgdisk --zap-all "$NEW"
    sgdisk --new=1:0:0 --typecode=1:8309 --change-name=1:"$LABEL" "$NEW"
    udevadm settle
-   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/73A2-0467 /key   # or 9FBA-884A
    cryptsetup luksFormat --batch-mode "/dev/disk/by-partlabel/$LABEL" /key/hypervisor-01
    cryptsetup luksAddKey --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL"
    cryptsetup open --key-file /key/hypervisor-01 "/dev/disk/by-partlabel/$LABEL" "$NAME"
@@ -1068,6 +1068,9 @@ copy of the legacy layout**; the backup server keeps the restic one.
 5. Prove it survives a reboot: `reboot`, then
    `btrfs filesystem usage /mnt/bulk | grep -E 'Data|Metadata'` shows RAID1, and
    `ls /dev/mapper/` lists `crypt-bulk-0` to `crypt-bulk-2`.
+
+- [x] Btrfs balance has been started
+- [ ] hypervisor-01 reboots with its btrfs RAID1 pool intact
 
 ### A2. Retire the test hypervisor
 

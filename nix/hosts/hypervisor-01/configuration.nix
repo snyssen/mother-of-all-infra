@@ -109,21 +109,14 @@
         ];
         usbMount.attempts = 5; # Generic Flash Disk is slooow
         swap.enable = true;
-        # !!! nixos-anywhere FORMATS EVERY DISK LISTED HERE. !!!
-        #
-        # Both pools start with one disk (no redundancy) and grow after the cutover:
-        # docs/hypervisor/apps-migration-phase-b.md, steps A1 and A2.
-        #
-        # NEVER list the legacy box's two data disks before step A1. They hold the
-        # production data `legacy-import` copies from, and are its only copy on disk:
-        #   ata-ST8000VN004-3CP101_WWZ3XVDG   (8 TB, legacy /mnt/disk1)
-        #   ata-ST12000NM0538-2K2101_ZHZ12PTZ (12 TB, legacy /mnt/disk2)
         pools = {
           bulk = {
             disks = [
               # 16 TB Seagate Exos X18, the legacy box's SnapRAID parity disk: the only
               # one of its HDDs that holds no data.
               "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
+              "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
+              "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
             ];
             storageMedia = "hdd";
           };
@@ -171,19 +164,6 @@
     enable = true;
     vncLanAccess = true;
   };
-
-  # The legacy box's two data disks, which legacy-import copies production's data from.
-  # Never formatted by this host's install: see the warning on `pools` above.
-  legacyImport.disks = [
-    {
-      name = "disk1";
-      device = "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"; # 8 TB IronWolf
-    }
-    {
-      name = "disk2";
-      device = "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"; # 12 TB Exos X14
-    }
-  ];
 
   nfsExports = {
     enable = true;
