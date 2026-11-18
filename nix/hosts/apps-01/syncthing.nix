@@ -78,9 +78,11 @@ in
 
   # The data lives on the NFS mount, so Syncthing must not start before it — ordered
   # after the automount only, as the compose stacks are. Never Requires= the mount (as
-  # RequiresMountsFor= would): /mnt/bulk is an automount that systemd unmounts after 10s
-  # idle (modules/nixos/nfs-mounts.nix), and Requires= turns that unmount into a stop of
-  # Syncthing a few seconds after every start. Any access mounts it again.
+  # RequiresMountsFor= would): Requires= turns any unmount of /mnt/bulk into a stop of
+  # Syncthing that nothing restarts. That once happened a few seconds after every start,
+  # back when the automount unmounted after 10s idle (modules/nixos/nfs-mounts.nix); it
+  # no longer idles out, but a manual umount or a remount would do the same. Any access
+  # mounts it again.
   systemd.services.syncthing.after = [
     "mnt-bulk.automount"
     "syncthing-storage-dirs.service"

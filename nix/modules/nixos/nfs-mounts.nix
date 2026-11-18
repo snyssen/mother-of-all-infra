@@ -45,7 +45,7 @@ let
   mkAutomountUnit = name: mount: {
     where = mount.path;
     automountConfig = {
-      TimeoutIdleSec = 10;
+      TimeoutIdleSec = mount.idleTimeout;
     };
     wantedBy = [ "multi-user.target" ];
     unitConfig = {
@@ -104,24 +104,38 @@ in
               default = [
                 "defaults"
                 "hard"
-                "intr"
-                "rsize=8192"
-                "wsize=8192"
               ];
               description = ''
                 NFS mount options. Defaults include:
                 - defaults: basic defaults
                 - hard: hard mount (retries indefinitely)
-                - intr: allow interruption of mount operations
-                - rsize/wsize: read/write buffer sizes
+
+                Leave rsize/wsize out unless measured otherwise: client and server then
+                negotiate the largest size both support (up to 1 MiB), where a fixed
+                8 KiB, as this module once set, throttles every large read and write.
+                `intr` is not needed either: the kernel has ignored it since 2.6.25.
               '';
               example = [
                 "hard"
-                "intr"
-                "rsize=8192"
-                "wsize=8192"
-                "vers=4"
+                "vers=4.2"
               ];
+            };
+
+            idleTimeout = lib.mkOption {
+              type = lib.types.ints.unsigned;
+              default = 0;
+              description = ''
+                Seconds of inactivity after which the automount unmounts the share
+                (systemd's TimeoutIdleSec). 0, the default, never unmounts it: the
+                automount then only makes the first mount lazy, so boot does not wait on
+                the NFS server.
+
+                Set one only for an occasional share, such as a laptop's. On a server,
+                containers reach the share through bind mounts that systemd does not
+                count as use, so it looks idle while in use, and every unmount stops
+                each unit that Requires= the mount.
+              '';
+              example = 600;
             };
 
             dependsOn = lib.mkOption {
@@ -151,7 +165,6 @@ in
           options = [
             "defaults"
             "hard"
-            "intr"
           ];
         };
         backups = {
