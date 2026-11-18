@@ -6,7 +6,7 @@
 # /wiki/data is a rebuildable cache.
 services:
   team-wiki:
-    image: requarks/wiki:2.5.317@sha256:e4708eed80c014449c0c8426c8d466c7a52a62131555bb44372fa48378b448b8
+    image: requarks/wiki:3.4.0@sha256:9424867464d9d899f975bbadb8ff1f794341eadd720b5fb5c22f0988c62e29bf
     restart: unless-stopped
     networks:
       - web
