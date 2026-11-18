@@ -14,11 +14,18 @@ let
   team = config.domains.team;
 
   # Kuma's http monitors pass on any 2xx after following redirects, and so do these.
-  # A failed connection already fails the check before any condition is looked at.
+  # `[CONNECTED]` is not redundant: a request that never got a response (DNS failure,
+  # refused connection) still has its conditions evaluated, with [STATUS] = 0, which
+  # `[STATUS] < 300` happily accepts. That kept the vpn-namespace checks green while
+  # the whole streaming stack was down.
+  connected = "[CONNECTED] == true";
   http = name: url: {
     inherit name url;
     group = "services";
-    conditions = [ "[STATUS] < 300" ];
+    conditions = [
+      connected
+      "[STATUS] < 300"
+    ];
   };
   # Kuma's `keyword` type: a 2xx whose body contains the word.
   keyword =
@@ -26,6 +33,7 @@ let
     http name url
     // {
       conditions = [
+        connected
         "[STATUS] < 300"
         "[BODY] == pat(*${word}*)"
       ];
