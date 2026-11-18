@@ -157,7 +157,12 @@ in
   systemd.services.streaming-download-clients-config = {
     description = "Install the streaming download clients' configuration";
     after = [ "streaming-storage-dirs.service" ];
-    requires = [ "streaming-storage-dirs.service" ];
+    # Wants, not Requires: storage-dirs Requires mnt-bulk.mount, so through the
+    # requiredBy below, Requires= here turns any unmount of /mnt/bulk (an automount
+    # idle timeout, as once set in modules/nixos/nfs-mounts.nix, a manual umount, a
+    # remount for new options) into a stop of the whole stack that nothing restarts.
+    # Starting the stack still pulls storage-dirs (and with it the mount) in.
+    wants = [ "streaming-storage-dirs.service" ];
     before = [ "compose-streaming.service" ];
     requiredBy = [ "compose-streaming.service" ];
     partOf = [ "compose-streaming.service" ];
