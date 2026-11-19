@@ -26,7 +26,7 @@ in
     MAIL_PORT=${config.sops.placeholder."smtp/port"}
     MAIL_USERNAME=${config.sops.placeholder."smtp/user"}
     MAIL_PASSWORD=${config.sops.placeholder."smtp/password"}
-    MAIL_FROM_ADDRESS=speedtest-tracker@${config.domains.main}
+    MAIL_FROM_ADDRESS=${config.sops.placeholder."smtp/from"}
   '';
 
   # Sysadmins only, through the admin-tools rule in auth/authelia-configuration.nix,

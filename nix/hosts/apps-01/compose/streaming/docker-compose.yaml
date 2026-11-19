@@ -207,7 +207,9 @@ services:
       # elsewhere in this migration (see crowdsec's config.yaml.local for the same
       # rationale), not the legacy role's fixed /16.
       - 'PEERTUBE_TRUST_PROXY=["127.0.0.1", "loopback", "172.16.0.0/12"]'
-      - PEERTUBE_SMTP_TLS=true
+      # STARTTLS on 587, not implicit TLS: SMTP_TLS=true would start TLS from the first
+      # byte, which the relay's submission port does not speak.
+      - PEERTUBE_SMTP_TLS=false
       - PEERTUBE_SMTP_DISABLE_STARTTLS=false
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_ENABLED=true
       - PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_BUTTON_LABEL=Login with Authelia

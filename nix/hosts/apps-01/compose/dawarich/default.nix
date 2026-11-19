@@ -74,6 +74,7 @@ in
     SMTP_PORT=${config.sops.placeholder."smtp/port"}
     SMTP_USER=${config.sops.placeholder."smtp/user"}
     SMTP_PASSWORD=${config.sops.placeholder."smtp/password"}
+    SMTP_FROM=${config.sops.placeholder."smtp/from"}
     DB_BACKUP_HOOKS_PATH=${../databases/hooks}
   '';
 

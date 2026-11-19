@@ -117,7 +117,7 @@
       }"
       username: "${config.sops.placeholder."smtp/user"}"
       password: "${config.sops.placeholder."smtp/password"}"
-      sender: "Authelia <auth@${config.sops.placeholder."smtp/from_domain"}>"
+      sender: "Authelia <${config.sops.placeholder."smtp/from"}>"
 
   # Deny by default, as on prod: a forwardAuth-gated route is reachable only if a rule
   # below names its host. That makes adding a gated route a two-place change (its

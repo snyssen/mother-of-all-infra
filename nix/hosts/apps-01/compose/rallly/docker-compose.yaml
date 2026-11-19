@@ -17,8 +17,9 @@ services:
       - SUPPORT_EMAIL
       - SMTP_HOST
       - SMTP_PORT
-      # Carried over from prod as is.
-      - SMTP_SECURE=true
+      # STARTTLS on 587, not implicit TLS: nodemailer's secure=true starts TLS from the
+      # first byte, which the relay's submission port does not speak.
+      - SMTP_SECURE=false
       - SMTP_USER
       - SMTP_PWD
 

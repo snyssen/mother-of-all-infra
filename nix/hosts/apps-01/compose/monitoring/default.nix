@@ -81,7 +81,7 @@ in
     GF_SMTP_HOST=${config.sops.placeholder."smtp/host"}:${config.sops.placeholder."smtp/port"}
     GF_SMTP_USER=${config.sops.placeholder."smtp/user"}
     GF_SMTP_PASSWORD=${config.sops.placeholder."smtp/password"}
-    GF_SMTP_FROM_ADDRESS=grafana@${config.domains.main}
+    GF_SMTP_FROM_ADDRESS=${config.sops.placeholder."smtp/from"}
     GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${
       config.sops.placeholder."compose-stacks/auth/oidc/grafana/client_id"
     }

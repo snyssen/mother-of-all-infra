@@ -29,7 +29,7 @@ in
     }@postgres/rallly
     SECRET_PASSWORD=${config.sops.placeholder."compose-stacks/rallly/secret"}
     NEXT_PUBLIC_BASE_URL=https://${host}
-    NOREPLY_EMAIL=rally@${config.domains.main}
+    NOREPLY_EMAIL=${config.sops.placeholder."smtp/from"}
     SUPPORT_EMAIL=${config.sops.placeholder."smtp/to"}
     SMTP_HOST=${config.sops.placeholder."smtp/host"}
     SMTP_PORT=${config.sops.placeholder."smtp/port"}

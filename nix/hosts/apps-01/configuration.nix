@@ -92,7 +92,12 @@
       sopsFile = ./data/common.yaml;
       neededForUsers = true;
     };
-    # Shared across any stack that sends mail, not specific to one stack.
+    # Shared across any stack that sends mail, not specific to one stack. The relay is
+    # Proton (smtp.protonmail.ch:587, STARTTLS); smtp/password is a Proton SMTP token,
+    # which can only send as the address it was generated for. That address is
+    # smtp/from, so every stack must send from it: give each one a display name rather
+    # than a per-app local part. Sending through the domain's own mail host is what
+    # makes DKIM align with snyssen.be's strict DMARC policy (adkim=s; aspf=s).
     "smtp/host" = {
       sopsFile = ./data/common.yaml;
     };
@@ -105,7 +110,7 @@
     "smtp/password" = {
       sopsFile = ./data/common.yaml;
     };
-    "smtp/from_domain" = {
+    "smtp/from" = {
       sopsFile = ./data/common.yaml;
     };
     # Admin/notification recipient address — used by PeerTube (streaming stack) so

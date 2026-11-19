@@ -80,12 +80,12 @@
     'mail_smtpmode' => 'smtp',
     'mail_smtpsecure' => 'tls',
     'mail_sendmailmode' => 'smtp',
-    'mail_from_address' => 'nextcloud',
-    // The legacy template uses main_domain here. On this host that is snyssen1.xyz,
-    // a throwaway name the relay has no SPF/DKIM for, so mail would be sent as
-    // nextcloud@snyssen1.xyz and dropped. Uses the real sending domain instead, the
-    // same way Authelia's sender address does.
-    'mail_domain' => '${config.sops.placeholder."smtp/from_domain"}',
+    // Must spell out smtp/from (noreply@snyssen.be): the Proton SMTP token only sends
+    // as that address, and Nextcloud wants it split into local part and domain, which a
+    // sops placeholder cannot be at eval time. Keep the two in sync — see the smtp/*
+    // secrets in configuration.nix.
+    'mail_from_address' => 'noreply',
+    'mail_domain' => '${config.domains.main}',
     'mail_smtpauthtype' => 'LOGIN',
     'mail_smtpauth' => 1,
     'mail_smtphost' => '${config.sops.placeholder."smtp/host"}',

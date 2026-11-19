@@ -133,7 +133,7 @@ in
     PEERTUBE_SMTP_PORT=${config.sops.placeholder."smtp/port"}
     PEERTUBE_SMTP_USERNAME=${config.sops.placeholder."smtp/user"}
     PEERTUBE_SMTP_PASSWORD=${config.sops.placeholder."smtp/password"}
-    PEERTUBE_SMTP_FROM=peertube@${config.domains.main}
+    PEERTUBE_SMTP_FROM=${config.sops.placeholder."smtp/from"}
     PEERTUBE_ADMIN_EMAIL=${config.sops.placeholder."smtp/to"}
     PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_DISCOVER_URL=https://auth.${config.domains.main}/.well-known/openid-configuration
     PEERTUBE_PLUGIN_OFFICIAL_AUTH_OPENID_CONNECT_CLIENT_ID=${
