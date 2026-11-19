@@ -46,7 +46,7 @@ services:
       - /var/lib/app-data/audiobookshelf/metadata:/metadata
 
   torrent:
-    image: lscr.io/linuxserver/transmission:4.1.4@sha256:aaf349cd859ca9d5f34f394c56b8097c267a513283698adc4d07ee61d7cb1a85
+    image: lscr.io/linuxserver/transmission:4.1.4@sha256:5baf08cd73a566699f35baad3c4a84ba7d7057220566c5fb29969bf2292dc2ff
     restart: unless-stopped
     network_mode: service:vpn
     environment:
@@ -61,7 +61,7 @@ services:
       - vpn
 
   usenet:
-    image: lscr.io/linuxserver/sabnzbd:5.1.3@sha256:b356d0a9b22db584e9005364ec4e752dfc081ce501b7145e9a5c0bb38e4d1ba4
+    image: lscr.io/linuxserver/sabnzbd:5.1.3@sha256:d225bbab93f54784c115a3b1d89711e469b1969c9f32aa6ebb11fb03b5804431
     restart: unless-stopped
     network_mode: service:vpn
     environment:
@@ -106,7 +106,7 @@ services:
       - vpn
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:3.1.6@sha256:a91ef0642c15c9bd7c4260fee98fa99972c61601e37c8a96411d6a9cf0e9ad40
+    image: lscr.io/linuxserver/lidarr:3.1.6@sha256:8fb40ada166dd1880cb1b166df5bcbb081107523f20ab60df05c313e2052a467
     restart: unless-stopped
     environment:
       - PUID=33
@@ -135,7 +135,7 @@ services:
       - vpn
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:1.6.2@sha256:832820dec70bce9e912c6eee7a95baf6551e03dbc63325a7208daaa455423752
+    image: lscr.io/linuxserver/bazarr:1.6.2@sha256:e0c5d45965242830c5eeddaafe9ae2b5e8ca3f6c01ecda9ee9364f550921dc50
     restart: unless-stopped
     environment:
       - PUID=33
