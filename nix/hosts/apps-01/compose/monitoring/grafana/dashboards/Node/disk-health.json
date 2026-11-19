@@ -1,0 +1,1523 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "SMART health, expected lifetime and btrfs errors of every disk, from the smartctl exporter (nix/modules/nixos/smart.nix).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "preload": false,
+  "refresh": "5m",
+  "schemaVersion": 42,
+  "tags": [
+    "hardware",
+    "smart",
+    "disks"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "hypervisor-01",
+          "value": "hypervisor-01"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "Lxg23YOVk"
+        },
+        "definition": "label_values(smartctl_device_smart_status, instance)",
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "instance",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(smartctl_device_smart_status, instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Disk health",
+  "uid": "disk-health",
+  "version": 1,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Is a drive failing?",
+      "id": 11,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Drive health",
+      "description": "One row per disk. Green everywhere = healthy. Any red cell is worth reading the \"What do these numbers mean?\" row at the bottom of this dashboard. Empty cells mean the attribute does not exist for that kind of drive (NVMe drives have no attributes 5–199; HDDs have no wear or media-error counters).",
+      "id": 1,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "smartctl_device{instance=\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_smart_status{instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_temperature{instance=\"$instance\", temperature_type=\"current\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_power_on_seconds{instance=\"$instance\"}) / 31557600",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"5\", attribute_value_type=\"raw\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"187\", attribute_value_type=\"raw\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "F"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"188\", attribute_value_type=\"raw\"} % 65536)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "G"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"197\", attribute_value_type=\"raw\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "H"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"198\", attribute_value_type=\"raw\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "I"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_attribute{instance=\"$instance\", attribute_id=\"199\", attribute_value_type=\"raw\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "J"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_media_errors{instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "K"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_self_test_log_error_count{instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "L"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_percentage_used{instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "__auto",
+          "refId": "M"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value #A": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "ata_additional_product_id": true,
+              "ata_version": true,
+              "sata_version": true,
+              "form_factor": true,
+              "protocol": true,
+              "scsi_product": true,
+              "scsi_revision": true,
+              "scsi_vendor": true,
+              "scsi_version": true,
+              "model_family": true,
+              "firmware_version": true
+            },
+            "indexByName": {
+              "device": 0,
+              "model_name": 1,
+              "serial_number": 2,
+              "interface": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #H": 7,
+              "Value #I": 8,
+              "Value #E": 9,
+              "Value #F": 10,
+              "Value #G": 11,
+              "Value #J": 12,
+              "Value #L": 13,
+              "Value #K": 14,
+              "Value #M": 15
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Device"
+              },
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "model_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Model"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "serial_number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Serial"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "interface"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Bus"
+              },
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "SMART"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "FAILED",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "PASSED",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temp"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 46
+                    },
+                    {
+                      "color": "red",
+                      "value": 56
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Age"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: y"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 3
+                    },
+                    {
+                      "color": "orange",
+                      "value": 5
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #H"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "197 Pending"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #I"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "198 Offline unc."
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #E"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "5 Reallocated"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #F"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "187 Uncorrect."
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #G"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "188 Timeouts"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #J"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "199 CRC (cable)"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #L"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Failed self-tests"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 115
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #K"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "NVMe media err."
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 115
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #M"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "NVMe wear"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 100
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "btrfs device errors",
+      "description": "btrfs's own per-device error counters (read, write, flush, corruption, generation), summed. They persist across reboots until reset with `btrfs device stats -z`, so a non-zero value may be old: the alert only fires when one grows. See the time series below for when it happened.",
+      "id": 2,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "sum by (device) (node_btrfs_device_errors_total{instance=\"$instance\"})",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false
+      }
+    },
+    {
+      "type": "row",
+      "title": "How much life is left?",
+      "id": 12,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Age (power-on time)",
+      "description": "Years of actual spinning/powered time, not calendar age. HDD failure rates follow a \"bathtub curve\": slightly higher in the first months, low and flat for years, then rising after about 5 years (Backblaze's fleet data). Seagate warranties: Exos 5 years, IronWolf 3 years. Old is not broken: use this together with the health table.",
+      "id": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_power_on_seconds{instance=\"$instance\"}) / 31557600",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: years",
+          "decimals": 1,
+          "min": 0,
+          "max": 8,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 7
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "NVMe endurance used",
+      "description": "NVMe \"Percentage Used\": the share of the drive's rated write endurance (TBW) consumed so far, as estimated by the drive itself. 100% means out of the vendor's spec, not dead: most drives keep working well past it, but that is the point to have the replacement ready. This is the one genuine \"life left\" number SMART gives.",
+      "id": 4,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_percentage_used{instance=\"$instance\"})",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "NVMe projected wear-out",
+      "description": "Time until \"endurance used\" reaches 100% if the drive keeps being written at its pace of the last 30 days. Percentage Used moves in whole percents, so this shows nothing until it has moved at least once in the window; a very long value just means \"not a concern\".",
+      "id": 5,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "(100 - max by (device) (smartctl_device_percentage_used{instance=\"$instance\"})) / (max by (device) (deriv(smartctl_device_percentage_used{instance=\"$instance\"}[30d])) > 0)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "noValue": "not enough wear yet",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 31557600
+              },
+              {
+                "color": "green",
+                "value": 94672800
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false
+      }
+    },
+    {
+      "type": "stat",
+      "title": "NVMe data written per day",
+      "description": "Average writes over the last 7 days. Compare with the drive's rated TBW to see how fast endurance goes.",
+      "id": 6,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (rate(smartctl_device_bytes_written{instance=\"$instance\"}[7d])) * 86400",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false
+      }
+    },
+    {
+      "type": "row",
+      "title": "Trends",
+      "id": 13,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Temperature",
+      "description": "HDDs: under 45 °C is ideal, Seagate's limit is 60 °C (alerts at 50/60). NVMe: alerts at 70/80 °C.",
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device) (smartctl_device_temperature{instance=\"$instance\", temperature_type=\"current\"})",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Failure-predicting attributes",
+      "description": "Raw values of 5, 187, 197, 198 (and 199, the cable). Flat at zero is the goal; any step up is what the alerts react to.",
+      "id": 8,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "max by (device, attribute_id, attribute_name) (smartctl_device_attribute{instance=\"$instance\", attribute_id=~\"5|187|197|198|199\", attribute_value_type=\"raw\"})",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{device}} {{attribute_id}} {{attribute_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "btrfs device errors",
+      "description": "Per device and error type. Only non-zero series are shown.",
+      "id": 9,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Lxg23YOVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Lxg23YOVk"
+          },
+          "editorMode": "code",
+          "expr": "node_btrfs_device_errors_total{instance=\"$instance\"} > 0",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{device}} {{type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "What do these numbers mean?",
+      "id": 14,
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "panels": [
+        {
+          "type": "text",
+          "title": "",
+          "id": 10,
+          "gridPos": {
+            "h": 30,
+            "w": 24,
+            "x": 0,
+            "y": 40
+          },
+          "options": {
+            "mode": "markdown",
+            "content": "### How SMART works\n\nEvery disk keeps a set of health counters, its **SMART attributes**. Each has:\n\n- a **raw** value: the real counter, e.g. \"8 reallocated sectors\". Its format is up to the vendor.\n- a **normalized** value (usually 100–253 when healthy) that drops towards a **threshold** the vendor set. When any normalized value crosses its threshold, the drive's overall verdict becomes **FAILED** (the *SMART* column).\n\nThe overall verdict is conservative: drives often fail *before* it trips. That is why the raw counters below are watched individually.\n\n### Is a drive failing? (the health table)\n\n| Column | What it counts | How worried to be |\n|---|---|---|\n| **197 Pending** | Sectors the disk could not read, waiting to be remapped | **Any value > 0: plan a replacement.** The best single predictor of failure. Alert: critical. |\n| **198 Offline unc.** | Sectors the disk's own background scan could not read | Same as 197. Alert: critical. |\n| **5 Reallocated** | Bad sectors already replaced by spares | A few that stay put is survivable. **Growing** = the surface is degrading. Alert when it grows. |\n| **187 Uncorrect.** | Reads the disk's error correction could not fix | btrfs repairs the data from the other copy, but the disk is unreliable. Alert when it grows. |\n| **188 Timeouts** | Commands that timed out | Often a cable or power issue rather than the disk. Seagate packs three counters into this one; the table shows the total (low 16 bits). Alert when it grows. |\n| **199 CRC (cable)** | Data corrupted between disk and controller | The **cable or port**, not the disk: reseat or replace it. |\n| **Failed self-tests** | Self-tests (short every night, long on the 15th, run by smartd) that hit an error | A failed read test means bad media. Alert: critical. |\n| **NVMe media err.** | Uncorrectable errors on an NVMe drive | Alert when it grows. |\n\nBackblaze's studies of their drive fleet found that most failed drives showed a non-zero value in one of **5, 187, 188, 197, 198** beforehand, while very few healthy drives did. That is why those are the ones watched.\n\n**Seagate quirk, ignore these:** attributes **1** (Raw_Read_Error_Rate), **7** (Seek_Error_Rate) and **195** (Hardware_ECC_Recovered) show huge, ever-growing raw values on Seagate drives. They pack an *operation count* in with the error count, so the number is meaningless on its own. This is normal and is deliberately not shown or alerted on.\n\n### How much life is left?\n\n- **NVMe/SSD: measurable.** Flash wears out with writes. *NVMe endurance used* is the drive's own estimate of how much of its rated write endurance is gone, and *projected wear-out* extrapolates from the last 30 days.\n- **Hard drives: no tool can give a date.** They fail mechanically, not from wear. The best estimate combines:\n  1. **Age.** Failure rates stay low for years, then rise after about 5 (the \"bathtub curve\").\n  2. **The model's track record.** Backblaze publishes annual failure rates per drive model every quarter: <https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data>. Look up the *Model* column there.\n  3. **The trend of the counters above.** A drive with all zeros at 6 years is in better shape than one with growing pending sectors at 2.\n\n### btrfs device errors\n\nbtrfs checksums all data, so it notices corruption SMART does not report (and the reverse). Its counters are per LUKS device (`crypt-bulk-0`…), not per disk: `cryptsetup status <name>` on the host shows which disk sits under each. With RAID1, btrfs repairs a bad copy from the good one, so an error is a warning sign, not data loss.\n\nWhat to do when a disk needs replacing: *Replacing a failed disk* in `docs/hypervisor/overview.md`.",
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false,
+              "showMiniMap": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

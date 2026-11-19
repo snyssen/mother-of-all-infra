@@ -135,6 +135,167 @@ tests:
             exp_annotations:
               summary: "gatus target gatus:8080 is down"
 
+  # SMART health check flips to failed.
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{instance="hv", device="ata-ST16000NM000J-2TW103_ZR58BLR6"}'
+        values: "1x4 0x20"
+      - series: 'smartctl_device_smart_status{instance="hv", device="nvme-KINGSTON_SNV3S1000G_X"}'
+        values: "1x24"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DiskSmartFailed
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: DiskSmartFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              priority: high
+              instance: hv
+              device: ata-ST16000NM000J-2TW103_ZR58BLR6
+            exp_annotations:
+              summary: "ata-ST16000NM000J-2TW103_ZR58BLR6 on hv fails its SMART health check: replace it"
+              dashboard_uid: disk-health
+
+  # Pending sectors fire on any non-zero value; a Seagate's huge, packed
+  # Raw_Read_Error_Rate (attribute 1) never alerts.
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="197", attribute_name="Current_Pending_Sector", attribute_value_type="raw", attribute_flags_short="-O--CK"}'
+        values: "0x4 8x20"
+      - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="1", attribute_name="Raw_Read_Error_Rate", attribute_value_type="raw", attribute_flags_short="POSR--"}'
+        values: "180000000+1000000x24"
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: DiskUnreadableSectors
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              priority: high
+              instance: hv
+              device: ata-A
+              attribute_name: Current_Pending_Sector
+            exp_annotations:
+              summary: "ata-A on hv has 8 Current_Pending_Sector"
+              description: >-
+                The disk has sectors it cannot read. btrfs repairs the data from the other
+                copy, but this disk is likely to fail soon: plan its replacement.
+              dashboard_uid: disk-health
+
+  # "Grew in the last day": a Seagate's packed Command_Timeout (188) raw value
+  # (0x0001_0001_0001) is huge but constant, so it stays quiet until a counter in it
+  # moves. A non-zero but constant reallocated count stays quiet too.
+  - interval: 5m
+    input_series:
+      - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="188", attribute_name="Command_Timeout", attribute_value_type="raw"}'
+        values: "4295032833x300 4295032834x10"
+      - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="5", attribute_name="Reallocated_Sector_Ct", attribute_value_type="raw"}'
+        values: "8x310"
+    alert_rule_test:
+      - eval_time: 1495m
+        alertname: DiskCommandTimeouts
+        exp_alerts: []
+      - eval_time: 1510m
+        alertname: DiskCommandTimeouts
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: hv
+              device: ata-A
+            exp_annotations:
+              summary: "ata-A on hv had command timeouts in the last day"
+              description: Check the disk's SATA and power cables first.
+              dashboard_uid: disk-health
+      - eval_time: 1510m
+        alertname: DiskReallocatedSectors
+        exp_alerts: []
+
+  # HDD and NVMe have different temperature thresholds.
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{instance="hv", device="ata-A", temperature_type="current"}'
+        values: "55x20"
+      - series: 'smartctl_device_temperature{instance="hv", device="nvme-B", temperature_type="current"}'
+        values: "55x20"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: DiskTemperature
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: hv
+              device: ata-A
+            exp_annotations:
+              summary: "ata-A on hv is at 55°C"
+              dashboard_uid: disk-health
+
+  - interval: 5m
+    input_series:
+      - series: 'smartctl_device_percentage_used{instance="hv", device="nvme-B"}'
+        values: "85x30"
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NvmeWear
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: low
+              instance: hv
+              device: nvme-B
+            exp_annotations:
+              summary: "nvme-B on hv has used 85% of its rated endurance"
+              dashboard_uid: disk-health
+
+  # SMART data that stops arriving.
+  - interval: 5m
+    input_series:
+      - series: 'smartctl_device_smart_status{instance="hv", device="ata-A"}'
+        values: "1x12"
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: SmartMetricsMissing
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: SmartMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: default
+              instance: hv
+            exp_annotations:
+              summary: "No SMART data from hv for 30 minutes"
+              description: Check prometheus-smartctl-exporter.service and alloy.service on the host.
+              dashboard_uid: disk-health
+
+  # A btrfs error counter that already sits at 1 stays quiet; it alerts once it grows.
+  - interval: 5m
+    input_series:
+      - series: 'node_btrfs_device_errors_total{instance="hv", device="crypt-bulk-1", type="write", uuid="u"}'
+        values: "1x19 2x5"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: BtrfsDeviceErrors
+        exp_alerts: []
+      - eval_time: 105m
+        alertname: BtrfsDeviceErrors
+        exp_alerts:
+          - exp_labels:
+              severity: error
+              priority: default
+              instance: hv
+              device: crypt-bulk-1
+              type: write
+            exp_annotations:
+              summary: "btrfs recorded write errors on crypt-bulk-1 (hv)"
+              description: >-
+                See `btrfs device stats` and the kernel log on the host. With RAID1, btrfs
+                repairs from the other copy; repeated errors on one device point at a failing
+                disk or cable.
+              dashboard_uid: disk-health
+
   - interval: 1m
     alert_rule_test:
       - eval_time: 1m

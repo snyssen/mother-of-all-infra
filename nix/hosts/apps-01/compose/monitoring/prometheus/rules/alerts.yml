@@ -61,6 +61,244 @@ groups:
           priority: urgent
         annotations: *cpu_temperature_annotations
 
+  # Disk health: SMART, from the smartctl exporter (nix/modules/nixos/smart.nix, pushed
+  # by Alloy as job="smartctl"), and btrfs's own per-device error counters.
+  #
+  # `device` is the disk's /dev/disk/by-id name minus the prefix, e.g.
+  # ata-ST16000NM000J-2TW103_ZR58BLR6: it names model and serial, so the alert alone says
+  # which disk to pull. Every expression aggregates `by (instance, device)` to shed the
+  # exporter's attribute_flags_* labels.
+  #
+  # The "grew in the last day" alerts compare against `offset 1d` instead of using
+  # increase(): SMART raw values are exported as gauges, and a few are vendor-packed
+  # (Seagate's 188 holds three 16-bit counters), so only "is it higher than yesterday"
+  # means the same thing on every drive. Once a value stops growing, its alert resolves
+  # by itself a day later; the absolute value stays on the dashboard.
+  #
+  # Deliberately not alerted on: the raw values of attributes 1, 7 and 195. Seagate packs
+  # an operation count into them, so they look enormous and climb all the time on a
+  # perfectly healthy disk. Their normalized values are already folded into
+  # smartctl_device_smart_status (DiskSmartFailed).
+  - name: disks
+    rules:
+      # The drive's own verdict: some attribute fell below its vendor threshold. Drives
+      # are conservative and often say this late, so it is the last line of defence, not
+      # the first.
+      - alert: DiskSmartFailed
+        expr: max by (instance, device) (smartctl_device_smart_status) == 0
+        for: 10m
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} fails its SMART health check: replace it"
+          dashboard_uid: disk-health
+
+      # 197 Current_Pending_Sector: sectors that could not be read and wait to be
+      # reallocated. 198 Offline_Uncorrectable: sectors the drive's own background scan
+      # could not read. The best single predictor of an imminent failure.
+      - alert: DiskUnreadableSectors
+        expr: |
+          max by (instance, device, attribute_name) (
+            smartctl_device_attribute{attribute_id=~"197|198", attribute_value_type="raw"}
+          ) > 0
+        for: 15m
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} has {{ $value }} {{ $labels.attribute_name }}"
+          description: >-
+            The disk has sectors it cannot read. btrfs repairs the data from the other
+            copy, but this disk is likely to fail soon: plan its replacement.
+          dashboard_uid: disk-health
+
+      # 5 Reallocated_Sector_Ct: bad sectors already swapped for spares. A handful that
+      # stays put is survivable; a count that keeps growing is a surface degrading.
+      - alert: DiskReallocatedSectors
+        expr: |
+          max by (instance, device) (smartctl_device_attribute{attribute_id="5", attribute_value_type="raw"})
+          > max by (instance, device) (smartctl_device_attribute{attribute_id="5", attribute_value_type="raw"} offset 1d)
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} reallocated sectors in the last day (now {{ $value }})"
+          dashboard_uid: disk-health
+
+      # 187 Reported_Uncorrect: reads the drive's ECC could not correct.
+      - alert: DiskUncorrectableErrors
+        expr: |
+          max by (instance, device) (smartctl_device_attribute{attribute_id="187", attribute_value_type="raw"})
+          > max by (instance, device) (smartctl_device_attribute{attribute_id="187", attribute_value_type="raw"} offset 1d)
+        labels:
+          severity: error
+          priority: default
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} reported uncorrectable read errors in the last day"
+          dashboard_uid: disk-health
+
+      # 188 Command_Timeout. Seagate packs three counters into the raw value (the bug
+      # that made Scrutiny misreport these disks), so only growth is meaningful, never
+      # the number itself. Often a cable, power or controller problem rather than the
+      # disk.
+      - alert: DiskCommandTimeouts
+        expr: |
+          max by (instance, device) (smartctl_device_attribute{attribute_id="188", attribute_value_type="raw"})
+          > max by (instance, device) (smartctl_device_attribute{attribute_id="188", attribute_value_type="raw"} offset 1d)
+        labels:
+          severity: warning
+          priority: low
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} had command timeouts in the last day"
+          description: Check the disk's SATA and power cables first.
+          dashboard_uid: disk-health
+
+      # 199 UDMA_CRC_Error_Count: transfers corrupted between disk and controller. The
+      # cable or port, not the disk.
+      - alert: DiskCableErrors
+        expr: |
+          max by (instance, device) (smartctl_device_attribute{attribute_id="199", attribute_value_type="raw"})
+          > max by (instance, device) (smartctl_device_attribute{attribute_id="199", attribute_value_type="raw"} offset 1d)
+        labels:
+          severity: warning
+          priority: low
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} had interface CRC errors in the last day"
+          description: The disk is likely fine; reseat or replace its SATA cable.
+          dashboard_uid: disk-health
+
+      # A self-test (scheduled by smartd: short daily, long monthly) that ended in an
+      # error, i.e. the drive could not read part of its own surface. Compared with
+      # yesterday because the log only keeps the last ~21 tests, so a count can also
+      # drop as old entries rotate out.
+      - alert: DiskSelfTestFailed
+        expr: |
+          max by (instance, device) (smartctl_device_self_test_log_error_count)
+          > max by (instance, device) (smartctl_device_self_test_log_error_count offset 1d)
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} failed a SMART self-test"
+          dashboard_uid: disk-health
+
+      # HDDs: Seagate rates these for 60°C, and they last longest under ~45°C. NVMe runs
+      # hotter by design and starts throttling around 70-80°C. The by-id prefix tells
+      # the two apart.
+      - alert: DiskTemperature
+        expr: |
+          max by (instance, device) (smartctl_device_temperature{temperature_type="current", device=~"ata-.+"}) > 50
+          or max by (instance, device) (smartctl_device_temperature{temperature_type="current", device=~"nvme-.+"}) > 70
+        for: 15m
+        labels:
+          severity: warning
+          priority: low
+        annotations: &disk_temperature_annotations
+          summary: "{{ $labels.device }} on {{ $labels.instance }} is at {{ $value }}°C"
+          dashboard_uid: disk-health
+      - alert: DiskTemperature
+        expr: |
+          max by (instance, device) (smartctl_device_temperature{temperature_type="current", device=~"ata-.+"}) > 60
+          or max by (instance, device) (smartctl_device_temperature{temperature_type="current", device=~"nvme-.+"}) > 80
+        for: 5m
+        labels:
+          severity: critical
+          priority: high
+        annotations: *disk_temperature_annotations
+
+      # NVMe's own alarm bits: spare space low, temperature, reliability degraded,
+      # read-only, volatile backup failed. Any of them is serious.
+      - alert: NvmeCriticalWarning
+        expr: max by (instance, device) (smartctl_device_critical_warning) > 0
+        for: 5m
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} raised NVMe critical warning {{ $value }}"
+          description: >-
+            A bitfield: 1 spare below threshold, 2 temperature, 4 reliability degraded,
+            8 read-only, 16 volatile memory backup failed.
+          dashboard_uid: disk-health
+
+      - alert: NvmeSpareLow
+        expr: |
+          max by (instance, device) (smartctl_device_available_spare)
+          < max by (instance, device) (smartctl_device_available_spare_threshold)
+        for: 5m
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} is down to {{ $value }}% spare blocks"
+          dashboard_uid: disk-health
+
+      # percentage_used: how much of the rated write endurance (TBW) is consumed. 100%
+      # is "out of warranty spec", not "dead": most drives carry on well past it, but
+      # it is time to buy the replacement.
+      - alert: NvmeWear
+        expr: max by (instance, device) (smartctl_device_percentage_used) >= 80
+        for: 1h
+        labels:
+          severity: warning
+          priority: low
+        annotations: &nvme_wear_annotations
+          summary: "{{ $labels.device }} on {{ $labels.instance }} has used {{ $value }}% of its rated endurance"
+          dashboard_uid: disk-health
+      - alert: NvmeWear
+        expr: max by (instance, device) (smartctl_device_percentage_used) >= 100
+        for: 1h
+        labels:
+          severity: critical
+          priority: default
+        annotations: *nvme_wear_annotations
+
+      - alert: NvmeMediaErrors
+        expr: |
+          max by (instance, device) (smartctl_device_media_errors)
+          > max by (instance, device) (smartctl_device_media_errors offset 1d)
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} hit uncorrectable media errors in the last day"
+          dashboard_uid: disk-health
+
+      # Pushed metrics produce no `up == 0` (see TargetDown), so a dead exporter or
+      # Alloy would otherwise just go quiet. Any host that reported SMART data this
+      # week but not in the last half hour. A host that is down trips this too, which
+      # is fine: everything sending SMART data is a server.
+      - alert: SmartMetricsMissing
+        expr: |
+          max by (instance) (max_over_time(smartctl_device_smart_status[7d]))
+          unless max by (instance) (max_over_time(smartctl_device_smart_status[30m]))
+        for: 5m
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "No SMART data from {{ $labels.instance }} for 30 minutes"
+          description: Check prometheus-smartctl-exporter.service and alloy.service on the host.
+          dashboard_uid: disk-health
+
+      # btrfs's own per-device error counters (node_exporter's btrfs collector): read,
+      # write, flush, corruption (checksum mismatch) and generation errors. These are
+      # persistent (`btrfs device stats` survives reboots until reset with -z), so this
+      # alerts on growth rather than on the value: an old error does not re-alert.
+      - alert: BtrfsDeviceErrors
+        expr: sum by (instance, device, type) (increase(node_btrfs_device_errors_total[1h])) > 0
+        labels:
+          severity: error
+          priority: default
+        annotations:
+          summary: "btrfs recorded {{ $labels.type }} errors on {{ $labels.device }} ({{ $labels.instance }})"
+          description: >-
+            See `btrfs device stats` and the kernel log on the host. With RAID1, btrfs
+            repairs from the other copy; repeated errors on one device point at a failing
+            disk or cable.
+          dashboard_uid: disk-health
+
   - name: uptime
     rules:
       # A restarted container gets a new id, hence a new container_last_seen series:

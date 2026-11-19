@@ -47,6 +47,15 @@ in
         description = "Port of Traefik's loopback `metrics` entrypoint (traefik.metrics.port).";
       };
     };
+    smartMetrics = {
+      enable = lib.mkEnableOption "scraping the host's smartctl exporter (see the `smart` module)";
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = config.smart.exporterPort or 9633;
+        defaultText = lib.literalExpression "config.smart.exporterPort";
+        description = "Port of the loopback smartctl exporter.";
+      };
+    };
     loki.endpoints = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "https://loki.snyssen.be/loki/api/v1/push" ];
@@ -269,6 +278,29 @@ in
           }
         }
       '';
+      # Same shape as alloy_traefikMetrics. 60s rather than the fleet's 15s: the
+      # exporter only re-reads a disk every 5 minutes (smart.nix), and every SMART
+      # alert works on hours-long windows, so a faster scrape would only store
+      # duplicates.
+      alloy_smartMetrics = ''
+        prometheus.scrape "smartctl" {
+          targets = [{
+            __address__ = "127.0.0.1:${toString cfg.smartMetrics.port}",
+            instance    = "${cfg.hostname}",
+          }]
+          forward_to      = [prometheus.relabel.smartctl.receiver]
+          scrape_interval = "60s"
+        }
+
+        prometheus.relabel "smartctl" {
+          forward_to = [prometheus.remote_write.default.receiver]
+          rule {
+            action       = "replace"
+            target_label = "job"
+            replacement  = "smartctl"
+          }
+        }
+      '';
       alloy_remoteWrite = ''
         prometheus.remote_write "default" {
           ${lib.concatMapStrings (url: ''
@@ -349,6 +381,10 @@ in
           message = "grafana-alloy.containerlogs.enable is implemented on top of grafana-alloy.journald.enable.";
         }
         {
+          assertion = cfg.smartMetrics.enable -> config.services.prometheus.exporters.smartctl.enable;
+          message = "grafana-alloy.smartMetrics.enable scrapes the smartctl exporter: import the `smart` module.";
+        }
+        {
           assertion = cfg.cadvisorMetrics.enable -> config.services.cadvisor.enable;
           message = ''
             grafana-alloy.cadvisorMetrics.enable scrapes the host's own cAdvisor, so
@@ -363,6 +399,7 @@ in
         ${if cfg.nodeMetrics.enable then alloy_nodeMetrics else ""}
         ${if cfg.cadvisorMetrics.enable then alloy_cadvisorMetrics else ""}
         ${if cfg.traefikMetrics.enable then alloy_traefikMetrics else ""}
+        ${if cfg.smartMetrics.enable then alloy_smartMetrics else ""}
         ${if cfg.remoteWrite.endpoints != [ ] then alloy_remoteWrite else ""}
         ${alloy_loki}
       '';

@@ -30,6 +30,7 @@
     flake.modules.nixos.tailscale
     flake.modules.nixos.prometheus-node-exporter
     flake.modules.nixos.grafana-alloy
+    flake.modules.nixos.smart
     flake.modules.nixos.libvirtd
     flake.modules.nixos.nfs-exports
 
@@ -83,6 +84,8 @@
     varlogs.enable = true;
     journald.enable = true;
     nodeMetrics.enable = true;
+    # SMART data of every disk in the disko config (smart module, imported above).
+    smartMetrics.enable = true;
     loki.endpoints = [
       "https://loki.snyssen.be/loki/api/v1/push"
     ];

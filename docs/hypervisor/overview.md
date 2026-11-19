@@ -269,6 +269,41 @@ Example output — all counters must be zero on a healthy pool:
 [/dev/mapper/crypt-vmstore-0].generation_errs  0
 ```
 
+### SMART monitoring and alerts
+
+You don't need to run these checks by hand to find out something is wrong. The `smart`
+module (`nix/modules/nixos/smart.nix`) watches every disk listed in the host's disko
+config:
+
+- **prometheus-smartctl-exporter** reads each disk's SMART data every 5 minutes. Alloy
+  pushes it to Prometheus as `job="smartctl"` (`grafana-alloy.smartMetrics.enable`).
+- **smartd** runs the drives' self-tests: a short one every night at 02:00, and a long
+  one (a full surface read, about a day on the 16 TB disk) on the 15th at 03:00. The 15th
+  keeps it away from the monthly btrfs scrub on the 1st. smartd sends no notifications
+  itself: failed tests reach the exporter's metrics and alert from there.
+
+The **Disk health** dashboard in Grafana (Node folder, uid `disk-health`) answers "is a
+drive failing?" and "how much life is left?". Its collapsed *What do these numbers mean?*
+row explains every attribute. The `disks` group in
+`nix/hosts/apps-01/compose/monitoring/prometheus/rules/alerts.yml` alerts on:
+
+- the drive's own SMART verdict
+- pending and offline-uncorrectable sectors (197/198)
+- growth in reallocated sectors, uncorrectable reads, command timeouts and cable CRC
+  errors (5/187/188/199)
+- failed self-tests
+- temperature
+- NVMe wear, spare blocks and critical warnings
+- growth of the btrfs device error counters above
+- SMART data that stops arriving
+
+A non-zero btrfs counter that stays put does not alert again: these counters persist
+until reset. Once you have dealt with a past error, reset them with
+`btrfs device stats -z <mountpoint>`.
+
+Seagate drives show huge raw values for attributes 1, 7 and 195. These are packed
+counters, normal on those drives, and are deliberately ignored.
+
 ### Filesystem usage
 
 ```sh
@@ -432,8 +467,9 @@ ls /dev/mapper/                          # the new crypt-<pool>-<i> is there
 ## Replacing a Failing Disk
 
 Use this procedure when a disk shows I/O errors in `btrfs device stats` or SMART reports
-pending/reallocated sectors. The pool stays available throughout, since RAID1 has at
-least one good copy of every block.
+pending/reallocated sectors. Both usually reach you first as an alert (see
+[SMART monitoring and alerts](#smart-monitoring-and-alerts)). The pool stays available
+throughout, since RAID1 has at least one good copy of every block.
 
 ### 1. Identify the failing device
 
