@@ -8,7 +8,7 @@
 # building the image ourselves, which isn't worth it for this tool.
 services:
   bentopdf:
-    image: ghcr.io/alam00000/bentopdf-simple:2.8.11@sha256:4a501ea221007bc938f231d12b63261a2a9cdd8d6747b236fd709ef30e5fe7bc
+    image: ghcr.io/alam00000/bentopdf-simple:2.8.12@sha256:f96da8c4a347880b891d66aa2ebfa6b63f76277dafcfcdfa40c8e6b92c59ef44
     restart: unless-stopped
     networks:
       - web
