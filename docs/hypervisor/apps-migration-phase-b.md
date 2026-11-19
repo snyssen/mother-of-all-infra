@@ -1120,6 +1120,8 @@ for them.
    poweroff
    ```
 
+- [x] Disks have been wiped
+
 3. Fit them in hypervisor-01. This stops every VM on it for the time it takes, so
    announce it like D-day's downtime:
 
@@ -1142,7 +1144,7 @@ for them.
    Define the helper once, in the same root shell:
 
    ```sh
-   mkdir -p /key && mount -o ro /dev/disk/by-uuid/8B34-7D3C /key   # or 9FBA-884A
+   mkdir -p /key && mount -o ro /dev/disk/by-uuid/73A2-0467 /key   # or 9FBA-884A
    prep_disk() {  # prep_disk <disk> <pool> <index> [extra cryptsetup open options]
      local new=$1 pool=$2 i=$3; shift 3
      local label="disk-0-before-$pool-$((i - 1))-luks-$pool" name="crypt-$pool-$i"
@@ -1223,6 +1225,9 @@ for them.
    `vmstore` was single-disk, so it converts to RAID1. `bulk` is already RAID1 since A1,
    so a plain balance only spreads the existing data onto the new disks. Follow either
    with `btrfs balance status /mnt/<pool>` from another shell.
+
+- [ ] balance started
+
 7. Prove it survives a reboot:
 
    ```sh
@@ -1233,6 +1238,9 @@ for them.
 
    Every `crypt-*` mapper is there, `vmstore` shows RAID1, and `bulk` lists all its
    devices.
+
+- [ ] hypervisor-01 reboot and pools are fine
+
 8. Code cleanup, one commit:
    - delete `nix/hosts/hypervisor/`, `ansible/hosts/host_vars/hypervisor/`, its inventory
      entry in `ansible/hosts/prod.yml`, and its key and rule in `.sops.yaml`;
