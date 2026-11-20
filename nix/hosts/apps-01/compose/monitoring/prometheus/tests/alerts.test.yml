@@ -273,7 +273,7 @@ tests:
   # A btrfs error counter that already sits at 1 stays quiet; it alerts once it grows.
   - interval: 5m
     input_series:
-      - series: 'node_btrfs_device_errors_total{instance="hv", device="crypt-bulk-1", type="write", uuid="u"}'
+      - series: 'node_btrfs_device_errors_total{instance="hv", device="crypt-bulk-1", type="write", uuid="u", btrfs_dev_uuid="b1"}'
         values: "1x19 2x5"
     alert_rule_test:
       - eval_time: 90m
@@ -287,6 +287,36 @@ tests:
               priority: default
               instance: hv
               device: crypt-bulk-1
+              btrfs_dev_uuid: b1
+              type: write
+            exp_annotations:
+              summary: "btrfs recorded write errors on crypt-bulk-1 (hv)"
+              description: >-
+                See `btrfs device stats` and the kernel log on the host. With RAID1, btrfs
+                repairs from the other copy; repeated errors on one device point at a failing
+                disk or cable.
+              dashboard_uid: disk-health
+
+  # The same device, renamed from its mapper name to dm-3 mid-hour, then growing under
+  # dm-3: alerts under the mapper name, once.
+  - interval: 5m
+    input_series:
+      - series: 'node_btrfs_device_errors_total{instance="hv", device="crypt-bulk-1", type="write", uuid="u", btrfs_dev_uuid="b1"}'
+        values: "1x6"
+      - series: 'node_btrfs_device_errors_total{instance="hv", device="dm-3", type="write", uuid="u", btrfs_dev_uuid="b1"}'
+        values: "_x6 1 1 3 3"
+      - series: 'node_disk_device_mapper_info{instance="hv", device="dm-3", name="crypt-bulk-1"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: BtrfsDeviceErrors
+        exp_alerts:
+          - exp_labels:
+              severity: error
+              priority: default
+              instance: hv
+              device: crypt-bulk-1
+              btrfs_dev_uuid: b1
               type: write
             exp_annotations:
               summary: "btrfs recorded write errors on crypt-bulk-1 (hv)"

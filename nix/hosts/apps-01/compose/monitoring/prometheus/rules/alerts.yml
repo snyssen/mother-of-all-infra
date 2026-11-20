@@ -286,8 +286,33 @@ groups:
       # write, flush, corruption (checksum mismatch) and generation errors. These are
       # persistent (`btrfs device stats` survives reboots until reset with -z), so this
       # alerts on growth rather than on the value: an old error does not re-alert.
+      #
+      # btrfs names a device after the path it was last scanned under, so the same LUKS
+      # container shows up as `crypt-bulk-1` at one moment and `dm-3` the next, and dm-N
+      # numbers change from boot to boot. So:
+      # - growth is counted per btrfs_dev_uuid, the one label that never changes. A
+      #   device's old and new series are summed, never mixed up with another device's
+      #   dm-N from an earlier boot.
+      # - the `device` label is then taken from the device's *current* series, with a dm-N
+      #   name resolved to its container through node_disk_device_mapper_info, which is
+      #   only correct for the current boot, hence only applied to current series.
       - alert: BtrfsDeviceErrors
-        expr: sum by (instance, device, type) (increase(node_btrfs_device_errors_total[1h])) > 0
+        expr: |
+          (
+            sum by (instance, btrfs_dev_uuid, type) (increase(node_btrfs_device_errors_total[1h])) > 0
+          )
+          * on (instance, btrfs_dev_uuid) group_left (device)
+          (
+            max by (instance, btrfs_dev_uuid, device) (
+              node_btrfs_device_errors_total{device!~"dm-.+"}
+              or label_replace(
+                node_btrfs_device_errors_total{device=~"dm-.+"}
+                * on (instance, device) group_left (name)
+                  max by (instance, device, name) (node_disk_device_mapper_info),
+                "device", "$1", "name", "(.+)"
+              )
+            ) * 0 + 1
+          )
         labels:
           severity: error
           priority: default
