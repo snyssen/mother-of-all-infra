@@ -50,6 +50,11 @@
   boot.kernelParams = [
     "intel_iommu=on"
     "iommu=pt"
+    # SATA link power management off (max_performance). Under the kernel's default
+    # (med_power_with_dipm), the 12 TB Exos's link failed on waking
+    # (`SError: { PHYRdyChg CommWake }`) and had to be hard-reset, failing in-flight
+    # writes. It followed the disk across cables, power leads and ports.
+    "ahci.mobile_lpm_policy=1"
   ];
   boot.blacklistedKernelModules = [ "i915" ];
   boot.initrd.kernelModules = [
@@ -115,8 +120,6 @@
         pools = {
           bulk = {
             disks = [
-              # 16 TB Seagate Exos X18, the legacy box's SnapRAID parity disk: the only
-              # one of its HDDs that holds no data.
               "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
               "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
               "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
