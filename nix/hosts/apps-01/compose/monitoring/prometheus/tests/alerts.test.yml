@@ -335,3 +335,30 @@ tests:
               severity: none
             exp_annotations:
               summary: Always firing, to prove the alerting pipeline works end to end.
+
+  # ntfy rejects every notification (one failed attempt per 5m group_interval), the
+  # dead man's switch fails once: only the sustained failure alerts.
+  - interval: 1m
+    input_series:
+      - series: 'alertmanager_notifications_failed_total{job="alertmanager", instance="alertmanager:9093", integration="webhook", receiver_name="ntfy", reason="clientError"}'
+        values: "0+0.2x40"
+      - series: 'alertmanager_notifications_failed_total{job="alertmanager", instance="alertmanager:9093", integration="webhook", receiver_name="deadman", reason="serverError"}'
+        values: "0x5 1x35"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              priority: high
+              integration: webhook
+              receiver_name: ntfy
+              reason: clientError
+            exp_annotations:
+              summary: "Alertmanager notifications to ntfy (webhook) are failing: clientError"
+              description: >-
+                Alerts are not being delivered. Alertmanager logs the cause on its `Notify
+                failed` lines: {compose_service="alertmanager"} |= "Notify failed" in Loki.

@@ -41,6 +41,10 @@ receivers:
         send_resolved: false
 
 inhibit_rules:
+  # Notifications failing silences the dead man's switch, so healthchecks.io reports it
+  # even when the failing receiver is the one every other alert goes through (ntfy).
+  - source_matchers: [alertname="AlertmanagerNotificationsFailing"]
+    target_matchers: [alertname="Watchdog"]
   # A critical alert mutes the warning level of the same check (they share an alertname).
   - source_matchers: [severity="critical"]
     target_matchers: [severity="warning"]

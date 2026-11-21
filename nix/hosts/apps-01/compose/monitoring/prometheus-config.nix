@@ -33,6 +33,11 @@ in
     - job_name: "ntfy"
       static_configs:
         - targets: ["ntfy:9090"]
+    # Alertmanager's own metrics, for AlertmanagerNotificationsFailing (a receiver
+    # rejecting every notification is otherwise only visible in its logs).
+    - job_name: "alertmanager"
+      static_configs:
+        - targets: ["alertmanager:9093"]
     # minecraft-prometheus-exporter plugin on the main server (not mc-usw, which doesn't
     # run it), reached over the shared `monitoring` network. The label is prod's, kept
     # literal so the series continue the same ones across the cutover.

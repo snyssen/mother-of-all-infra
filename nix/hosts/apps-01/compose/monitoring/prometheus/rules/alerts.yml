@@ -384,3 +384,21 @@ groups:
           severity: none
         annotations:
           summary: Always firing, to prove the alerting pipeline works end to end.
+
+      # A receiver keeps failing, e.g. ntfy rejecting every message with a 400 (which
+      # Alertmanager does not retry). Routed to ntfy like the rest, in case only some
+      # notifications fail, but it also inhibits the Watchdog (alertmanager.yml): the
+      # healthchecks.io pings stop, so a total ntfy failure still gets reported out of
+      # band. The 10m window outlasts the 5m group_interval, so a receiver that fails on
+      # every attempt stays above 0, while `for` lets a one-off failure go.
+      - alert: AlertmanagerNotificationsFailing
+        expr: sum by (integration, receiver_name, reason) (increase(alertmanager_notifications_failed_total[10m])) > 0
+        for: 15m
+        labels:
+          severity: critical
+          priority: high
+        annotations:
+          summary: "Alertmanager notifications to {{ $labels.receiver_name }} ({{ $labels.integration }}) are failing: {{ $labels.reason }}"
+          description: >-
+            Alerts are not being delivered. Alertmanager logs the cause on its `Notify
+            failed` lines: {compose_service="alertmanager"} |= "Notify failed" in Loki.
