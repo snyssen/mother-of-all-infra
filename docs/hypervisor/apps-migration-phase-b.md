@@ -1070,21 +1070,27 @@ copy of the legacy layout**; the backup server keeps the restic one.
    `ls /dev/mapper/` lists `crypt-bulk-0` to `crypt-bulk-2`.
 
 - [x] Btrfs balance has been started
-- [ ] hypervisor-01 reboots with its btrfs RAID1 pool intact
+- [x] hypervisor-01 reboots with its btrfs RAID1 pool intact
 
 ### A2. Retire the test hypervisor
 
 Its disks join `hypervisor-01`: both SSDs into `vmstore`, which becomes RAID1 (1 TB +
-1 TB + 500 GB gives ~1.25 TB), and its HDDs into `bulk` if there are bays and SATA ports
-for them.
+1 TB + 500 GB gives ~1.25 TB), and its two 2 TB HDDs into `bulk`. The 4 TB IronWolf
+stays out, as a cold spare.
 
 | Disk | by-id | Goes to |
 | --- | --- | --- |
 | 1 TB Micron NVMe (its boot disk) | `nvme-Micron_2300_NVMe_1024GB__20292942A517` | `vmstore` index 1, if a second M.2 slot is free |
 | 500 GB WD SSD | `ata-WDC_WDS500G2B0B-00YS70_204246801987` | `vmstore` index 2 (index 1 without the Micron) |
-| 4 TB IronWolf | `ata-ST4000VN008-2DR166_ZDH9AT9F` | `bulk` index 3, optional |
-| 2 TB IronWolf | `ata-ST2000VN004-2E4164_Z524CEHK` | `bulk` index 4, optional |
-| 2 TB WD Green (the spare) | `ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9` | `bulk` index 5, optional |
+| 2 TB IronWolf | `ata-ST2000VN004-2E4164_Z524CEHK` | `bulk` index 3 |
+| 2 TB WD Blue (the spare) | `ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9` | `bulk` index 4 |
+| 4 TB IronWolf | `ata-ST4000VN008-2DR166_ZDH9AT9F` | **cold spare**, wiped and kept on the shelf |
+
+The cold spare replaces a failed `bulk` disk no bigger than itself (`btrfs replace` needs
+a target at least the size of the disk it replaces), so today either 2 TB disk. For a
+bigger failed disk, buy its replacement, or `btrfs device remove` it once the others have
+the room. Either way, the new disk is prepared like those of step 4 below, under the
+failed disk's index, and the config's list keeps its order.
 
 > [!WARNING]
 > **Wipe them in the test box, before they go anywhere near hypervisor-01** (step 2).
@@ -1129,14 +1135,13 @@ for them.
    ssh root@hypervisor-01 poweroff
    ```
 
-   Fit the WD SSD, the Micron if an M.2 slot is free, and whichever HDDs have a bay and a
-   SATA port. Boot, then check that it came up on its own disks and sees the new ones:
+   Fit the WD SSD, the Micron, and the two 2 TB HDDs (not the 4 TB spare). Boot, then check that it came up on its own disks and sees the new ones:
 
    ```sh
    ssh root@hypervisor-01
    findmnt -no SOURCE /boot /mnt/vmstore /mnt/bulk   # /dev/disk/by-partlabel/boot, crypt-vmstore-0, crypt-bulk-0
    virsh list --all                                  # haos, technitium-secondary, apps-01 running
-   ls -l /dev/disk/by-id/ | grep -E 'Micron|WDS500G2B0B|ZDH9AT9F|Z524CEHK|WCC4N2RYUKT9'
+   ls -l /dev/disk/by-id/ | grep -E 'Micron|WDS500G2B0B|Z524CEHK|WCC4N2RYUKT9'
    ```
 
 4. Prepare each new disk: a GPT partition with the label boot looks for, LUKS with the
@@ -1173,13 +1178,11 @@ for them.
    Without the Micron, only the WD, as index 1:
    `prep_disk /dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987 vmstore 1 --allow-discards`.
 
-   Then the HDDs you fitted, in this order, skipping the ones you didn't fit and
-   numbering on from 3 without gaps:
+   Then the two HDDs, numbering on from 3 (`bulk` already has indexes 0–2):
 
    ```sh
-   prep_disk /dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F bulk 3
-   prep_disk /dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK bulk 4
-   prep_disk /dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9 bulk 5
+   prep_disk /dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK bulk 3
+   prep_disk /dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9 bulk 4
    umount /key
    ls /dev/mapper/                  # the new crypt-vmstore-* and crypt-bulk-* are there
    ```
@@ -1193,7 +1196,6 @@ for them.
        "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
        "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
        "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
-       "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9AT9F"
        "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
        "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
      ];
@@ -1218,7 +1220,7 @@ for them.
    screen -S balance
    btrfs device add /dev/mapper/crypt-vmstore-1 /dev/mapper/crypt-vmstore-2 /mnt/vmstore
    btrfs balance start -dconvert=raid1 -mconvert=raid1 /mnt/vmstore
-   btrfs device add /dev/mapper/crypt-bulk-3 /dev/mapper/crypt-bulk-4 /dev/mapper/crypt-bulk-5 /mnt/bulk
+   btrfs device add /dev/mapper/crypt-bulk-3 /dev/mapper/crypt-bulk-4 /mnt/bulk
    btrfs balance start /mnt/bulk
    ```
 
@@ -1226,7 +1228,7 @@ for them.
    so a plain balance only spreads the existing data onto the new disks. Follow either
    with `btrfs balance status /mnt/<pool>` from another shell.
 
-- [ ] balance started
+- [x] balance started
 
 7. Prove it survives a reboot:
 

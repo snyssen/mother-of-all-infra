@@ -123,13 +123,16 @@
               "/dev/disk/by-id/ata-ST16000NM000J-2TW103_ZR58BLR6"
               "/dev/disk/by-id/ata-ST12000NM0538-2K2101_ZHZ12PTZ"
               "/dev/disk/by-id/ata-ST8000VN004-3CP101_WWZ3XVDG"
+              "/dev/disk/by-id/ata-ST2000VN004-2E4164_Z524CEHK"
+              "/dev/disk/by-id/ata-WDC_WD20EZRZ-00Z5HB0_WD-WCC4N2RYUKT9"
             ];
             storageMedia = "hdd";
           };
           vmstore = {
             disks = [
-              # 1 TB Kingston NVMe, moved from the test hypervisor's vmstore (step P7).
               "/dev/disk/by-id/nvme-KINGSTON_SNV3S1000G_50026B7383A64113"
+              "/dev/disk/by-id/nvme-Micron_2300_NVMe_1024GB__20292942A517"
+              "/dev/disk/by-id/ata-WDC_WDS500G2B0B-00YS70_204246801987"
             ];
             storageMedia = "ssd";
           };
