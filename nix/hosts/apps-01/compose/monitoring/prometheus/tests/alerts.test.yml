@@ -158,30 +158,40 @@ tests:
               summary: "ata-ST16000NM000J-2TW103_ZR58BLR6 on hv fails its SMART health check: replace it"
               dashboard_uid: disk-health
 
-  # Pending sectors fire on any non-zero value; a Seagate's huge, packed
-  # Raw_Read_Error_Rate (attribute 1) never alerts.
-  - interval: 1m
+  # Unreadable sectors alert on growth, 0 -> 1 included, and go quiet a day later
+  # even if the sector is still pending. A constant non-zero count never alerts, and
+  # neither does a Seagate's huge, packed Raw_Read_Error_Rate (attribute 1).
+  - interval: 5m
     input_series:
       - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="197", attribute_name="Current_Pending_Sector", attribute_value_type="raw", attribute_flags_short="-O--CK"}'
-        values: "0x4 8x20"
+        values: "0x300 1x300"
+      - series: 'smartctl_device_attribute{instance="hv", device="ata-B", attribute_id="198", attribute_name="Offline_Uncorrectable", attribute_value_type="raw", attribute_flags_short="----CK"}'
+        values: "2x600"
       - series: 'smartctl_device_attribute{instance="hv", device="ata-A", attribute_id="1", attribute_name="Raw_Read_Error_Rate", attribute_value_type="raw", attribute_flags_short="POSR--"}'
-        values: "180000000+1000000x24"
+        values: "180000000+1000000x600"
     alert_rule_test:
-      - eval_time: 24m
+      - eval_time: 1495m
+        alertname: DiskUnreadableSectors
+        exp_alerts: []
+      - eval_time: 1510m
         alertname: DiskUnreadableSectors
         exp_alerts:
           - exp_labels:
-              severity: critical
-              priority: high
+              severity: warning
+              priority: default
               instance: hv
               device: ata-A
               attribute_name: Current_Pending_Sector
             exp_annotations:
-              summary: "ata-A on hv has 8 Current_Pending_Sector"
+              summary: "ata-A on hv has 1 Current_Pending_Sector (up in the last day)"
               description: >-
-                The disk has sectors it cannot read. btrfs repairs the data from the other
-                copy, but this disk is likely to fail soon: plan its replacement.
+                The disk could not read some sectors. btrfs repairs the data from the other
+                copy. Scrub the pool and run a long SMART self-test; replace the disk if the
+                count keeps rising or reallocated sectors follow.
               dashboard_uid: disk-health
+      - eval_time: 2960m
+        alertname: DiskUnreadableSectors
+        exp_alerts: []
 
   # "Grew in the last day": a Seagate's packed Command_Timeout (188) raw value
   # (0x0001_0001_0001) is huge but constant, so it stays quiet until a counter in it

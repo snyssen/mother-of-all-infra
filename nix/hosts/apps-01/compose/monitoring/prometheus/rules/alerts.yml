@@ -95,22 +95,30 @@ groups:
           dashboard_uid: disk-health
 
       # 197 Current_Pending_Sector: sectors that could not be read and wait to be
-      # reallocated. 198 Offline_Uncorrectable: sectors the drive's own background scan
-      # could not read. The best single predictor of an imminent failure.
+      # rewritten. 198 Offline_Uncorrectable: sectors the drive's own background scan
+      # could not read. Both are current counts: a rewrite clears the sector (and remaps
+      # it if the write fails too, which DiskReallocatedSectors catches). A pending
+      # sector in space btrfs has not allocated is never rewritten, though, and can sit
+      # there for weeks, so this alerts on growth (0 -> 1 included) rather than on the
+      # value: one weak sector that never grows is common and benign, while a growing
+      # count is a surface degrading.
       - alert: DiskUnreadableSectors
         expr: |
           max by (instance, device, attribute_name) (
             smartctl_device_attribute{attribute_id=~"197|198", attribute_value_type="raw"}
-          ) > 0
-        for: 15m
+          )
+          > max by (instance, device, attribute_name) (
+            smartctl_device_attribute{attribute_id=~"197|198", attribute_value_type="raw"} offset 1d
+          )
         labels:
-          severity: critical
-          priority: high
+          severity: warning
+          priority: default
         annotations:
-          summary: "{{ $labels.device }} on {{ $labels.instance }} has {{ $value }} {{ $labels.attribute_name }}"
+          summary: "{{ $labels.device }} on {{ $labels.instance }} has {{ $value }} {{ $labels.attribute_name }} (up in the last day)"
           description: >-
-            The disk has sectors it cannot read. btrfs repairs the data from the other
-            copy, but this disk is likely to fail soon: plan its replacement.
+            The disk could not read some sectors. btrfs repairs the data from the other
+            copy. Scrub the pool and run a long SMART self-test; replace the disk if the
+            count keeps rising or reallocated sectors follow.
           dashboard_uid: disk-health
 
       # 5 Reallocated_Sector_Ct: bad sectors already swapped for spares. A handful that
