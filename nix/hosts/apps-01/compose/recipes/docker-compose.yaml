@@ -7,7 +7,7 @@
 # container, it simply follows the image version.
 services:
   recipes:
-    image: vabene1111/recipes:2.7.3@sha256:73bb55c3096b9badd901717e298e025015ae3a264fecfb21a2a9fff72109f4f6
+    image: vabene1111/recipes:2.7.4@sha256:2f4b16bc7032ba01c2f3e0dfcabf568d730a93cbc884f52d6c984eab3db2c18e
     restart: unless-stopped
     volumes:
       - /mnt/bulk/recipes/mediafiles:/opt/recipes/mediafiles
