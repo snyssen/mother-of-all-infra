@@ -153,6 +153,10 @@
     authKeyPath = config.sops.secrets."tailscale/authKey".path;
     enableSSH = true;
   };
+  # Not a subnet router or exit node, so nothing needs tailscaled's SNAT, and with it on,
+  # tailnet pushes DNATed to Traefik arrive from the Docker bridge gateway (172.19.0.1)
+  # and fail the monitoring stack's 100.64.0.0/10 tailnet-whitelist (2026-11-22 outage).
+  tailscale.snatSubnetRoutes = false;
 
   # Points at this host's own new LAPI (compose/crowdsec), not the legacy shared one —
   # matches how `ingress`'s existing, working bouncer reaches its LAPI over HTTPS

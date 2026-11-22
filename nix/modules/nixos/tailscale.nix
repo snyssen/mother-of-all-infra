@@ -36,6 +36,20 @@ in
     };
     advertiseExitNode = lib.mkEnableOption "advertise this node as an exit node";
     advertiseConnector = lib.mkEnableOption "advertise this node as a connector node (for subnet routing)";
+    snatSubnetRoutes = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether tailscaled masquerades traffic it forwards from the tailnet (`tailscale set
+        --snat-subnet-routes`). Tailscale's default is on, even on nodes that advertise no
+        routes: ts-forward marks every packet entering on tailscale0 that gets forwarded, and
+        ts-postrouting masquerades the marked ones. On a Docker host that includes tailnet
+        traffic DNATed to a published port, so a container sees the bridge gateway as the
+        source instead of the 100.x address, whenever ts-forward sits above Docker's FORWARD
+        jumps (tailscaled re-inserts it at the top on a netfilter resync). Turn off on hosts
+        that are neither subnet routers nor exit nodes but filter on tailnet source addresses.
+      '';
+    };
 
     certificate = {
       enable = lib.mkEnableOption "issue and renew a Tailscale certificate and PKCS#12 bundle";
@@ -99,6 +113,11 @@ in
         })
         (lib.mkIf cfg.advertiseConnector {
           extraUpFlags = [ "--advertise-connector" ];
+        })
+        # `tailscale set`, not `up`: the NixOS module's tailscaled-set unit re-applies set
+        # flags on every start, whereas up flags only take effect on the first login.
+        (lib.mkIf (!cfg.snatSubnetRoutes) {
+          extraSetFlags = [ "--snat-subnet-routes=false" ];
         })
         (lib.mkIf cfg.autoconnect.enable {
           authKeyFile = cfg.autoconnect.authKeyPath;
