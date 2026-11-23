@@ -8,12 +8,11 @@ let
   composeFile = "${./.}/docker-compose.yaml";
   host = "location.${config.domains.main}";
 
-  # Photon, the reverse geocoder, is off for now: it isn't needed to test a restore,
-  # and its worldwide index is ~200 GB on prod, two-thirds of this VM's disk. Off means
-  # its container is not started at all, so it downloads nothing and deletes nothing,
-  # and Dawarich is not pointed at it. Turning it on is this one line — but see the
-  # Phase B checklist for the disk space it needs first.
-  photon.enable = false;
+  # Photon, the reverse geocoder. Its worldwide index is ~200 GB and grows 10-20 GB a
+  # year, and updates need twice that (PHOTON_UPDATE_STRATEGY below). Off means its
+  # container is not started at all, so it downloads nothing and deletes nothing, and
+  # Dawarich is not pointed at it.
+  photon.enable = true;
 in
 {
   # Owners are the images' own users, not just whatever works on first start: `d` rules

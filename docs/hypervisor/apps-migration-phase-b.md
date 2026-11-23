@@ -1,5 +1,10 @@
 # apps VM migration — Phase B (production cutover)
 
+> [!NOTE]
+> **Complete (2026-11-23).** Kept as the record of the cutover. Its procedures for
+> adding and replacing pool disks live on in [overview.md](overview.md), and the
+> disaster-recovery runbook in [backups.md](../backups.md).
+
 > [!CAUTION]
 > **Phase B reinstalls the production server.** Its hardware is the target hardware:
 > the legacy box (`snyssen.be`) becomes the hypervisor `hypervisor-01`, and production
@@ -1260,14 +1265,14 @@ failed disk's index, and the config's list keeps its order.
 
 ### A3. Last steps
 
-- [ ] Enable Photon (`nix/hosts/apps-01/compose/dawarich/default.nix`,
+- [x] Enable Photon (`nix/hosts/apps-01/compose/dawarich/default.nix`,
       `photon.enable = true`) once `vmstore` has room: prod's worldwide index is ~200 GB
       and grows 10–20 GB a year, and its `PARALLEL` update strategy needs twice that while
       swapping. Grow apps-01's disk first (`disk_gb`), or pick a smaller `REGION` and/or
       `UPDATE_STRATEGY`.
-- [ ] Keep production's final snapshots **indefinitely**: they are the only pre-cutover
+- [x] Keep production's final snapshots **indefinitely**: they are the only pre-cutover
       state that exists.
-- [ ] Update `apps-migration-plan.md` to mark Phase B complete.
+- [x] Update `apps-migration-plan.md` to mark Phase B complete.
 
 ## Per-stack restore notes
 

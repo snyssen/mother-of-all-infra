@@ -10,8 +10,8 @@ Documentation for the self-hosted hypervisor:
 
 - **[Plan](hypervisor/plan.md)** — Disk inventory, btrfs RAID1 profiles, USB keyfile boot, network bridge and NFS setup, and NixOS repository architecture overview
 - **[Operations](hypervisor/overview.md)** — Day-to-day operations: VM lifecycle, btrfs scrub/check, disk expansion and replacement, and troubleshooting
-- **[apps VM migration plan](hypervisor/apps-migration-plan.md)** — Phase A: architecture, decisions and per-stack progress for moving the Ansible-managed apps server onto a NixOS VM
-- **[apps VM migration — Phase B](hypervisor/apps-migration-phase-b.md)** — The production cutover: preconditions, the `prod-import` tooling, and the full destroy-and-restore checklist
+- **[apps VM migration plan](hypervisor/apps-migration-plan.md)** — Architecture, decisions and per-stack record (complete) of moving the Ansible-managed apps server onto a NixOS VM
+- **[apps VM migration — Phase B](hypervisor/apps-migration-phase-b.md)** — The production cutover runbook (complete): preparation, D-day and afterwards
 
 ### [Backups](backups.md)
 

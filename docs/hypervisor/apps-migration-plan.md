@@ -2,9 +2,13 @@
 
 This document covers the architecture, decisions, and phased task plan for migrating the current bare-metal Ubuntu apps server (managed by Ansible) to a NixOS VM named **`apps`** running under the hypervisor host.
 
-> **Names after Phase A.** The production VM is **`apps-01`** (`nix/hosts/apps-01/`), on
-> the reinstalled legacy box, **`hypervisor-01`**. `apps` and `hypervisor` below are the
-> Phase A test VM and test hypervisor, which the cutover retires.
+> [!NOTE]
+> **Complete.** Both phases are done (Phase B finished 2026-11-23): production runs as
+> **`apps-01`** (`nix/hosts/apps-01/`) on **`hypervisor-01`**, the reinstalled legacy
+> box. This document is kept as the record of the migration; it describes the state of
+> things *during* it, and `apps` and `hypervisor` below are the Phase A test VM and test
+> hypervisor, both since retired. For current operations see [overview.md](overview.md)
+> and [backups.md](../backups.md).
 
 ---
 
@@ -20,8 +24,8 @@ A key constraint: the production apps server is running on the best available ha
 The hypervisor is currently a test-bed running on secondary hardware.
 The migration is therefore **two-phased**:
 
-1. **Phase A (this plan):** Code-complete the `apps` VM config; test iteratively on the current hypervisor with partial data.
-2. **Phase B:** Final backup → reinstall the production server as `hypervisor-01` (its two data disks kept) → move haos and technitium-secondary onto it → build `apps-01` → restore data. **Has its own document: [apps VM migration — Phase B](apps-migration-phase-b.md)**, the step-by-step runbook: preparation, D-day and afterwards. *(Also tracked as a separate issue.)*
+1. **Phase A (this plan) — ✅ done:** Code-complete the `apps` VM config; test iteratively on the current hypervisor with partial data.
+2. **Phase B — ✅ done (2026-11-23):** Final backup → reinstall the production server as `hypervisor-01` (its two data disks kept) → move haos and technitium-secondary onto it → build `apps-01` → restore data. **Has its own document: [apps VM migration — Phase B](apps-migration-phase-b.md)**, the step-by-step runbook: preparation, D-day and afterwards. *(Also tracked as a separate issue.)*
 
 ---
 
@@ -447,4 +451,4 @@ without `-L` — the job would report OK while the monitor went red on its own s
 ## Related Issues
 
 - #153 — Migrate DNS (excluded from this plan; handled separately)
-- Phase B cutover will be tracked in a new epic once Phase A is complete — see [apps-migration-phase-b.md](apps-migration-phase-b.md) for the plan itself
+- Phase B cutover: done, following [apps-migration-phase-b.md](apps-migration-phase-b.md)
