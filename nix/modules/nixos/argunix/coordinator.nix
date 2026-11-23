@@ -144,7 +144,15 @@ in
             public_key = cfg.caches.cache_snyssen_be.public_key;
             signing_key_path = cfg.caches.cache_snyssen_be.signing_key_file;
           };
-        eval.timeout_seconds = 900;
+        eval = {
+          timeout_seconds = 900;
+          # Without these, argunix sizes the nix-eval-jobs pool as if it owned the host
+          # (RAM minus 1.5 GiB, one worker per CPU): ~46 GB on apps-01, on top of its
+          # ~26 GB of services. That OOMed prod on 2026-11-23. 4 workers x 3 GiB: the
+          # auto-sized 12-worker pool used ~2 GB per worker on mother-of-all-infra.
+          memory_max = lib.mkDefault "12G";
+          workers = lib.mkDefault 4;
+        };
       };
     };
 
@@ -158,7 +166,14 @@ in
         RUST_LOG = "argunix=debug,argunix_daemon=debug,warn";
         RUST_BACKTRACE = "1";
       };
-      serviceConfig.EnvironmentFile = lib.mkIf cfg.caches.cache_snyssen_be.enable cfg.environmentFile.path;
+      serviceConfig = {
+        EnvironmentFile = lib.mkIf cfg.caches.cache_snyssen_be.enable cfg.environmentFile.path;
+        # Backstop for the eval budget above: nix-eval-jobs runs inside this unit, so if
+        # the budget is ever wrong, the kernel reclaims and kills here, not in prod.
+        MemoryHigh = lib.mkDefault "14G";
+        MemoryMax = lib.mkDefault "16G";
+        OOMScoreAdjust = lib.mkDefault 500;
+      };
     };
   };
 }
