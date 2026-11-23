@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18.6@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
+    image: postgres:19.0@sha256:bb6e70add742cd868fb62cb3b2f67d1dd2bdd2b65a521e778420748753687c60
     restart: unless-stopped
     environment:
       - POSTGRES_PASSWORD
@@ -20,7 +20,7 @@ services:
   # `profiles` keeps it out of ordinary `up`/`up -d` reconciliation, which would
   # otherwise try to start it as a normal long-running service.
   provision:
-    image: postgres:18.6@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
+    image: postgres:19.0@sha256:bb6e70add742cd868fb62cb3b2f67d1dd2bdd2b65a521e778420748753687c60
     profiles:
       - provision
     depends_on:
