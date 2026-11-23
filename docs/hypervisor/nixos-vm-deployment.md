@@ -80,7 +80,7 @@ If creating a new host, start with `nix/hosts/<vm-name>/configuration.nix`. Exam
 
 ### 1b. Add VM entry to inventory
 
-Edit `ansible/hosts/host_vars/hypervisor/vars.yml` and add the VM to `libvirt_vms` with `disk_image.build: true`:
+Edit `ansible/hosts/host_vars/hypervisor-01/vars.yml` and add the VM to `libvirt_vms` with `disk_image.build: true`:
 
 ```yaml
 libvirt_vms:
@@ -210,7 +210,7 @@ virt-manager
 
 ### 3c. Disable image building for this VM
 
-Once the VM is confirmed running, set `disk_image.build: false` (or remove the flag) in `ansible/hosts/host_vars/hypervisor/vars.yml`:
+Once the VM is confirmed running, set `disk_image.build: false` (or remove the flag) in `ansible/hosts/host_vars/hypervisor-01/vars.yml`:
 
 ```yaml
 - name: apps

@@ -1241,7 +1241,7 @@ failed disk's index, and the config's list keeps its order.
    Every `crypt-*` mapper is there, `vmstore` shows RAID1, and `bulk` lists all its
    devices.
 
-- [ ] hypervisor-01 reboot and pools are fine
+- [x] hypervisor-01 reboot and pools are fine
 
 8. Code cleanup, one commit:
    - delete `nix/hosts/hypervisor/`, `ansible/hosts/host_vars/hypervisor/`, its inventory
@@ -1255,6 +1255,8 @@ failed disk's index, and the config's list keeps its order.
      `sops unset nix/hosts/apps-01/data/common.yaml '["backrest"]["repos"]["apps"]'`.
 9. Destroy the Phase A test repository on the backup server
    (`rest:http://backup.snyssen.be:8000/apps/`), once D8 has produced good snapshots.
+
+- [x] Code cleanup is done
 
 ### A3. Last steps
 

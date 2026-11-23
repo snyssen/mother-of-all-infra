@@ -16,15 +16,11 @@ in
 {
   devices = {
     # Not managed from Nix: discovery and relays only.
-    "sync.snyssen.be" = {
-      id = "6QHAMO3-PARP6UW-3Y5J7I4-P5PN2C5-RHS6OMP-QCSBP5Z-6OBZMC3-NZM65QT";
-    };
     "Pixel 8 Pro" = {
       id = "DLXNSVV-GZGRYS7-JAZ5KLW-R3DSKMX-NHNUZYL-Y43OE6C-XC2ZNFN-5FEPQA4";
     };
 
     "gaming" = onTailnet "gaming" "VKCNNIQ-QHLF7AM-D2R4JML-MFR27ZA-CWUCRIC-JPI4M3W-5IGSPAT-UXJKFQQ";
-    "sninful" = onTailnet "sninful" "RUPVKFS-XBNCXTY-ZFZN2I5-ECOMFQX-V74LTZR-JSN4BVS-BOTA235-S6Z7FQT";
     "purplehaze" =
       onTailnet "purplehaze" "P2ECEG6-RRB6YZI-KFYZUBF-FBHSUSA-DQUZXH2-MCQXI3Z-HMFUPDV-7ACNIAJ";
     "blackfog" = onTailnet "blackfog" "EDMGHVH-55SKSKP-OHIK7JD-T4FZEAG-EHTZVCX-VT5W7CI-2OIGIFH-LMYQKAG";

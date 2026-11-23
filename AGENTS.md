@@ -19,7 +19,7 @@ Terraform. Single maintainer.
   - `roles/` — roles prefixed `container_<name>` each deploy one Docker Compose stack (`tasks/main.yml` templates a `docker-compose.yml` and manages that stack's volumes, config and secrets).
   - `hosts/` — inventories: `dev.yml` (default), `staging` equivalent, `prod.yml`, `test.yml`, plus `group_vars`/`host_vars`.
 - `terraform/` — provider IaC: `gandi/`, `ovh/` (each with `bootstrap/` + `infra/`).
-- `hypervisor/` — libvirt VMs driven via `virsh` over SSH to a hypervisor host: `hypervisor-01` (the reinstalled former prod box), or `hypervisor` (the Phase A test box, retired after the Phase B cutover).
+- `hypervisor/` — libvirt VMs driven via `virsh` over SSH to a hypervisor host, `hypervisor-01` (the reinstalled former prod box).
 - `scripts/` — helper scripts invoked by `just` recipes and devshell hooks.
 - `docs/` — mkdocs site; preview with `just run-docs`.
 

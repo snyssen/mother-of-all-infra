@@ -500,8 +500,7 @@ in
       "streaming-download-clients-config.service"
     ];
     # Must not start before the media is here: the *arr apps would treat an empty
-    # library as "everything was deleted". At the cutover the host-wide hold
-    # (`restoreHold`, ../../restore-hold.nix) keeps it down until legacy-import has
-    # finished.
+    # library as "everything was deleted". During a restore the host-wide hold
+    # (`restoreHold`, ../../restore-hold.nix) keeps it down until the media is back.
   };
 }

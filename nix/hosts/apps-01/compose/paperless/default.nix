@@ -148,7 +148,7 @@ in
   #
   # The one case where the flag bites: run against an empty or not-yet-restored
   # database, the exporter finds no documents and therefore deletes everything here.
-  # That is reachable during the migration, since `prod-import paperless` restarts the
+  # That is reachable during a restore, since `backrest-restore paperless` restarts the
   # stack when it finishes — run `postgres-restore paperless` before the next 22:43, or
   # pass `--keep-stopped` so the export cannot fire at all. Recoverable either way,
   # from a snapshot or by re-running the export once the database is back.

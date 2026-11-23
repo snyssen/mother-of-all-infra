@@ -112,8 +112,7 @@ in
   # Production's two restic repositories, continued from where autorestic left them at
   # the cutover rather than started afresh: the files are the same, so restic finds
   # their data already stored and the first backups upload next to nothing (which, for
-  # B2, is also what it is billed on). The whole history stays in one place, and
-  # `prod-import` keeps reading autorestic's snapshots from the same repo.
+  # B2, is also what it is billed on). The whole history stays in one place.
   #
   # Sharing a repo with autorestic's snapshots is safe because a plan's retention only
   # ever forgets snapshots tagged with that plan *and* `created-by:<instance>` (checked

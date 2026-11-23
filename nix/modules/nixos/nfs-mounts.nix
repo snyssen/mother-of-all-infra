@@ -10,7 +10,7 @@ let
       remotePath =
         if lib.hasPrefix "/" mount.remotePath then mount.remotePath else "/${mount.remotePath}";
       # Build the NFS source (server:path)
-      server = mount.host or "hypervisor";
+      server = mount.host or "hypervisor-01";
       source = "${server}:${remotePath}";
     in
     {
@@ -88,7 +88,7 @@ in
 
             host = lib.mkOption {
               type = lib.types.str;
-              default = "hypervisor";
+              default = "hypervisor-01";
               description = "Hostname or IP address of the NFS server";
               example = "192.168.1.100";
             };
@@ -159,7 +159,7 @@ in
       example = {
         media = {
           path = "/mnt/exports/media";
-          host = "hypervisor";
+          host = "hypervisor-01";
           remotePath = "/mnt/storage/media";
           dependsOn.tailscale = false;
           options = [

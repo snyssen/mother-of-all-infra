@@ -122,21 +122,21 @@ in
       PrismLauncher = {
         path = "/home/snyssen/.local/share/PrismLauncher";
         devices = [
-          "sync.snyssen.be"
+          "apps-01"
           "gaming"
         ];
       };
       RetroArch = {
         path = "/home/snyssen/.config/retroarch";
         devices = [
-          "sync.snyssen.be"
+          "apps-01"
           "gaming"
         ];
       };
       KSP = {
         path = "/home/snyssen/Games/Heroic/Kerbal\ Space\ Program/";
         devices = [
-          "sync.snyssen.be"
+          "apps-01"
           "gaming"
         ];
       };

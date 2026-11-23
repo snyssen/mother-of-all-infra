@@ -49,7 +49,7 @@ services:
       OVERWRITEPROTOCOL: https
     volumes:
       # The whole Nextcloud tree — application code, config and data all live here,
-      # exactly as on prod. This is the ~353 GB that `prod-import nextcloud` moves.
+      # exactly as on prod (~353 GB at the cutover).
       - /mnt/bulk/nextcloud:/var/www/html
       # Mounted so they can be attached as External Storage. The container-side paths
       # match the legacy role's, which matters: the external storage definitions come

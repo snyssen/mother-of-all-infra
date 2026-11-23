@@ -52,7 +52,7 @@ flowchart LR
 
             subgraph Cluster["Technitium DNS cluster"]
                 Primary["technitium-primary<br/>bare metal &middot; 192.168.1.2 / 100.117.7.65"]
-                Secondary["technitium-secondary<br/>VM on hypervisor &middot; 192.168.1.3 / 100.64.88.28"]
+                Secondary["technitium-secondary<br/>VM on hypervisor-01 &middot; 192.168.1.3 / 100.64.88.28"]
                 Primary -. "config/zone sync (one-way)" .-> Secondary
             end
 
@@ -100,7 +100,7 @@ configured via the `technitium_dns_setup` Ansible role (`ansible/playbooks/techn
 | Node                  | Role      | Runs on                          | LAN IP        | Tailscale IP  |
 | --------------------- | --------- | --------------------------------- | ------------- | ------------- |
 | `technitium-primary`  | primary   | bare metal (NUC)                  | `192.168.1.2` | `100.117.7.65` |
-| `technitium-secondary`| secondary | VM on `hypervisor` (libvirt)       | `192.168.1.3` | `100.64.88.28` |
+| `technitium-secondary`| secondary | VM on `hypervisor-01` (libvirt)    | `192.168.1.3` | `100.64.88.28` |
 
 Both nodes are joined into a single Technitium cluster (cluster domain `taild023c5.ts.net`). Technitium's
 built-in clustering continuously replicates the **primary's** configuration — zones, records, DNS Apps

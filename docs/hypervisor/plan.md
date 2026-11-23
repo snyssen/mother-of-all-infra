@@ -72,11 +72,11 @@ Virtual machines need L2 access to the LAN. A bridge interface `br0` is created 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | Bridge name | `br0` | Used by VMs as their uplink |
-| Physical NIC | `enp5s0` | Default; configurable in `nix/hosts/hypervisor/network.nix` |
+| Physical NIC | `enp5s0` | Default; configurable in `nix/hosts/hypervisor-01/network.nix` |
 
 **Rationale:** By bridging the physical NIC, any VM with a NIC attached to `br0` appears as a first-class host on the LAN. It can obtain its own DHCP lease or static IP without NAT or port-forwarding on the hypervisor. The host's own LAN IP is assigned to `br0` (not to the physical NIC directly).
 
-The bridge is configured in `nix/hosts/hypervisor/network.nix` using `networking.bridges` and `networking.interfaces` (which generate systemd-networkd units because `networking.useNetworkd = true`):
+The bridge is configured in `nix/hosts/hypervisor-01/network.nix` using `networking.bridges` and `networking.interfaces` (which generate systemd-networkd units because `networking.useNetworkd = true`):
 
 ```nix
 networking.bridges.br0.interfaces = [ "enp5s0" ];
@@ -86,11 +86,11 @@ networking.interfaces = {
 };
 ```
 
-**To change the physical NIC:** edit the `lanNic` variable at the top of `nix/hosts/hypervisor/network.nix` to match the actual interface name (discover it with `ip link` on the host). Common alternatives: `"enp3s0"`, `"eth0"`.
+**To change the physical NIC:** edit the `lanNic` variable at the top of `nix/hosts/hypervisor-01/network.nix` to match the actual interface name (discover it with `ip link` on the host). Common alternatives: `"enp3s0"`, `"eth0"`.
 
 ## Virtualisation — libvirtd
 
-The hypervisor runs [libvirtd](https://libvirt.org/) to manage QEMU/KVM virtual machines.  The NixOS module lives at `nix/modules/nixos/libvirtd.nix` and is imported from `nix/hosts/hypervisor/configuration.nix` with:
+The hypervisor runs [libvirtd](https://libvirt.org/) to manage QEMU/KVM virtual machines.  The NixOS module lives at `nix/modules/nixos/libvirtd.nix` and is imported from `nix/hosts/hypervisor-01/configuration.nix` with:
 
 ```nix
 libvirtd.enable = true;
@@ -122,7 +122,7 @@ VM provisioning and lifecycle management is handled by the `libvirt_provision` A
 
 ### VM definitions
 
-VMs are defined in `ansible/hosts/host_vars/hypervisor/vars.yml`.  Each entry in `libvirt_vms` describes one VM:
+VMs are defined in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  Each entry in `libvirt_vms` describes one VM:
 
 ```yaml
 libvirt_vms:
@@ -193,7 +193,7 @@ ansible-playbook ansible/playbooks/libvirt-provision.ansible.yml -i ansible/host
 
 ### Removing a VM
 
-To remove a VM, set `state: absent` in its entry in `ansible/hosts/host_vars/hypervisor/vars.yml`:
+To remove a VM, set `state: absent` in its entry in `ansible/hosts/host_vars/hypervisor-01/vars.yml`:
 
 ```yaml
 libvirt_vms:
@@ -312,7 +312,7 @@ Current hosts:
 | `ingress` | Remote VPS (Gandi Cloud) — reverse proxy / ingress |
 | `hypervisor` | KVM hypervisor with btrfs RAID1 VM store |
 
-The **hypervisor** host lives at `nix/hosts/hypervisor/` and follows the same structure as the other hosts.
+The **hypervisor** host lives at `nix/hosts/hypervisor-01/` and follows the same structure as the other hosts.
 
 ### Flake & Blueprint (`flake.nix`)
 

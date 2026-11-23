@@ -18,23 +18,19 @@ in
     # Traefik could only pass through, and its announcements then name the port peers
     # can actually reach. Listed in compose/reverse-proxy all the same.
     openFirewall = true;
-    # Every folder, as on prod, but each with only the devices that carry it — plus
-    # prod's own Syncthing on all of them until the cutover, so apps fills from it.
-    # TODO: drop sync.snyssen.be (here and from nix/data/syncthing.nix) once prod is gone.
+    # Every folder, as on prod, but each with only the devices that carry it.
     folders = {
       "Aegis Backups" = {
         # Created on the phone, so a generated ID rather than its name.
         id = "h5q7k-uenv3";
         path = "${dataDir}/Aegis Backups";
         devices = [
-          "sync.snyssen.be"
           "Pixel 8 Pro"
         ];
       };
       KSP = {
         path = "${dataDir}/KSP";
         devices = [
-          "sync.snyssen.be"
           "blackfog"
           "gaming"
         ];
@@ -42,7 +38,6 @@ in
       Notes = {
         path = "${dataDir}/Notes";
         devices = [
-          "sync.snyssen.be"
           "Pixel 8 Pro"
           "blackfog"
           "purplehaze"
@@ -52,7 +47,6 @@ in
       PrismLauncher = {
         path = "${dataDir}/PrismLauncher";
         devices = [
-          "sync.snyssen.be"
           "blackfog"
           "purplehaze"
           "gaming"
@@ -61,7 +55,6 @@ in
       RetroArch = {
         path = "${dataDir}/retroarch";
         devices = [
-          "sync.snyssen.be"
           "blackfog"
           "purplehaze"
           "gaming"

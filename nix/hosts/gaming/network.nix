@@ -1,4 +1,4 @@
-# Configuration copied from hypervisor, see hypervisor for explanations
+# Configuration copied from hypervisor-01, see hypervisor-01 for explanations
 { ... }:
 let
   # Physical NIC to enslave to the bridge.

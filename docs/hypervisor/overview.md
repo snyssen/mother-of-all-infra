@@ -3,8 +3,7 @@
 This document covers day-to-day operational procedures for the hypervisor host: VM lifecycle management, btrfs storage health checks, disk expansion and replacement, and common troubleshooting steps.
 
 The production hypervisor is `hypervisor-01`: the former prod box, reinstalled at the
-Phase B cutover ([apps-migration-phase-b.md](apps-migration-phase-b.md)). Until that
-cutover is over, the Phase A test box `hypervisor` exists too. The `just hypervisor-*`
+Phase B cutover ([apps-migration-phase-b.md](apps-migration-phase-b.md)). The `just hypervisor-*`
 recipes act on `hypervisor-01` unless given another host as their last argument; the
 two playbook recipes take it as their required first argument.
 

@@ -35,12 +35,10 @@
     flake.modules.nixos.nfs-exports
 
     ./network.nix
-    # Transitional: delete with its file once Phase B is done.
-    ./legacy-import.nix
   ];
 
-  # Intel iGPU (QuickSync) passthrough for the `apps-01` VM's Jellyfin, as on the test
-  # hypervisor (see its configuration.nix for how it was verified there).
+  # Intel iGPU (QuickSync) passthrough for the `apps-01` VM's Jellyfin, first verified on
+  # the Phase A test hypervisor.
   #
   # IOMMU on, with `iommu=pt` so every other device (the pools especially) stays on
   # passthrough-mode DMA. i915 blacklisted host-wide (the box is headless) and vfio-pci
@@ -107,8 +105,7 @@
       layout = ly;
       "${ly}" = {
         mainDiskPath = "/dev/disk/by-id/nvme-SPCC_M.2_PCIe_SSD_AA230711NV01KG14278";
-        # The same two sticks as the test hypervisor, each carrying a second keyfile
-        # named after this host (`/key/hypervisor-01`; keyFilename defaults to
+        # Each stick carries a keyfile named after this host (`/key/hypervisor-01`; keyFilename defaults to
         # system.name). Step P4 of the Phase B runbook writes it.
         usbKeysIds = [
           "73A2-0467" # Kingston SD card

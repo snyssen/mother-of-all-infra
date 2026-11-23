@@ -1,7 +1,6 @@
-# The hypervisor recipes act on hypervisor-01 unless told otherwise. During the Phase B
-# cutover the test hypervisor (`hypervisor`) still exists, so:
+# The hypervisor recipes act on hypervisor-01 unless told otherwise:
 # - inspection recipes take the host as an optional *last* argument
-#   (`just hypervisor-vm-list hypervisor`);
+#   (`just hypervisor-vm-list hypervisor-02`);
 # - the two playbook recipes, which change things, take it as a required *first*
 #   argument, so they never act on a hypervisor by default
 #   (`just hypervisor-provision-vms hypervisor-01`).

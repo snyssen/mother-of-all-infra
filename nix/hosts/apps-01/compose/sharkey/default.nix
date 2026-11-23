@@ -93,10 +93,9 @@ in
       "db"
     ];
     # Must not start before its data is here, or it would initialise a new, empty
-    # instance under the real name. At the cutover the host-wide hold
+    # instance under the real name. During a restore the host-wide hold
     # (`restoreHold`, ../../restore-hold.nix) keeps it down until its data and database
-    # are in (`legacy-import sharkey-files`, `prod-import sharkey`, then
-    # `postgres-restore ... sharkey`).
+    # are in (`backrest-restore sharkey`, then `postgres-restore ... sharkey`).
     extraAfter = [
       "mnt-bulk.mount"
       "reverse-proxy-dynamic-config.service"

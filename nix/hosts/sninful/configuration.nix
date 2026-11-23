@@ -6,9 +6,6 @@
   flake,
   ...
 }:
-let
-  syncthingData = import ../../data/syncthing.nix;
-in
 {
 
   #
@@ -39,7 +36,6 @@ in
     flake.modules.nixos.shell
     flake.modules.nixos.locale
     flake.modules.nixos.nh
-    flake.modules.nixos.syncthing
     flake.modules.nixos.printing
     flake.modules.nixos.docker
     flake.modules.nixos.tailscale
@@ -93,22 +89,6 @@ in
     owner = "scanservjs";
     group = "scanservjs";
     mode = "0400";
-  };
-
-  syncthing = {
-    username = "snyssen";
-    devices = syncthingData.devices;
-    folders = {
-      Notes = {
-        path = "/home/snyssen/Notes";
-        devices = [
-          "sync.snyssen.be"
-          "Pixel 8 Pro"
-          "gaming"
-          "purplehaze"
-        ];
-      };
-    };
   };
 
   stylix = {
