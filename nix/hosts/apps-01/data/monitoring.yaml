@@ -14,6 +14,7 @@ compose-stacks:
             deadman_url: ENC[AES256_GCM,data:+bAk55vwFpTJTLmORC53BAaht8IGNSVSoY612uJj69egpWq3Q11Uf++3eGp697inDQ4ehD4WcFI=,iv:VPGhlfUK7hWLY+E2pvcnUYm6oSuteB42bZo3qHdYOYI=,tag:0kZp5MzR4CpxSuDQuXQoAg==,type:str]
         gatus:
             push_token: ENC[AES256_GCM,data:DvdCQkyttGN/1pmW2IZ3daHvbiMo2GbTbhFnSgcLHpOkzkgv2tM3atoWv6tkDgm4GK2hj5VKJ/Ygfc16z604oQ==,iv:UaNDm/GKoFSj6H/IuuGjE6eaqWfnHF6nlgB/CtK6r5I=,tag:8k/2YdP4sEDjhDeac0Mu7g==,type:str]
+            push_token_blackfog: ENC[AES256_GCM,data:XxikCEy2VmjIE5bQqCqQFk8w8acpHUvyIs9eJkj81iCsS2YS0tzaPp120hPDo43wGVEB0AfPOUiFzM2SE0c26g==,iv:ug5uSrtTbFPu/3b0Ci+Dt5ISnWon/183kNtrU6ToMh0=,tag:/JivN2+ItNhC22TfAFUOXA==,type:str]
 sops:
     age:
         - enc: |
@@ -52,7 +53,7 @@ sops:
             Bd+eNbBwZ0+oO0mqCafAUls2NHY/AJEjA6rbmfSYCF5hjD0cw/DYkA==
             -----END AGE ENCRYPTED FILE-----
           recipient: age104pa77q73yt8hht4kv05gpk7hyayefy697lfe63dl0ua6dsej54s3mmrgj
-    lastmodified: "2026-11-16T15:27:16Z"
-    mac: ENC[AES256_GCM,data:en66bcbqyUSS4hSFjsjx2FfRIDyrJMGN5+PUN2PM1nprKNx3PqNZyjpN8JiDJEhyHSPNN+ZOO0G1OH3Yl7uLn/izojB20zqCHLIUBv8+RQFwFkvTO8DDUD5FZhZC87dCfIGQg+UY5fcSczA2JW9Y1BmCC8Web8HbnIF4XlF8p2w=,iv:iRbL34DLfwnwJ/WeehRFLNjvU3FcgmnWCWtviy68z8I=,tag:E+q4LS6qOiyZDwLvSGvkRg==,type:str]
+    lastmodified: "2026-11-24T09:38:45Z"
+    mac: ENC[AES256_GCM,data:p1P/hKy/V7QzmIp3XuawkGQSBtmTylqdeB+4Ykk9DVw6MBo3sefPyFvbZqdLuT69y3oHPXmB9B27sW+AR4KxcENLHIiOvm+14CoDAMKZwurocktoDoX9F9bqTOL967PDUSyRvE1QU1oWxhuUfAyi/xXnnDP9f2fHhXjX+ITwxF0=,iv:Wn86Ym8j06MPwqHEiwzQIcdDt95pKydMDdQfWkOmSRU=,tag:No1IGXaisfHMvWHY6VkF7g==,type:str]
     unencrypted_suffix: _unencrypted
     version: 3.13.3

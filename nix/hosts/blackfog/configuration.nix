@@ -35,6 +35,7 @@ in
     inputs.nixos-hardware.nixosModules.framework-desktop-amd-ai-max-300-series
     flake.modules.nixos.disko
     ./hardware-configuration.nix
+    ./backup.nix
 
     flake.modules.nixos.sops
     flake.modules.nixos.argunix

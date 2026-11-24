@@ -36,6 +36,12 @@ in
     "compose-stacks/monitoring/gatus/push_token" = {
       sopsFile = ../../data/monitoring.yaml;
     };
+    # Except for pushers on other hosts, which each get their own, so that a compromised
+    # workstation can only fake its own results. Same value as blackfog's
+    # gatus/push_token (nix/hosts/blackfog/backup.nix).
+    "compose-stacks/monitoring/gatus/push_token_blackfog" = {
+      sopsFile = ../../data/monitoring.yaml;
+    };
     # The `monitoring` ntfy user's plaintext password, carried over from the legacy
     # vault next to the hash ntfy itself is provisioned with (compose/ntfy). The topic
     # is declared there too; its placeholder is used below. Alertmanager (nobody,

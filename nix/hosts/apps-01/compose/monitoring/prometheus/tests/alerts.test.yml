@@ -119,6 +119,38 @@ tests:
               summary: "apps/nextcloud is failing its Gatus check"
               dashboard_uid: CN8E-vZ7k1
 
+  # Workstation endpoints are not EndpointDown's: a stale backup heartbeat alerts only
+  # while the workstation is up, and only after an hour of it.
+  - interval: 1m
+    input_series:
+      - series: 'gatus_results_endpoint_success{group="workstations", name="blackfog", instance="gatus:8080"}'
+        values: "0x150"
+      # Off for the first hour (no samples at all, as when Alloy stops pushing), then on.
+      - series: 'up{job="node", instance="blackfog"}'
+        values: "_x60 1x90"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: EndpointDown
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: WorkstationBackupStale
+        exp_alerts: []
+      # Up since minute 60: not an hour yet.
+      - eval_time: 100m
+        alertname: WorkstationBackupStale
+        exp_alerts: []
+      - eval_time: 125m
+        alertname: WorkstationBackupStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: default
+              group: workstations
+              name: blackfog
+            exp_annotations:
+              summary: "blackfog has not reported a successful backup job while blackfog is up"
+              dashboard_uid: CN8E-vZ7k1
+
   - interval: 1m
     input_series:
       - series: 'up{job="gatus", instance="gatus:8080"}'

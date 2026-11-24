@@ -21,6 +21,9 @@ production's *data* onto the new system is a separate exercise with its own docu
 see [Phase B](hypervisor/apps-migration-phase-b.md); none of it is needed for ordinary
 backup or restore work and it is deliberately not described here.
 
+The workstation, blackfog, has a third and much smaller setup of its own, for work in
+progress: see [Workstation backups](#workstation-backups-blackfog).
+
 ---
 
 ## The new system — Backrest on `apps`
@@ -493,6 +496,72 @@ ansible-playbook playbooks/backup-restore-databases.ansible.yml -e '{"db_restore
 4. Start the application stacks and verify service health.
 5. Run backup listing and integrity checks to confirm the backup system itself is
    working again.
+
+---
+
+## Workstation backups (blackfog)
+
+Separate from the apps backups above, and much lighter. They exist to get back up to
+speed after a hardware failure, not to archive anything. Git protects committed and
+pushed work. These cover what it doesn't: uncommitted and unpushed changes, local
+branches and stashes, and gitignored files that are tedious to recreate (`.envrc`,
+`.env`, credentials).
+
+Configured in `nix/hosts/blackfog/backup.nix` with NixOS's own `services.restic.backups`,
+not Backrest. There's no daemon or web UI to keep running on a workstation, and a
+systemd timer catches up on runs missed while the machine was off.
+
+### What is backed up
+
+| | |
+| --- | --- |
+| paths | `~/source/repos` (whole trees, `.git` included), `~/Documents`, `~/Pictures`, `~/Music`, `~/Videos`, `~/.ssh` |
+| excluded | `~/.ssh/id_*` (the keys never leave the machine; recovery goes through the breakglass key), build output (`bin`, `obj`, `node_modules`, `target`, `.direnv`, `result`, `.terraform`, `.venv`, `__pycache__`), cache-tagged directories, and any file over 1 GB (database dumps, mostly) |
+| schedule | hourly, with no new snapshot when nothing changed; at boot if a run was missed |
+| retention | 48 hourly, 7 daily, 4 weekly: about a month |
+| maintenance | daily `forget --prune`, plus a `check` reading a different 5% of the data each day |
+| repository | `rest:http://backup.snyssen.be:8000/blackfog/`, on-site only, its own password |
+| password | sops (`restic/blackfog/password` in `nix/hosts/blackfog/data/secrets.yaml`, readable with the breakglass key) and the password manager |
+
+Both jobs run as `snyssen`, who owns every file involved, so no root is needed.
+
+### Restoring
+
+`blackfog-restore` restores the latest snapshot in place. It overwrites files whose content
+differs, even when the local copy is newer: after a fresh `git clone`, the checked-out
+files are newer than the backed-up work in progress, and that work is the point. Files
+created since the backup are left alone, and nothing is deleted. It always shows what
+would change and asks before writing.
+
+```bash
+blackfog-restore --dry-run                          # what a full restore would change
+blackfog-restore ~/source/repos/foo/.envrc          # one file (relative paths work too)
+blackfog-restore --target /tmp/r ~/source/repos/foo # into a staging dir, to compare by hand
+blackfog-restore --snapshot 1a2b3c4d                # an older snapshot (see below)
+```
+
+For anything else, `restic-blackfog` is restic with the repository and password already
+set: `restic-blackfog snapshots`, `restic-blackfog ls latest`, `restic-blackfog mount`, and
+so on.
+
+After losing the machine: rebuild blackfog from the flake. Its sops secrets decrypt with
+the breakglass key, or from purplehaze. Then run `blackfog-restore`. Without the flake
+at hand, restic-browser (home module `restic-dr`) opens the repository on its own, with
+the password from the password manager. It is deliberately not wired to anything else.
+
+### Monitoring
+
+Both jobs push their result to Gatus, in the `workstations` group (`blackfog` and
+`blackfog-maintenance`), with a token of their own rather than apps-01's. Those endpoints
+don't go through `EndpointDown`. Instead, `WorkstationBackupStale` fires:
+
+- **only while blackfog is up.** Its metrics come through Alloy, so its `up` series is
+  absent while it is off, and nights, weekends and holidays with the machine off never
+  alert, with no silence to set.
+- **after an hour.** That leaves the catch-up run at boot time to report in first.
+- **muted outside working hours.** Alertmanager's `off-hours` interval covers 18:00 to
+  08:00 and weekends, Belgian time. Muted, not dropped: a failure still firing at the end
+  of the window is notified then.
 
 ---
 

@@ -347,14 +347,33 @@ groups:
           dashboard_uid: b2915c74-bd32-4b38-88ac-37fa532073cd
 
       # Gatus notifies no one itself: its check results are scraped and alerted on here.
+      # Workstation endpoints have a rule of their own, below.
       - alert: EndpointDown
-        expr: min by (group, name) (gatus_results_endpoint_success) < 1
+        expr: min by (group, name) (gatus_results_endpoint_success{group!="workstations"}) < 1
         for: 30s
         labels:
           severity: error
           priority: default
         annotations:
           summary: "{{ $labels.group }}/{{ $labels.name }} is failing its Gatus check"
+          dashboard_uid: CN8E-vZ7k1
+
+      # blackfog's backups (nix/hosts/blackfog/backup.nix), which only run while the
+      # machine is on. Its heartbeats go stale every night and weekend, so this only
+      # fires while blackfog itself is up: it pushes its metrics through Alloy, so its
+      # `up` series is simply absent while it is off, and holidays need no silence. The
+      # hour gives the catch-up backup at boot time to report in first. Evenings and
+      # weekends when the machine *is* on are muted in alertmanager.yml instead.
+      - alert: WorkstationBackupStale
+        expr: |
+          min by (group, name) (gatus_results_endpoint_success{group="workstations"}) < 1
+          and on () max(up{job="node", instance="blackfog"}) == 1
+        for: 1h
+        labels:
+          severity: warning
+          priority: default
+        annotations:
+          summary: "{{ $labels.name }} has not reported a successful backup job while blackfog is up"
           dashboard_uid: CN8E-vZ7k1
 
       - alert: CrowdsecBouncerDown

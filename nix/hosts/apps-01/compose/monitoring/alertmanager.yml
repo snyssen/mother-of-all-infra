@@ -21,6 +21,25 @@ route:
       group_wait: 0s
       group_interval: 1m
       repeat_interval: 1m
+    # Workstation backups are convenience, not worth hearing about outside working
+    # hours. Muted, not dropped: an alert still firing when the window ends is notified
+    # then, so a weekend failure arrives on Monday at 08:00.
+    - matchers: [alertname="WorkstationBackupStale"]
+      receiver: ntfy
+      mute_time_intervals: [off-hours]
+
+time_intervals:
+  # Evenings, nights and weekends, Belgian time. Reusable by any other route.
+  - name: off-hours
+    time_intervals:
+      - weekdays: [saturday, sunday]
+        location: Europe/Brussels
+      - times:
+          - start_time: "18:00"
+            end_time: "24:00"
+          - start_time: "00:00"
+            end_time: "08:00"
+        location: Europe/Brussels
 
 receivers:
   - name: ntfy

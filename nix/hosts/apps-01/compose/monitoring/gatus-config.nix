@@ -227,6 +227,32 @@ let
           name = "prune-offsite";
           interval = "768h";
         }
+      ]
+  # blackfog's backups (nix/hosts/blackfog/backup.nix), pushed from that host with its
+  # own token. A group of their own because they alert differently: only while the
+  # workstation is up, and never at night or at the weekend (WorkstationBackupStale in
+  # prometheus/rules/alerts.yml, its route in alertmanager.yml). Hourly backups get
+  # 3h; the daily maintenance job a day past its schedule, as the repos' jobs above.
+  ++
+    map
+      (
+        { name, interval }:
+        {
+          inherit name;
+          group = "workstations";
+          token = config.sops.placeholder."compose-stacks/monitoring/gatus/push_token_blackfog";
+          heartbeat.interval = interval;
+        }
+      )
+      [
+        {
+          name = "blackfog";
+          interval = "3h";
+        }
+        {
+          name = "blackfog-maintenance";
+          interval = "48h";
+        }
       ];
 in
 # JSON is valid YAML. Note that Gatus expands `$VAR`s anywhere in its config: nothing
