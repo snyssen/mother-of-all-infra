@@ -86,6 +86,12 @@ in
       ];
       exclude = [
         "${home}/.ssh/id_*"
+        # Syncthing's state, which the syncthing module keeps inside ~/Documents by default.
+        # Nothing in it is worth restoring: the device identity comes from sops, the config
+        # from Nix, and the index is rebuilt by rescanning. Worse, restoring its live SQLite
+        # index (and WAL) over a running Syncthing would corrupt it, and since the index
+        # changes constantly, it would also defeat --skip-if-unchanged.
+        config.syncthing.configDir
         # Build output and tool state, all regenerable. Excluding `bin` also skips
         # uncommitted edits inside a tracked bin/ directory; accepted, git has the rest.
         "bin"

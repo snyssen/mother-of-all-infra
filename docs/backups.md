@@ -516,7 +516,7 @@ systemd timer catches up on runs missed while the machine was off.
 | | |
 | --- | --- |
 | paths | `~/source/repos` (whole trees, `.git` included), `~/Documents`, `~/Pictures`, `~/Music`, `~/Videos`, `~/.ssh` |
-| excluded | `~/.ssh/id_*` (the keys never leave the machine; recovery goes through the breakglass key), build output (`bin`, `obj`, `node_modules`, `target`, `.direnv`, `result`, `.terraform`, `.venv`, `__pycache__`), cache-tagged directories, and any file over 1 GB (database dumps, mostly) |
+| excluded | `~/.ssh/id_*` (the keys never leave the machine; recovery goes through the breakglass key), Syncthing's state directory (`~/Documents/.config/syncthing`: identity from sops, config from Nix, index rebuilt by rescanning, and its live database must never be restored over a running Syncthing), build output (`bin`, `obj`, `node_modules`, `target`, `.direnv`, `result`, `.terraform`, `.venv`, `__pycache__`), cache-tagged directories, and any file over 1 GB (database dumps, mostly) |
 | schedule | hourly, with no new snapshot when nothing changed; at boot if a run was missed |
 | retention | 48 hourly, 7 daily, 4 weekly: about a month |
 | maintenance | daily `forget --prune`, plus a `check` reading a different 5% of the data each day |
