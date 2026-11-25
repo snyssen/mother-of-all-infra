@@ -18,6 +18,10 @@ in
     starship.enable = lib.mkEnableOption "starship prompt";
     just.enable = lib.mkEnableOption "just command runner and completions";
     dua.enable = lib.mkEnableOption "dua-cli integration";
+    zellij = {
+      enable = lib.mkEnableOption "Zellij terminal multiplexer";
+      autoStart = lib.mkEnableOption "starting Zellij automatically in every interactive shell";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -43,6 +47,11 @@ in
       enable = true;
       enableZshIntegration = true;
       nix-direnv.enable = true;
+    };
+
+    programs.zellij = lib.mkIf cfg.zellij.enable {
+      enable = true;
+      enableZshIntegration = cfg.zellij.autoStart;
     };
 
     programs.starship = lib.mkIf cfg.starship.enable {

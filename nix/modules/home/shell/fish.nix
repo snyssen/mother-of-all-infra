@@ -16,6 +16,10 @@ in
     direnv.enable = lib.mkEnableOption "direnv integration";
     starship.enable = lib.mkEnableOption "starship prompt";
     dua.enable = lib.mkEnableOption "dua-cli integration";
+    zellij = {
+      enable = lib.mkEnableOption "Zellij terminal multiplexer";
+      autoStart = lib.mkEnableOption "starting Zellij automatically in every interactive shell";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -56,6 +60,11 @@ in
       # and adding it again actually break build
       # enableFishIntegration = true;
       nix-direnv.enable = true;
+    };
+
+    programs.zellij = lib.mkIf cfg.zellij.enable {
+      enable = true;
+      enableFishIntegration = cfg.zellij.autoStart;
     };
 
     programs.starship = lib.mkIf cfg.starship.enable {

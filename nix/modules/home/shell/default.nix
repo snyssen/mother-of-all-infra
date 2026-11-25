@@ -19,6 +19,7 @@
       starship.enable = lib.mkDefault true;
       just.enable = lib.mkDefault true;
       dua.enable = lib.mkDefault true;
+      zellij.enable = lib.mkDefault false;
     };
     shell.fish = lib.mkIf (osConfig.shell.default == "fish") {
       enable = true;
@@ -27,6 +28,7 @@
       direnv.enable = lib.mkDefault true;
       starship.enable = lib.mkDefault true;
       dua.enable = lib.mkDefault true;
+      zellij.enable = lib.mkDefault false;
     };
   };
 }
