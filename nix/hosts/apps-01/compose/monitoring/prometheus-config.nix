@@ -60,6 +60,15 @@ in
     - job_name: "rest_server"
       static_configs:
         - targets: ["backup.snyssen.be:8000"]
+    # The exception to the header: the backup host is not on NixOS yet, so it has no
+    # Alloy to push its node metrics, and is scraped here instead. Labelled as Alloy
+    # labels the pushed ones (job="node", the bare host name as `instance`), so the node
+    # alerts and dashboards pick it up like any other host. Drop it once that host pushes.
+    - job_name: "node"
+      static_configs:
+        - targets: ["backup.snyssen.be:9100"]
+          labels:
+            instance: "backup"
     # Home Assistant on its own VM, with a long-lived access token.
     - job_name: "hass"
       metrics_path: /api/prometheus

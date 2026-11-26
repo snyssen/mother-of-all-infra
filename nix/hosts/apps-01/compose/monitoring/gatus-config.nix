@@ -153,6 +153,10 @@ let
     # What prod's monitoring__uptime_monitors lists: things that live off this host,
     # under their permanent names.
     (infra (http "restic rest server" "http://backup.snyssen.be:8000/metrics"))
+    # The backup host itself, through its node exporter (not on NixOS/Alloy yet, so not
+    # pushing metrics either): its REST server can be down while the host is fine, and
+    # vice versa.
+    (infra (http "backup server" "http://backup.snyssen.be:9100/metrics"))
     (infra (http "home assistant" "https://hass.snyssen.be"))
     (infra (http "technitium-primary" "http://192.168.1.2:5380/"))
     (infra (http "technitium-secondary" "http://192.168.1.3:5380/"))
