@@ -13,6 +13,17 @@ in
     # Avoid another DHCP client racing with networkd on this host.
     dhcpcd.enable = false;
 
+    # Unlike hypervisor-01, this host runs a desktop: COSMIC enables NetworkManager,
+    # which would otherwise auto-create a "Wired connection" on the physical NIC and
+    # run DHCP on it, racing networkd. When it wins, the bridge port ends up holding
+    # its own lease (e.g. 192.168.1.131) next to br0's, and routing breaks.
+    # NetworkManager stays enabled for the desktop applet, but keeps its hands off
+    # the bridge and its port.
+    networkmanager.unmanaged = [
+      "interface-name:${lanNic}"
+      "interface-name:br0"
+    ];
+
     firewall = {
       enable = true;
     };
