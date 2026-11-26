@@ -14,10 +14,6 @@ ansible-update:
   ansible-galaxy collection install -r requirements.yml --force
   ansible-galaxy role install -r requirements.yml --force
 
-# Setup Ansible Vault password
-ansible-vault-setup:
-  scripts/set-private-var.sh ANSIBLE_VAULT_PASSPHRASE
-
 # List available Ansible playbooks
 [working-directory: 'ansible']
 ansible-playbook-list:

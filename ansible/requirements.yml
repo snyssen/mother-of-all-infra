@@ -1,16 +1,24 @@
+# Every collection and role is pinned; Renovate's ansible-galaxy manager bumps them.
+# community.docker is used by the snyssen.compose_deploy role, not by the repo's own roles.
 collections:
+  - name: ansible.posix
+    source: https://galaxy.ansible.com
+    version: "2.2.0"
   - name: community.general
     source: https://galaxy.ansible.com
+    version: "12.6.1"
   - name: community.docker
     source: https://galaxy.ansible.com
-  - name: community.postgresql
+    version: "5.2.0"
+  - name: community.sops
     source: https://galaxy.ansible.com
-  - name: lucasheld.uptime_kuma
-    source: https://galaxy.ansible.com
+    version: "2.3.0"
   - name: artis3n.tailscale
     source: https://galaxy.ansible.com
+    version: "1.2.0"
   - name: effectivelywild.technitium_dns
     source: https://galaxy.ansible.com
+    version: "1.1.2"
 
 roles:
   - name: snyssen.oh-my-zsh-p10k
@@ -28,6 +36,3 @@ roles:
   - name: geerlingguy.security
     src: geerlingguy.security
     version: "3.1.0"
-  - name: fuzzymistborn.autorestic
-    src: fuzzymistborn.autorestic
-    version: v0.4.0

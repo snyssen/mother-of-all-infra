@@ -12,7 +12,7 @@ default:
   just --list
 
 # Initial setup for entire repository
-setup: pre-commit-setup ansible-setup ansible-vault-setup
+setup: pre-commit-setup ansible-setup
 
 # Setup pre-commit hooks
 pre-commit-setup:
@@ -43,10 +43,6 @@ sops-update-keys file:
 # Rotate SOPS keys for every secret file in the repo, based on rules from `.sops.yaml`
 sops-update-keys-all *flags:
   scripts/sops-update-keys-all.sh {{flags}}
-
-# Copy Ansible Vault secrets into a SOPS file without printing them (mappings: vault_var=sops/key/path)
-sops-from-vault file +mappings:
-  scripts/sops-from-vault.sh {{file}} {{mappings}}
 
 # Store stdin as one key of a SOPS file without printing it (e.g. `ssh host cat key.pem | just sops-set-stdin <file> <key/path>`)
 sops-set-stdin file key:

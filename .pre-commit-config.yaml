@@ -10,13 +10,6 @@ repos:
       # - id: check-added-large-files
       - id: check-merge-conflict
       - id: detect-private-key
-  - repo: https://github.com/biozz/ansible-pre-commit-hooks
-    rev: v0.0.1
-    hooks:
-      - id: ansible-vault-encrypted
-        # it can accept comma separated list of specific filenames to check
-        # WARNING: quotes are required, otherwise yaml will treat it as a list
-        args: ["--extras=vault.yml"]
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0
     hooks:

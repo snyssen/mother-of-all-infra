@@ -96,6 +96,32 @@ creation_rules:
           - *root_argunix
           - *snyssen_purplehaze
           - *snyssen_blackfog
+  # Ansible inventory secrets, loaded by the community.sops vars plugin (ansible/ansible.cfg).
+  # Ansible decrypts on the controller, so only people get a key here — no host root keys.
+  # One rule per host keeps access granular: a key added to one rule reads that host's
+  # secrets and nothing else.
+  - path_regex: ansible/hosts/host_vars/hypervisor-01/[^/]+\.sops\.yaml$
+    key_groups:
+      - pgp:
+        age:
+          - *breakglass
+          - *snyssen_gaming
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
+  - path_regex: ansible/hosts/host_vars/technitium-(primary|secondary)/[^/]+\.sops\.yaml$
+    key_groups:
+      - pgp:
+        age:
+          - *breakglass
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
+  - path_regex: ansible/hosts/host_vars/backup\.snyssen\.be/[^/]+\.sops\.yaml$
+    key_groups:
+      - pgp:
+        age:
+          - *breakglass
+          - *snyssen_purplehaze
+          - *snyssen_blackfog
 stores:
   yaml:
     indent: 2

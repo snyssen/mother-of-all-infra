@@ -1,7 +1,20 @@
-ansible_user: "{{ vault_ansible_user }}"
-ansible_become_pass: "{{ vault_ansible_become_pass }}"
+# Secrets for this host (ansible_user, ansible_become_pass, tailscale__auth_key,
+# docker_mounts_directory, smtp__to, crowdsec__firewall_bouncer__api_key)
+# are in secrets.sops.yaml next to this file.
+
 disks_mounts:
   - path: /mnt/disk1
     src: /dev/disk/by-id/ata-ST8000VN004-2M2101_WSD503DW
   - path: /mnt/disk2
     src: /dev/disk/by-id/ata-ST16000NM001G-2KK103_ZL21CNWC
+
+docker_daemon_common_options:
+  # logging options so container logs can be retrieved and parsed by alloy and loki
+  log-driver: json-file
+  log-opts:
+    labels-regex: ^.+
+    max-size: "100m"
+    max-file: "3"
+
+# Used to store the docker-compose.yml files
+docker_compose_directory: "/home/{{ ansible_user }}/containers"

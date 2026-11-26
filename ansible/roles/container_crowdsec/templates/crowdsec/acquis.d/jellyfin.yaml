@@ -1,6 +1,0 @@
-source: loki
-url: http://loki:3100
-query: |
-  {job="containerlogs",compose_service="jellyfin"}
-labels:
-  type: jellyfin

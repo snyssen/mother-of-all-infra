@@ -1,4 +1,0 @@
-- ansible.builtin.include_role:
-    name: snyssen.compose_deploy
-  vars:
-    stack_name: cadvisor

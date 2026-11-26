@@ -1,0 +1,34 @@
+# Backup server (backup.snyssen.be) setup: the one bare-metal, non-Nix host left, until
+# it moves to NixOS (issue #52). Extracted from the former setup-deploy playbook.
+#
+# What it manages:
+#   - setup_common: Docker, SSH hardening, CrowdSec firewall bouncer (decisions from
+#     apps-01's LAPI), Tailscale, shell
+#   - setup_storage: mergerfs pool of `disks_mounts` on /mnt/storage
+#   - Prometheus node exporter on :9100 (scraped by apps-01, and checked by Gatus)
+#   - Alloy, shipping the host's and containers' logs to Loki
+#   - restic REST server on :8000, the on-site repository Backrest writes to
+#
+# Left on the host but no longer managed here (remove by hand if ever wanted):
+#   - the cAdvisor container: nothing scrapes it any more
+#   - the `backup` user, its sudoers poweroff rule and authorized key: only the legacy
+#     autorestic setup on the old apps box used them
+#   - the wol-enable systemd unit: the server is no longer woken over the LAN
+#
+# Usage: just ansible-playbook backup-server-setup [--check --diff]
+
+- name: Setup backup server
+  hosts: backup
+  roles:
+    - role: setup_common
+    - role: setup_storage
+    - role: undergreen.prometheus-node-exporter
+      become: true
+      vars:
+        prometheus_node_exporter_config_flags:
+          "web.listen-address": "0.0.0.0:9100"
+          "log.level": "info"
+        prometheus_node_exporter_enabled_collectors:
+          - systemd
+    - role: container_alloy
+    - role: container_rest

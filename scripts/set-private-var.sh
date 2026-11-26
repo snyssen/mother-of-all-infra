@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# update-ansible-vault-pass.sh
+# set-private-var.sh
 # Safely add or replace given var in .envrc.private
 # Usage: ./set-private-var.sh YOUR_VAR_NAME
 

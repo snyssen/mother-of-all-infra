@@ -5,25 +5,9 @@ technitium:
     technitium-secondary:
       ansible_host: "technitium-secondary.taild023c5.ts.net"
 
-apps:
-  hosts:
-    snyssen.be:
-      # ansible_host: "192.168.1.10"
-
 backup:
   hosts:
     backup.snyssen.be:
-      # ansible_host: "192.168.1.11"
-
-monitored:
-  hosts:
-    snyssen.be:
-    backup.snyssen.be:
-    # apps.taild023c5.ts.net:
-
-livecams:
-  hosts:
-    livecam1.lan:
 
 hypervisor:
   hosts:

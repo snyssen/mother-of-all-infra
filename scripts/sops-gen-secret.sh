@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # sops-gen-secret.sh
 # Generate new random secrets straight into a SOPS file, without the values ever being
-# printed, written to disk in plaintext, or passed on a command line. The counterpart of
-# sops-from-vault.sh for secrets that have no legacy value to carry over.
+# printed, written to disk in plaintext, or passed on a command line.
 #
 # Usage: ./scripts/sops-gen-secret.sh [--length N] <sops-file> <sops/key/path>
 #        ./scripts/sops-gen-secret.sh --oidc-client <sops-file> <sops/key/prefix>

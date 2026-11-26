@@ -1,15 +1,10 @@
-ansible_user: "{{ vault_ansible_user }}"
-ansible_become_pass: "{{ vault_ansible_become_pass }}"
-
 # Technitium DNS Server API configuration for the secondary instance.
 # The API host uses HTTP on port 5380 for initial setup (before HTTPS is enabled by clustering).
 technitium_dns_setup_api_host: technitium-secondary
 technitium_dns_setup_api_port: 5380
 
-# Admin password for the Technitium web UI.
-# On first run this password replaces the default "admin" password.
-# Stored in vault as vault_technitium_dns_setup_admin_password.
-technitium_dns_setup_admin_password: "{{ vault_technitium_dns_setup_admin_password }}"
+# technitium_dns_setup_admin_password (the web UI admin password, which replaces the
+# default "admin" on first run) is in secrets.sops.yaml next to this file.
 
 # Role of this node in the Technitium cluster.
 technitium_dns_setup_cluster_role: secondary
