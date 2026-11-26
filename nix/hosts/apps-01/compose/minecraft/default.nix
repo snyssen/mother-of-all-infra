@@ -17,7 +17,7 @@ let
 in
 {
   # Carried over unchanged from the legacy vault, joined into the comma-separated form
-  # the image's WHITELIST and OPS variables take (`just sops-from-vault --join ,`).
+  # the image's WHITELIST and OPS variables take.
   sops.secrets = {
     "compose-stacks/minecraft/whitelist" = {
       sopsFile = ../../data/minecraft.yaml;

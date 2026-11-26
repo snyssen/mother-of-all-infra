@@ -6,7 +6,7 @@ This phase boots the target machine to a live environment and runs `nixos-anywhe
 
 ## Prerequisites
 
-You must have completed [Setup New Machine - Pre-Deployment](./Setup%20New%20Machine%20-%20Pre-Deployment.md):
+You must have completed [Setup New Machine - Pre-Deployment](pre-deployment.md):
 
 - ✅ NixOS configuration created
 - ✅ SSH keypairs generated and staged
@@ -406,4 +406,4 @@ This allows SSH to accept the new host key without warnings.
 ✅ System booted successfully
 ✅ Temporary deployment files cleaned up
 
-**Next step**: Proceed to [Setup New Machine - Post-Deployment](./Setup%20New%20Machine%20-%20Post-Deployment.md)
+**Next step**: Proceed to [Setup New Machine - Post-Deployment](post-deployment.md)

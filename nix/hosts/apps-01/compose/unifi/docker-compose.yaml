@@ -2,7 +2,7 @@
 #
 # Network 10.6.109 is the last standalone release (Network 11+ only ships inside UniFi
 # OS Server), so the controller's pin is final. It stays here until a UniFi gateway takes
-# the controller over; see "UniFi" in docs/hypervisor/apps-migration-plan.md.
+# the controller over; see "UniFi" in docs/archive/apps-migration-plan.md.
 #
 # Not backed up as such: MongoDB's files. The controller's own autobackups (.unf) hold
 # the whole controller, and those are what the `unifi` Backrest plan keeps.

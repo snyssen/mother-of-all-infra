@@ -10,7 +10,8 @@ in
   ];
 
   # Only the settings prod actually set; everything else is upstream's default. The
-  # annotated original is ansible/roles/container_sharkey/templates/config/default.yml.
+  # annotated original was the legacy role's templates/config/default.yml (in git history,
+  # under ansible/roles/container_sharkey/).
   # Readable by uid 991, Sharkey's user inside its image, and nobody else.
   sops.templates."sharkey-default.yml" = {
     uid = 991;

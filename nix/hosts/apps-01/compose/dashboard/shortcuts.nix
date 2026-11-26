@@ -1,5 +1,5 @@
-# The launcher's shortcut tree, carried over verbatim from the legacy
-# `dashboard__shortcuts` (ansible/hosts/group_vars/apps/vars.yml). URLs are deliberately
+# The launcher's shortcut tree, carried over verbatim from the legacy Ansible
+# `dashboard__shortcuts` variable. URLs are deliberately
 # left hardcoded rather than derived from config.domains.main: this is a launcher for the
 # whole fleet, this host and outside services alike, not a list of this host's routes.
 #

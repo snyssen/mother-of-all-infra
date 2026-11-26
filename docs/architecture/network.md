@@ -111,7 +111,7 @@ overwritten on the next sync/rejoin.
 
 Each node answers DNS queries independently once its zone data is synced — clustering keeps configuration
 in sync, it does not provide a shared virtual IP or automatic query failover. See
-[Node failure / failback](#node-failure--failback) for what that means in practice.
+[Node failure / failback](#node-failure-failback) for what that means in practice.
 
 ### Split-horizon DNS
 
@@ -215,8 +215,8 @@ resolution is therefore a manual re-pointing exercise, not an automatic cutover.
 
 ### 1. Confirm the primary is actually down
 
-- `technitium-primary`'s node-exporter target (`100.117.7.65:9100`, see
-  `ansible/hosts/group_vars/apps/vars.yml`) will go red in Grafana/Prometheus.
+- `technitium-primary`'s Gatus check (its web UI at `http://192.168.1.2:5380/`, defined in
+  `nix/hosts/apps-01/compose/monitoring/gatus-config.nix`) goes red and alerts.
 - Sanity check directly: `dig @192.168.1.2 snyssen.be` (LAN) or `dig @100.117.7.65 snyssen.be` (tailnet).
 - Confirm the secondary is healthy and has current data before cutting over:
   `dig @192.168.1.3 snyssen.be` / `dig @100.64.88.28 snyssen.be`.

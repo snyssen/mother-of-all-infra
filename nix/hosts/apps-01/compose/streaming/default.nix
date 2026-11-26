@@ -12,7 +12,7 @@ let
   # defaults: it fills in the rest, and writes the full file back on shutdown.
   transmissionSettings = pkgs.writeText "transmission-settings.json" (
     builtins.toJSON {
-      # TRaSH Guides layout (ansible/roles/container_streaming/README.md): the *arr
+      # TRaSH Guides layout (https://trash-guides.info/File-and-Folder-Structure/): the *arr
       # apps mount the same /data, and add their category (movies, tv, music) below it.
       download-dir = "/data/torrent";
       incomplete-dir-enabled = false;

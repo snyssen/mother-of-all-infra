@@ -4,9 +4,10 @@ This repository aims to group all of my personal infra config in a single place,
 
 ## Structure
 
-- `ansible/` contains my ansible code, imported from the [infra-snyssen.be](https://github.com/snyssen/infra-snyssen.be). You can also check its own [README](./ansible/README.md).
-- `docs/` contains documentation. It is sadly mostly empty as I hate writing documentation... Hopefully the code itself should mostly be self-documenting.
-- `nix/` contains all nix and nixos related code. It mostly serves as a nixos configuration repos, with most of its code being imported from [nixos-config](https://github.com/snyssen/nixos-config).
+- `nix/` contains all nix and nixos related code: every NixOS host, including the apps server (`nix/hosts/apps-01/`) and its Docker Compose stacks. Most of it was originally imported from [nixos-config](https://github.com/snyssen/nixos-config).
+- `ansible/` contains the imperative work that stays awkward in Nix: building and provisioning libvirt VM images, configuring the Technitium DNS cluster, and the bare-metal backup server. See its own [README](./ansible/README.md).
+- `hypervisor/` contains `just` recipes driving libvirt on the hypervisor over SSH.
+- `docs/` contains the documentation, published with mkdocs (`just run-docs` to preview it locally).
 - `scripts/` contains re-usable scripts, usually called through [just](https://just.systems/) recipes.
 - `terraform/` contains terraform code, usually used to create the machines onto which nixos systems are then deployed.
 

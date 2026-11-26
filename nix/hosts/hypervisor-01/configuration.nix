@@ -43,7 +43,7 @@
   # IOMMU on, with `iommu=pt` so every other device (the pools especially) stays on
   # passthrough-mode DMA. i915 blacklisted host-wide (the box is headless) and vfio-pci
   # claiming the iGPU in initrd, before i915 could bind it. The PCI id is this box's
-  # i5-13400 iGPU, from `lspci -nn` (Phase B runbook, step P2); check after the install
+  # i5-13400 iGPU, from `lspci -nn` (Phase B runbook, docs/archive/apps-migration-phase-b.md, step P2); check after the install
   # that it sits alone in its IOMMU group (step D3).
   boot.kernelParams = [
     "intel_iommu=on"
@@ -106,7 +106,7 @@
       "${ly}" = {
         mainDiskPath = "/dev/disk/by-id/nvme-SPCC_M.2_PCIe_SSD_AA230711NV01KG14278";
         # Each stick carries a keyfile named after this host (`/key/hypervisor-01`; keyFilename defaults to
-        # system.name). Step P4 of the Phase B runbook writes it.
+        # system.name). Step P4 of the Phase B runbook (docs/archive/) wrote it.
         usbKeysIds = [
           "73A2-0467" # Kingston SD card
           "9FBA-884A" # Generic Flash Disk (no casing)
@@ -192,7 +192,7 @@
   environment.systemPackages = [
     pkgs.btop
     pkgs.screen
-    # sgdisk, for the disk procedures in docs/hypervisor/overview.md
+    # sgdisk, for the disk procedures in docs/operations/hypervisor.md
     pkgs.gptfdisk
   ];
 

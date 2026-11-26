@@ -2,6 +2,9 @@ site_name: Mother of All Infra Documentation
 use_directory_urls: false
 theme:
   name: material
+  features:
+    # Lets a section's index.md (listed first, untitled, in nav) act as its landing page
+    - navigation.indexes
   palette:
     - scheme: default
       primary: indigo
@@ -30,3 +33,36 @@ markdown_extensions:
 plugins:
   - search
   - callouts
+
+nav:
+  - Home: index.md
+  - Architecture:
+      - Network: architecture/network.md
+      - Hypervisor: architecture/hypervisor.md
+      - Secrets: architecture/secrets.md
+      - Repository layout: architecture/repository.md
+  - Operations:
+      - Hypervisor operations: operations/hypervisor.md
+      - VM deployment: operations/vm-deployment.md
+      - New machine:
+          - operations/new-machine/index.md
+          - Pre-deployment: operations/new-machine/pre-deployment.md
+          - Deployment: operations/new-machine/deployment.md
+          - Post-deployment: operations/new-machine/post-deployment.md
+      - Full disk encryption: operations/disk-encryption.md
+      - Backups: operations/backups.md
+  - Services:
+      - services/index.md
+      - Monitoring: services/monitoring.md
+      - Scanner to Paperless: services/scanner-to-paperless.md
+  - Modules:
+      - libvirtd: modules/libvirtd.md
+      - NFS exports: modules/nfs-exports.md
+      - Printing: modules/printing.md
+  - Plans:
+      - plans/index.md
+      - CrowdSec AppSec on ingress: plans/crowdsec-appsec.md
+  - Archive:
+      - archive/index.md
+      - apps migration plan: archive/apps-migration-plan.md
+      - Phase B cutover: archive/apps-migration-phase-b.md

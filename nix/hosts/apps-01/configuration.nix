@@ -295,7 +295,7 @@
 
   # Services held out of the boot targets while a restore lands on this host (see
   # ./restore-hold.nix). Off in normal operation; the disaster-recovery runbook
-  # (docs/backups.md) turns them on.
+  # (docs/operations/backups.md) turns them on.
   restoreHold = {
     stacks = false;
     backups = false;

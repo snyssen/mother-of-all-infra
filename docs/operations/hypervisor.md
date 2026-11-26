@@ -2,12 +2,12 @@
 
 This document covers day-to-day operational procedures for the hypervisor host: VM lifecycle management, btrfs storage health checks, disk expansion and replacement, and common troubleshooting steps.
 
-The production hypervisor is `hypervisor-01`: the former prod box, reinstalled at the
-Phase B cutover ([apps-migration-phase-b.md](apps-migration-phase-b.md)). The `just hypervisor-*`
-recipes act on `hypervisor-01` unless given another host as their last argument; the
-two playbook recipes take it as their required first argument.
+The production hypervisor is `hypervisor-01`, which runs the `apps-01`, `haos` and
+`technitium-secondary` VMs. The `just hypervisor-*` recipes act on `hypervisor-01` unless
+given another host as their last argument; the two playbook recipes take it as their
+required first argument.
 
-> **Architectural reference:** See [plan.md](plan.md) for the disk layout, network configuration, Disko/LUKS design decisions, and repository architecture overview.
+> **Architectural reference:** See [Hypervisor Architecture](../architecture/hypervisor.md) for the disk layout, network configuration, Disko/LUKS design decisions, and repository architecture overview.
 
 ---
 
@@ -27,7 +27,8 @@ All helpers below are available through the root `justfile`.  Run `just --list` 
 | `just hypervisor-vm-destroy <vm>` | Force-off a VM (hard power cut) |
 | `just hypervisor-vm-console <vm>` | Open a serial console to a VM |
 | `just hypervisor-vm-info <vm>` | Show detailed VM info |
-| `just hypervisor-provision-vms hypervisor-01` | Re-run the Ansible libvirt provisioning playbook |
+| `just hypervisor-build-vm-images <host>` | Build the NixOS VM images marked `disk_image.build: true` and copy them to the hypervisor (see [VM deployment](vm-deployment.md)) |
+| `just hypervisor-provision-vms <host>` | Re-run the Ansible libvirt provisioning playbook (add `-e libvirt_vms_only=<vm>[,<vm>...]` for some VMs only) |
 
 ### btrfs / storage helpers
 
@@ -104,11 +105,11 @@ VNC access is also enabled on the LAN (`libvirtd.vncLanAccess = true`).  Use `vi
 
 All VM definitions live in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  The `libvirt_provision` role is idempotent — re-running the playbook is safe.
 
-> **For NixOS-based VMs:** See [nixos-vm-deployment.md](nixos-vm-deployment.md) for the complete two-playbook workflow (image build + provisioning) with SOPS key authorization and LUKS encryption.
+> **For NixOS-based VMs:** See [VM deployment](vm-deployment.md) for the complete two-playbook workflow (image build + provisioning) with SOPS key authorization and LUKS encryption.
 
 ### Adding a new VM
 
-1. Append an entry to `libvirt_vms` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  See [plan.md — VM definitions](plan.md#vm-definitions) for the full schema.
+1. Append an entry to `libvirt_vms` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  See [Hypervisor Architecture — VM definitions](../architecture/hypervisor.md#vm-definitions) for the full schema.
 
    ```yaml
    libvirt_vms:
@@ -127,14 +128,14 @@ All VM definitions live in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.  Th
 
 To pass a USB adapter through to Home Assistant, add `usb_devices` to the `haos` VM definition in `ansible/hosts/host_vars/hypervisor-01/vars.yml`.
 
-Example:
+Example (the Nabu Casa ZBT-2 that `haos` has today):
 
 ```yaml
 - name: haos
   # ...
   usb_devices:
-    - vendor_id: "0x1a86"
-      product_id: "0x7523"
+    - vendor_id: "0x303a"
+      product_id: "0x831a"
 ```
 
 #### How to find `vendor_id` and `product_id`
@@ -194,11 +195,11 @@ Use those values in `vars.yml` with the `0x` prefix.
 
 > Important: passthrough happens on the hypervisor host.  If you discovered IDs on your workstation, move the dongle to the hypervisor and verify with `lsusb` there as well (`just hypervisor-ssh`, then `lsusb`) before running provisioning.
 
-1. Run the playbook:
+Then run the playbook:
 
-   ```sh
-   just hypervisor-provision-vms hypervisor-01
-   ```
+```sh
+just hypervisor-provision-vms hypervisor-01
+```
 
 ### Removing a VM
 
@@ -217,7 +218,7 @@ Use those values in `vars.yml` with the `0x` prefix.
    just hypervisor-provision-vms hypervisor-01
    ```
 
-The role will force-stop the domain, undefine it, and delete its storage directory.
+The role will force-stop the domain, undefine it, and delete its storage directory and its LUKS key directory (`/var/lib/vm-keys/<name>/`).
 
 ---
 
@@ -320,7 +321,7 @@ Run only when the filesystem is **unmounted** or in degraded/read-only mode (e.g
 # SSH in first
 just hypervisor-ssh
 
-# Read-only check — safe on a live mounted filesystem (no repair)
+# Read-only check (no repair); btrfs check refuses a mounted filesystem
 sudo btrfs check --readonly /dev/mapper/crypt-vmstore-0
 ```
 

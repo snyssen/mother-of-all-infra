@@ -1,6 +1,6 @@
 { lib, config, ... }:
 # Holds this host's services down at boot, for a restore onto an empty host: the Phase B
-# cutover, or a disaster recovery (docs/backups.md). It replaces masking units at the
+# cutover, or a disaster recovery (docs/operations/backups.md). It replaces masking units at the
 # GRUB prompt, which needs a console in time to catch the boot.
 #
 # Without it, a fresh host starts every stack against empty data directories:

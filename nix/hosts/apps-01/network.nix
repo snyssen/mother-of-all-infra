@@ -1,6 +1,6 @@
 # Static LAN address: 192.168.1.10, the legacy prod box's, so the split-horizon
 # records that send the LAN to `snyssen.be`, `*.snyssen.be` and `bigdouf.team`
-# (ansible/hosts/group_vars/technitium/vars.yml) need no change at the cutover. Inside
+# (ansible/hosts/group_vars/technitium/vars.yml) kept working through the cutover. Inside
 # the DHCP scope's exclusion range (.1-.20), like technitium-secondary's .3.
 #
 # Matched on the MAC set in ansible/hosts/host_vars/hypervisor-01/vars.yml rather than

@@ -7,7 +7,7 @@
 #
 # Deliberately a thin wrapper rather than a module feature: both halves stay
 # independently runnable, which is what you want when one of them fails halfway through
-# a real recovery. See the runbook in docs/backups.md for the full sequence — in
+# a real recovery. See the runbook in docs/operations/backups.md for the full sequence — in
 # particular, boot with docker.service and backrest.service masked before running this.
 #
 # backrest-restore and postgres-restore both come from environment.systemPackages (the

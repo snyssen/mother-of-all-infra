@@ -223,10 +223,12 @@ Now update the secret files to include the new machine's age key:
 just sops-update-keys nix/hosts/${HOSTNAME}/data/secrets.yaml
 ```
 
-If the target needs access to global secrets:
+There are no secrets shared across hosts: each host only reads its own
+`nix/hosts/<host>/data/` files. If the host has several files there (like apps-01's
+one-file-per-stack layout), re-encrypt them all with:
 
 ```sh
-just sops-update-keys nix/data/secrets.yaml
+just sops-update-keys-all
 ```
 
 ### 3.4 Add Secrets Values
@@ -269,7 +271,7 @@ Most LUKS configurations use a **dual-unlock approach**:
 
 If your disko configuration uses a USB keyfile (check for `keyFile` and `usbKeysIds` in the config):
 
-1. **Create the keyfile on your USB device** beforehand using the steps in [Full Disk Encryption - Create The Keyfile](./Full%20Disk%20Encryption.md#create-the-keyfile)
+1. **Create the keyfile on your USB device** beforehand using the steps in [Full Disk Encryption - Create The Keyfile](../disk-encryption.md#create-the-keyfile)
    - Name it something identifiable (e.g., `hypervisor` or `hypervisor.key`)
    - Remember the USB device's UUID (you'll need it in Deployment Part A)
 
@@ -317,7 +319,7 @@ At this point you should have:
 ✅ Flake builds successfully
 ✅ Temporary credentials prepared (root password, LUKS password if needed)
 
-**Next step**: Proceed to [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md)
+**Next step**: Proceed to [Setup New Machine - Deployment](deployment.md)
 
 Before you begin deployment, ensure you know:
 - **Target IP address** or hostname (from DHCP or cloud provider)

@@ -200,7 +200,7 @@ in
   ) bridges;
 
   # Every value carried over unchanged from the legacy vault, the signing and MAS keys
-  # from the role's own vault-encrypted files (`sops-from-vault --file`). They have to
+  # from the role's own vault-encrypted files. They have to
   # be prod's: the signing key *is* the server's identity, the MAS keys sign its tokens,
   # and the appservice tokens are what Synapse and each bridge recognise each other by.
   sops.secrets =

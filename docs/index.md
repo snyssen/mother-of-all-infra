@@ -1,57 +1,61 @@
-# Mother of All Infra Documentation
+# Mother of All Infra
 
-Welcome to the documentation for Mother of All Infra, a personal monorepo for self-hosted infrastructure managed with Nix, Ansible, and Terraform.
+Documentation for a personal monorepo of self-hosted infrastructure. Nix configures every
+host and the services on them; Terraform provisions the cloud machines; Ansible keeps a
+narrow role for imperative work (building and provisioning VM images, the Technitium DNS
+cluster, the bare-metal backup server).
 
-## Documentation Map
+The production apps server is **`apps-01`**, a NixOS VM on the hypervisor
+**`hypervisor-01`**.
 
-### Hypervisor
+## Architecture
 
-Documentation for the self-hosted hypervisor:
+What exists and why.
 
-- **[Plan](hypervisor/plan.md)** — Disk inventory, btrfs RAID1 profiles, USB keyfile boot, network bridge and NFS setup, and NixOS repository architecture overview
-- **[Operations](hypervisor/overview.md)** — Day-to-day operations: VM lifecycle, btrfs scrub/check, disk expansion and replacement, and troubleshooting
-- **[apps VM migration plan](hypervisor/apps-migration-plan.md)** — Architecture, decisions and per-stack record (complete) of moving the Ansible-managed apps server onto a NixOS VM
-- **[apps VM migration — Phase B](hypervisor/apps-migration-phase-b.md)** — The production cutover runbook (complete): preparation, D-day and afterwards
+- **[Network](architecture/network.md)** — LAN addressing, split-horizon DNS, the
+  Technitium cluster and its failover
+- **[Hypervisor](architecture/hypervisor.md)** — hypervisor-01's disks, pools, unattended
+  boot, bridge and NFS, and the VMs it runs
+- **[Secrets](architecture/secrets.md)** — SOPS and age: keys, recipients, where secrets
+  live for Nix hosts and for Ansible
+- **[Repository layout](architecture/repository.md)** — what lives where, the flake's
+  blueprint structure, hosts and modules
 
-### [Backups](backups.md)
+## Operations
 
-Backup and restore procedures for both the legacy (`autorestic`) and new (`Backrest`)
-systems — everyday restores, full disaster recovery, and the worst-case
-"nothing but the raw credentials" path.
+How to run it.
 
-### Nix
+- **[Hypervisor operations](operations/hypervisor.md)** — VM lifecycle, btrfs scrub and
+  checks, adding and replacing disks, troubleshooting
+- **[VM deployment](operations/vm-deployment.md)** — building and provisioning NixOS VM
+  images
+- **[Setting up a new machine](operations/new-machine/index.md)** — installing a NixOS host
+  with nixos-anywhere
+- **[Full disk encryption](operations/disk-encryption.md)** — LUKS with USB keyfile unlock
+- **[Backups](operations/backups.md)** — Backrest on apps-01, restores, disaster recovery,
+  and last-resort access
 
-Infrastructure-as-code configurations for NixOS and Home Manager:
+## Services
 
-- **[Network](nix/network.md)** — Overview of the network setup
-- **[Full Disk Encryption](nix/Full%20Disk%20Encryption.md)** — Setting up and managing full disk encryption on NixOS hosts
+What runs on apps-01.
 
-### Ansible
+- **[Services](services/index.md)** — every stack at a glance
+- **[Monitoring](services/monitoring.md)** — monitoring as code: alerts, silences,
+  dashboards
+- **[Scanner to Paperless](services/scanner-to-paperless.md)** — scanning straight into
+  Paperless
 
-Deployment and orchestration documentation:
+## Modules
 
-#### [Application Stacks](ansible/stacks/README.md)
+Reference for reusable NixOS modules: [libvirtd](modules/libvirtd.md),
+[NFS exports](modules/nfs-exports.md), [printing](modules/printing.md).
 
-Detailed guides for container-based application stacks deployed via Ansible roles:
+## Plans
 
-- **[Alloy](ansible/stacks/alloy.md)** — Grafana Alloy observability stack
-- **[Backbone](ansible/stacks/backbone.md)** — Core backbone services
-- **[Databases](ansible/stacks/databases.md)** — Database services configuration
-- **[Dawarich](ansible/stacks/dawarich.md)** — Location tracking service
-- **[Immich](ansible/stacks/immich.md)** — Self-hosted photo management
-- **[Matrix](ansible/stacks/matrix.md)** — Matrix messaging server deployment
-- **[Minecraft](ansible/stacks/minecraft.md)** — Minecraft server setup
-- **[Monitoring](ansible/stacks/monitoring.md)** — Monitoring and observability stack
-- **[Nextcloud](ansible/stacks/nextcloud.md)** — Nextcloud suite configuration
-- **[ntfy](ansible/stacks/ntfy.md)** — Notification service setup
-- **[Paperless](ansible/stacks/paperless.md)** — Document management system
-- **[Speedtest Tracker](ansible/stacks/speedtest-tracker.md)** — Network speed monitoring
-- **[Streaming](ansible/stacks/streaming.md)** — Media streaming services
-- **[Syncthing](ansible/stacks/syncthing.md)** — File synchronization service
+[Work not carried out yet](plans/index.md), such as CrowdSec AppSec on the ingress
+host.
 
-## Quick Links
+## Archive
 
-- **Repository**: [GitHub - mother-of-all-infra](https://github.com/snyssen/mother-of-all-infra)
-- **Main README**: See the project root for general project information
-- **Ansible README**: [ansible/README.md](../ansible/README.md) for playbook and role details
-- **Dev Guide**: Check `copilot-instructions.md` in `.github/` for developer workflows
+[Obsolete documents](archive/index.md) kept for history, chiefly the record of the
+migration from the Ansible-managed server to apps-01.

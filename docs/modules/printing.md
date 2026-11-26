@@ -63,7 +63,7 @@ Also makes the `paperless-upload` script available in the system `PATH` for manu
 - **Example**: `config.sops.secrets."paperless/api-token".path`
 - **Description**: Path to a file containing the Paperless-ngx API token. The file is read at runtime by the upload script.
 
-This should always be provided using a SOPS secret to avoid storing the token in the Nix store. See [Secrets Management](../secrets-management.md) for details on how to create and reference SOPS secrets.
+This should always be provided using a SOPS secret to avoid storing the token in the Nix store. See [Secrets Management](../architecture/secrets.md) for details on how to create and reference SOPS secrets.
 
 ## Usage Example
 
@@ -121,6 +121,6 @@ The script:
 
 ## Related Documentation
 
-- [Scanner to Paperless](../scanner-to-paperless.md) — end-to-end setup guide
-- [Secrets Management](../secrets-management.md) — how to store and use SOPS secrets
-- [Paperless Stack](../../ansible/stacks/paperless.md) — the server-side Paperless-ngx deployment
+- [Scanner to Paperless](../services/scanner-to-paperless.md) — end-to-end setup guide
+- [Secrets Management](../architecture/secrets.md) — how to store and use SOPS secrets
+- Paperless stack — the server-side Paperless-ngx deployment, `nix/hosts/apps-01/compose/paperless/` (see the [services list](../services/index.md))

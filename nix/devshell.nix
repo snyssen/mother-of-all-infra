@@ -15,7 +15,7 @@ pkgs.mkShell {
     age
     ssh-to-age
     sops
-    yq-go # scripts/sops-from-vault.sh
+    yq-go # scripts/sops-set-stdin.sh
     authelia # scripts/sops-gen-secret.sh (random values and OIDC client secret digests)
     openstackclient
     mcp-grafana # .mcp.json

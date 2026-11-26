@@ -1,5 +1,10 @@
 # apps VM Migration Plan
 
+> [!WARNING]
+> **Obsolete — kept for history.** This describes the migration while it was happening,
+> including infrastructure that no longer exists. Do not follow it; current docs start at
+> the [home page](../index.md).
+
 This document covers the architecture, decisions, and phased task plan for migrating the current bare-metal Ubuntu apps server (managed by Ansible) to a NixOS VM named **`apps`** running under the hypervisor host.
 
 > [!NOTE]
@@ -7,8 +12,8 @@ This document covers the architecture, decisions, and phased task plan for migra
 > **`apps-01`** (`nix/hosts/apps-01/`) on **`hypervisor-01`**, the reinstalled legacy
 > box. This document is kept as the record of the migration; it describes the state of
 > things *during* it, and `apps` and `hypervisor` below are the Phase A test VM and test
-> hypervisor, both since retired. For current operations see [overview.md](overview.md)
-> and [backups.md](../backups.md).
+> hypervisor, both since retired. For current operations see [hypervisor operations](../operations/hypervisor.md)
+> and [backups.md](../operations/backups.md).
 
 ---
 

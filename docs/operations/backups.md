@@ -1,41 +1,38 @@
 # Backups
 
-Two backup systems run in parallel until the production cutover, and it matters which
-one you are looking at:
+Production's apps run on `apps-01`, a NixOS VM, and are backed up by
+[Backrest](https://github.com/garethgeorge/backrest), a restic wrapper with a web UI,
+configured entirely in Nix (`nix/modules/nixos/backrest/` +
+`nix/hosts/apps-01/backrest.nix`). Restores go through commands generated from that same
+config and installed on the host.
 
-| | legacy | new |
-| --- | --- | --- |
-| host | `snyssen.be` (bare-metal Ubuntu) | `apps-01` (NixOS VM; `apps` during Phase A) |
-| tool | [autorestic](https://autorestic.vercel.app/) (restic wrapper) | [Backrest](https://github.com/garethgeorge/backrest) (restic wrapper) |
-| configured by | Ansible — `roles/setup_backups` | Nix — `nix/modules/nixos/backrest/` + `nix/hosts/apps-01/backrest.nix` |
-| credentials in | ansible-vault | sops (`nix/hosts/apps-01/data/<stack>.yaml`) |
-| writes to | `backup-snyssen-be` (on-site), `snyssen-be-autorestic` (B2) | the same two repositories, from the cutover (Phase B step D8) |
-| restores with | Ansible playbooks | generated on-host commands |
-
-Both are restic underneath, so both are readable with the plain `restic` CLI and with
-Backrest's UI, regardless of which one wrote the snapshot. That is what
+It is restic underneath, so every repository is also readable with the plain `restic` CLI
+or with Restic Browser, with no Backrest involved. That is what
 [Last-resort access](#last-resort-access) relies on.
 
-The legacy system is untouched and keeps running until the cutover. Migrating
-production's *data* onto the new system is a separate exercise with its own document —
-see [Phase B](hypervisor/apps-migration-phase-b.md); none of it is needed for ordinary
-backup or restore work and it is deliberately not described here.
+> [!NOTE]
+> The two repositories are the ones autorestic wrote to on the old bare-metal box,
+> `snyssen.be`, until the cutover to `apps-01` on 2026-11-23. Its snapshots (tagged
+> `ar:location:<name>`, host `snyssen.be`) sit alongside Backrest's and are browsed and
+> restored the same way. That box and its Ansible backup tooling no longer exist; the
+> migration itself is recorded in [the archive](../archive/apps-migration-phase-b.md).
 
-The workstation, blackfog, has a third and much smaller setup of its own, for work in
+The workstation, blackfog, has a second and much smaller setup of its own, for work in
 progress: see [Workstation backups](#workstation-backups-blackfog).
 
 ---
 
-## The new system — Backrest on `apps`
+## Backrest on `apps-01`
 
 Backrest runs as a native NixOS systemd service, not a container: it needs broad read
-access across every stack's data regardless of which uid owns it. Unlike the legacy
-setup it is fully declarative — repositories and plans are Nix options rendered into
-Backrest's `config.json` through `sops.templates`, never clicked together in its UI.
+access across every stack's data regardless of which uid owns it. It is fully
+declarative — repositories and plans are Nix options rendered into Backrest's
+`config.json` through `sops.templates`, never clicked together in its UI.
 
 The module is split: `default.nix` holds the options, `service.nix` the service and
 rendered config, `restore.nix` the restore commands, `forget.nix` the bulk-forget
-commands, `scripts/` the shell they run.
+commands, `scripts/` the shell they run, and `paths.nix` the couple of on-disk paths
+(Backrest's data directory and `config.json`) the service and the commands must agree on.
 `nix/hosts/apps-01/backrest.nix` is this host's actual repository and plan configuration.
 
 Reached at `https://backrest.${domain}` behind Authelia, and also directly on port 9898
@@ -50,16 +47,14 @@ genuinely open UI, so the account is declarative rather than clicked in.
 | `backup_snyssen_be` | `rest:http://backup.snyssen.be:8000/` | On-site, the dedicated restic REST server. Every plan writes here; `backrest-restore` reads it. |
 | `snyssen_be_autorestic` | `b2:snyssen-be-autorestic` | Off-site. Every plan except the on-site-only ones writes here too, as `<plan>-offsite`; `backrest-restore-offsite` reads it. |
 
-These are the repositories autorestic wrote to on the legacy box, continued rather than
-replaced. apps-01's files are the same as the legacy box's, so restic finds their data
-already stored: the first backups upload next to nothing, which matters most for B2,
-billed by volume. The whole history stays in one place, and Backrest's UI browses
-autorestic's snapshots as easily as its own.
+The names are historical: these are the repositories autorestic wrote to before the
+cutover, continued rather than replaced, so the whole history stays in one place and
+Backrest's UI browses the pre-cutover snapshots as easily as its own.
 
-**Retention never touches autorestic's snapshots.** A plan's retention only forgets
+**Retention never touches the pre-cutover snapshots.** A plan's retention only forgets
 snapshots tagged with that plan *and* `created-by:apps-01`, which autorestic's
-(`ar:location:*`) are not, so the pre-cutover history stays until it is removed by hand
-with [`backrest-forget`](#forgetting-old-snapshots-by-hand). A repo-level `forgetPolicy`
+(`ar:location:*`) are not, so that history stays until it is removed by hand with
+[`backrest-forget`](#forgetting-old-snapshots-by-hand). A repo-level `forgetPolicy`
 would forget every snapshot in the repo, grouped by tags, so neither repo has one, and
 neither should ever get one.
 
@@ -68,22 +63,17 @@ neither should ever get one.
 bucket's lifecycle rule deletes hidden files 30 days later. An attacker holding the key
 gets 30 days of grace, and space freed by a prune on B2 only comes back 30 days later.
 
-During Phase A, `apps` wrote to its own test repository instead
-(`rest:http://backup.snyssen.be:8000/apps/`), with production's registered read-only.
-That test repository is destroyed after the cutover (Phase B step A2).
-
 ### What gets backed up
 
 Plan boundaries mirror roughly one per stack, which is also the unit a restore is
 selected by. Every plan runs daily at 00:30 into the on-site repository, and its
-`<plan>-offsite` twin at 03:30 into B2. A Backrest plan targets a single repository, so
-two plans per location is how this is done, as autorestic did (one backup per backend).
-Every plan keeps the same depth (daily 14 / weekly 4 / monthly 6 / yearly 1), matching
-the legacy config so behaviour does not silently change at cutover. See
-`nix/hosts/apps-01/backrest.nix` for the current list.
+`<plan>-offsite` twin at 03:30 into B2, so a night's on-site backups get the disks
+first. A Backrest plan targets a single repository, hence two plans per location rather
+than one plan and a copy. Every plan keeps the same depth (daily 14 / weekly 4 /
+monthly 6 / yearly 1). See `nix/hosts/apps-01/backrest.nix` for the current list.
 
-On-site only, as on prod: `movies` and `tv` (~10 TB). Also on-site only, and new: the
-media prod backed up nowhere, `media-extra` (podcasts, books) and `peertube-data`.
+On-site only, for their size: `movies` and `tv` (~10 TB), `media-extra` (podcasts,
+books) and `peertube-data`.
 
 The repositories' own jobs:
 
@@ -91,9 +81,6 @@ The repositories' own jobs:
 | --- | --- | --- |
 | check | weekly, Monday 04:00, reading 10% of the data (all of it in ~10 weeks) | monthly, the 1st at 05:00, reading 2% (B2 bills downloads beyond 3× the stored volume) |
 | prune | weekly, Sunday 04:00, if over 10% of the repo is unused | monthly, the 15th at 05:00, same threshold |
-
-Prod never pruned (autorestic forgot snapshots, which frees nothing on its own) and
-checked weekly, structure only.
 
 Every plan reports each run to its own Gatus push endpoint, `backups_<plan>`: success
 (or nothing new to back up) as up, failure or warnings as down. A plan with no report
@@ -116,7 +103,7 @@ before assuming a gap:
 
 ### The restore commands
 
-Generated from the Nix config and living on `apps` itself, so a VM rebuilt from
+Generated from the Nix config and living on `apps-01` itself, so a VM rebuilt from
 `nixosConfigurations.apps-01` has them with no extra setup. All run as root.
 
 | command | what it does |
@@ -128,7 +115,8 @@ Generated from the Nix config and living on `apps` itself, so a VM rebuilt from
 
 Shared flags: `--list`, `--dry-run`, `--yes`, and `--at` to restore an older state. The
 restic-backed ones additionally take `--check`, `--repo-uri` to read from a different
-copy of the repository, and `--keep-stopped`.
+copy of the repository, `--keep-stopped`, and `--force` to carry on when the capacity
+preflight says the restore will not fit.
 
 Before writing anything, they resolve one snapshot per group, size every entry with a
 real `--dry-run` restore, check the total against free space **per filesystem** (`/` and
@@ -148,7 +136,7 @@ Left stopped on purpose: backrest.service compose-monitoring.service
 Verify the restore, then: systemctl start backrest.service compose-monitoring.service
 ```
 
-### Everyday restores on `apps`
+### Everyday restores on `apps-01`
 
 Most restores are not disasters. In rough order of how often they come up:
 
@@ -190,7 +178,8 @@ selected, so use it with databases from one instance at a time.
 
 Most databases share the central cluster, but some stacks must run their own — Immich
 needs the `vectorchord`/`pgvecto.rs` extensions the central Postgres 18 does not have,
-and Dawarich and Mobilizon will want the same when they migrate.
+and Dawarich needs PostGIS. Each has its own dump directory and its own plan (`immich`,
+`dawarich`).
 
 That stays an implementation detail of those stacks rather than something to keep track
 of: a database name selects its instance, so `postgres-restore immich` reaches the right
@@ -202,6 +191,7 @@ instances fails the build rather than picking one arbitrarily.
 ```sh
 postgres-restore --instances      # which instance serves what
 #   databases    audiomuse authelia lldap matrix … umami
+#   dawarich     dawarich
 #   immich       immich
 ```
 
@@ -305,15 +295,14 @@ backrest-restore --check
 
 Resolves every plan's latest snapshot and verifies it actually contains each configured
 path. Seconds, writes nothing, exits non-zero on a problem. This is the check worth
-running regularly — an untested backup is not a backup. A full rebuild is the fidelity
-test; the [Phase B cutover](hypervisor/apps-migration-phase-b.md) is itself that
-rehearsal.
+running regularly — an untested backup is not a backup. Only a full rebuild (below)
+tests fidelity end to end.
 
 ### Forgetting old snapshots by hand
 
 Backrest's UI forgets one snapshot at a time, and plan retention never reaches
-snapshots another tool made. For clearing out history in bulk, autorestic's in
-particular:
+snapshots another tool made. For clearing out history in bulk, the pre-cutover
+autorestic snapshots in particular:
 
 | command | repositories |
 | --- | --- |
@@ -362,14 +351,24 @@ then hidden for 30 days before it is deleted.
 1. Hold the services: in `nix/hosts/apps-01/configuration.nix`, set both
    `restoreHold.stacks` and `restoreHold.backups` to `true`, and commit. The image is
    built from the committed configuration, so the very first boot is held.
-2. Set `build: true` on `apps-01` in `ansible/hosts/host_vars/hypervisor-01/vars.yml`,
-   then `just hypervisor-build-vm-images hypervisor-01`. This generates a **new** SSH
+2. Set `disk_image.build: true` on `apps-01` in
+   `ansible/hosts/host_vars/hypervisor-01/vars.yml` (it is `false` in normal operation,
+   so routine image builds leave the deployed VM alone), then
+   `just hypervisor-build-vm-images hypervisor-01`. This generates a **new** SSH
    host key, and therefore a new `root_apps_01` age key.
+
+   If the old VM, its disk or its LUKS key still exist on the hypervisor (anything short
+   of losing the whole vmstore pool), stop the VM first
+   (`just hypervisor-vm-destroy apps-01`) and add `-e libvirt_image_build_force=true`.
+   Without it, the build refuses while apps-01 is defined, and once undefined its copy
+   step silently keeps the existing image and key, so the "rebuilt" VM boots the old
+   disk with the old host key.
 3. Add that key to `.sops.yaml` in place of the old one and run
    `just sops-update-keys-all`, then commit. **Not optional**: without it sops-nix fails
    to decrypt and the restic repository password never appears on the host, so nothing
    can be restored.
-4. `just hypervisor-provision-vms hypervisor-01`. Set `build: false` back and commit.
+4. `just hypervisor-provision-vms hypervisor-01`. Then set `disk_image.build: false`
+   back and commit: left `true`, the next image build would overwrite the VM's disk.
 5. Sanity-check, on the VM: `ls /run/secrets/backrest/repos/`, `tailscale status`,
    `ls /mnt/bulk` (which triggers the automount), and `systemctl list-units 'compose-*'`
    (nothing running).
@@ -410,92 +409,6 @@ then hidden for 30 days before it is deleted.
 
 Steps 7 and 8 together are what `apps-restore` does, minus the `compose-*` lines: it
 neither starts nor stops any stack for you.
-
----
-
-## The legacy system — autorestic on `snyssen.be`
-
-Orchestrated with **autorestic**, configured and deployed by:
-
-- playbook: `ansible/playbooks/backup-run.ansible.yml`
-- role: `ansible/roles/setup_backups`
-- generated config template: `ansible/roles/setup_backups/templates/autorestic_config.yaml`
-
-### How autorestic is configured
-
-`setup_backups` deploys:
-
-- `/root/.autorestic.yml` (rendered from the template above)
-- `/root/scripts/autorestic_log_wrapper.sh` (splits logs per location in `/var/log/autorestic`)
-- cron jobs:
-  - every 30 minutes: `autorestic --ci cron --lean`
-  - weekly integrity check: `autorestic --ci check` (Monday at 16:10)
-
-The autorestic config is generated from inventory vars:
-
-- `autorestic__backends` (backend definitions)
-- `autorestic__locations` (what to back up and where)
-
-Those vars are sourced from vault values in `ansible/hosts/group_vars/apps/vars.yml`.
-
-### Retention and hooks
-
-Each location currently uses keep-daily 14, keep-weekly 4, keep-monthly 6, keep-yearly 1.
-
-The template also wires hooks for per-location pre-backup commands, optional backend
-before/after commands, and Uptime Kuma success/failure push monitoring.
-
-> [!NOTE]
-> Pruning is **not** automated — there is a standing `TODO` in the config template.
-> Forgotten snapshots are gone as far as restores are concerned; what is missing is the
-> step that would reclaim their space. Not a data-safety problem, but it does mean the
-> repository is larger than its retention policy implies.
-
-### Backup destinations
-
-Destinations are the autorestic **backends** declared in `autorestic__backends`
-(vault-managed): `backup-snyssen-be` (on-site REST server) and `snyssen-be-autorestic`
-(off-site B2). Not every location goes to both — `movies` and `tv` are on-site only.
-
-Exact credentials and backend env vars are intentionally vault-managed and not
-documented in plain text in this repository.
-
-### Everyday restores on `snyssen.be`
-
-**Files**, from any location and snapshot:
-
-```sh
-ansible-playbook playbooks/backup-restore.ansible.yml \
-  -e '{"backup_backend":"backup-snyssen-be","backup_location":"postgres","backup_snapshot":"<snapshot-id>","backup_restore_directory":"/mnt/tmp"}'
-```
-
-- `backup_location` is an autorestic location (for example `postgres`, `nextcloud`).
-- Omitting `backup_snapshot` restores the latest snapshot.
-- Omitting `backup_restore_directory` restores with `/` as the root.
-
-**PostgreSQL databases**, from the local dump files:
-
-```sh
-ansible-playbook playbooks/backup-restore-databases.ansible.yml
-```
-
-It restores postgres-related databases from local dumps, auto-selects the latest dump
-per database (non-interactive), and fails early with guidance if a local dump is
-missing. Scope it with:
-
-```sh
-ansible-playbook playbooks/backup-restore-databases.ansible.yml -e '{"db_restore_include":["nextcloud"]}'
-ansible-playbook playbooks/backup-restore-databases.ansible.yml -e '{"db_restore_exclude":["recipes"]}'
-```
-
-### Full disaster recovery of `snyssen.be`
-
-1. Re-provision the host and services baseline (Nix/Ansible deployment flow).
-2. Restore backup files with `backup-restore.ansible.yml` for the required locations.
-3. Run `backup-restore-databases.ansible.yml` to restore all PostgreSQL-related DBs.
-4. Start the application stacks and verify service health.
-5. Run backup listing and integrity checks to confirm the backup system itself is
-   working again.
 
 ---
 
@@ -567,14 +480,15 @@ don't go through `EndpointDown`. Instead, `WorkstationBackupStale` fires:
 
 ## Last-resort access
 
-Everything below applies to **both** systems — they are both restic repositories.
+Everything below works on any snapshot in either repository, Backrest's and the
+pre-cutover autorestic ones alike: they are all plain restic.
 
 ### Using the repositories with plain `restic`
 
 Any restic repository is directly usable with the plain `restic` CLI — no Backrest, no
-autorestic, no Ansible. Pull the repository URI and password from wherever they are
-declared (ansible-vault for autorestic's repos; the sops-decrypted
-`nix/hosts/apps-01/data/common.yaml` for Backrest's, under `backrest/repos/`), then:
+Nix. The URIs are in [the table above](#two-repositories-productions-own); the passwords
+(and the B2 key) are in the password manager, and in the sops-encrypted
+`nix/hosts/apps-01/data/common.yaml` under `backrest/repos/<repo>/`. Then:
 
 ```sh
 export RESTIC_REPOSITORY="rest:http://backup.snyssen.be:8000/"   # on-site REST server
@@ -587,7 +501,9 @@ restic restore <snapshot-id> --target /path/to/restore
 
 To restore a subtree somewhere other than its original path, use restic's
 `snapshotID:subfolder` syntax, which makes the subfolder the root of the restore. The
-subfolder may be *deeper* than the snapshot's own root:
+subfolder may be *deeper* than the snapshot's own root. For a snapshot taken before the
+cutover, select it by autorestic's tag and the old host name; note the old box's paths
+(`/mnt/storage/...`), not apps-01's:
 
 ```sh
 restic restore 'latest:/mnt/storage/nextcloud' --target /mnt/bulk/nextcloud \
@@ -604,15 +520,16 @@ restic restore 'latest:/mnt/storage/nextcloud' --target /mnt/bulk/nextcloud \
 > commands already pass this flag; raw `restic` invocations need it themselves.
 
 Snapshots are tagged by whichever tool wrote them, which is how you select between
-them: autorestic stamps `ar:location:<name>` with hostname `snyssen.be`; Backrest
-stamps `plan:<planID>` and `created-by:<instanceID>`.
+them: Backrest stamps `plan:<planID>` and `created-by:<instanceID>`; the pre-cutover
+snapshots carry autorestic's `ar:location:<name>` and hostname `snyssen.be`.
 
 ### Key management: the actual single point of failure
 
 > [!CAUTION]
-> The secrets files under `nix/hosts/apps-01/data/` can only be decrypted by the age keys listed in
-> `.sops.yaml` — in practice the SSH host keys of a couple of workstations. The restic
-> repository passwords live *inside* that file. If those machines are lost together with
+> The secrets files under `nix/hosts/apps-01/data/` can only be decrypted by the age keys
+> listed in `.sops.yaml` — in practice the SSH host keys of a couple of workstations,
+> apps-01's own, and the breakglass key. The restic repository passwords live *inside*
+> `common.yaml` there. If those machines are lost together with
 > everything else, the backups are intact and unreadable.
 >
 > This cannot be fixed with a backup plan (backing up the key into a repository whose
@@ -646,11 +563,9 @@ preferred way to use it is on a NixOS machine, which can use this repository's
 cross-platform otherwise, so it can be installed on more or less any machine and pointed
 at our repositories.
 
-Repository URIs and passwords live in two places today, and this scenario assumes you
-can reach neither: the legacy autorestic repos in the ansible-vault managed
-`ansible/hosts/group_vars/apps/vault.yml`, and `apps`'s own in the sops-managed
-`nix/hosts/apps-01/data/common.yaml`. **That is exactly why the credentials also belong in
-a password manager** — see the key-management warning above. Once connected, select the
+Repository passwords and the B2 key live in the sops-managed
+`nix/hosts/apps-01/data/common.yaml`, and this scenario assumes you cannot decrypt it.
+**That is exactly why the credentials also belong in a password manager** — see the key-management warning above. Once connected, select the
 desired snapshot and browse and download files and directories directly.
 
 > [!IMPORTANT]
@@ -659,7 +574,7 @@ desired snapshot and browse and download files and directories directly.
 > Browser is not always explicit about running operations, as it only shows a small,
 > easy to miss, status message at the bottom of the window (see screenshot), and does
 > not block the UI while the operation is running. **Please be patient!**
-> ![Screenshot of Restic Browser, showing its two-pane interface with snapshots on top and files of the selected snapshot below. At the very bottom of the window, a small message can be seen stating "Restoring 'documents'. Please wait..."](_assets/restic-browser.png)
+> ![Screenshot of Restic Browser, showing its two-pane interface with snapshots on top and files of the selected snapshot below. At the very bottom of the window, a small message can be seen stating "Restoring 'documents'. Please wait..."](../_assets/restic-browser.png)
 
 One of the most important backups for such a scenario is **`paperless-export`**, which
 holds the administrative documents. It is a full daily export produced by Paperless-ngx's

@@ -35,7 +35,7 @@ services:
     volumes:
       - /var/lib/app-data/monitoring/grafana:/var/lib/grafana
       # Datasources and dashboards are provisioned from the repo (grafana/), and
-      # read-only in the UI: edit them here, see docs/nix/monitoring.md.
+      # read-only in the UI: edit them here, see docs/services/monitoring.md.
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana-dashboards:ro
     # Values that are themselves secrets (or could contain arbitrary characters) are

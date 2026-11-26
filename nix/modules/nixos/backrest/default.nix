@@ -163,7 +163,7 @@ let
             Units the *restore* command stops before rewriting this plan's paths and
             restarts afterwards. Not used at backup time — Backrest has its own hooks
             for that. Usually empty: a real disaster recovery runs with everything
-            masked (see the runbook in docs/backups.md), so there is nothing to stop.
+            masked (see the runbook in docs/operations/backups.md), so there is nothing to stop.
             Set it when restoring onto a live host is a realistic thing to do.
           '';
         };

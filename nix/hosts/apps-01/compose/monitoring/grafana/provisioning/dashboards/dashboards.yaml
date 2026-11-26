@@ -1,6 +1,6 @@
 # Dashboards, provisioned from ../../dashboards: one subfolder per Grafana folder, the
 # General folder at the root. Read-only in the UI; to change one, see
-# docs/nix/monitoring.md (`just grafana-dashboards-export`).
+# docs/services/monitoring.md (`just grafana-dashboards-export`).
 apiVersion: 1
 
 providers:

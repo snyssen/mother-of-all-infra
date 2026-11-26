@@ -27,7 +27,7 @@ in
   host_whitelist = usenet.${config.domains.main},
   api_key = ${secret "api_key"}
   nzb_key = ${secret "nzb_key"}
-  # TRaSH Guides layout (ansible/roles/container_streaming/README.md): the *arr apps see
+  # TRaSH Guides layout (https://trash-guides.info/File-and-Folder-Structure/): the *arr apps see
   # the same /data/usenet, so a finished job's category folder is where they look.
   download_dir = /data/usenet/incomplete
   complete_dir = /data/usenet

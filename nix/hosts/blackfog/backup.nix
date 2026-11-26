@@ -14,7 +14,7 @@
 # config at hand is restic-browser (home module restic-dr) plus the repo password, kept
 # in the password manager as well as in sops.
 #
-# See docs/backups.md, "Workstation backups (blackfog)".
+# See docs/operations/backups.md, "Workstation backups (blackfog)".
 let
   user = "snyssen";
   home = config.users.users.${user}.home;

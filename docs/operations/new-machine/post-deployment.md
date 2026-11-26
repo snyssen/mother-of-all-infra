@@ -6,7 +6,7 @@ This phase handles tasks that cannot be automated and must happen after `nixos-a
 
 ## Prerequisites
 
-You must have completed [Setup New Machine - Deployment](./Setup%20New%20Machine%20-%20Deployment.md):
+You must have completed [Setup New Machine - Deployment](deployment.md):
 
 ✅ `nixos-anywhere` completed successfully
 ✅ Target system rebooted
@@ -168,15 +168,16 @@ This ensures your machine's configuration is version-controlled and can be repro
 
 ## Step 6: Document (Optional)
 
-If the new machine requires operational documentation, add it to the repository:
+If the new machine requires operational documentation, add it to the repository, under
+`docs/architecture/` (what it is and why) or `docs/operations/` (how to run it), and list
+it in the `nav:` of `mkdocs.yaml`:
 
 ```sh
-# Add or update documentation
-vim docs/machines/${TARGET_HOSTNAME}.md
+vim docs/operations/${TARGET_HOSTNAME}.md
 # Describe purpose, hardware, special config, etc.
 
-git add docs/machines/${TARGET_HOSTNAME}.md
-git commit -m "Document ${TARGET_HOSTNAME} machine"
+git add docs/operations/${TARGET_HOSTNAME}.md mkdocs.yaml
+git commit -m "docs: document ${TARGET_HOSTNAME}"
 git push
 ```
 
@@ -222,4 +223,4 @@ Your machine is now ready for use. Depending on its purpose:
 - **Server**: Configure services (containers, databases, monitoring)
 - **Hypervisor**: Set up virtual machines
 
-All further configuration changes should be made through the NixOS configuration files (Nix, Home Manager, Ansible) and deployed with `nixos-rebuild` or `deploy-rs`.
+All further configuration changes should be made through the NixOS configuration files (NixOS and Home Manager modules) and deployed with `nh os switch` on the machine itself, or `just nix-remote-install switch <host>` from another one.

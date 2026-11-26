@@ -46,7 +46,7 @@ in
   };
 
   # All four users/hashes/topic names are carried over unchanged from the legacy
-  # Ansible Vault (ntfy__users/ntfy__topics__* in group_vars/apps/vars.yml) rather than
+  # Ansible Vault (the ntfy__users/ntfy__topics__* variables) rather than
   # rotated — this migration's own Phase 0 secrets table marks ntfy rotation as
   # "Optional", and reusing them means every existing subscriber (phone UnifiedPush,
   # Home Assistant's notify platform, the *arr apps' webhook token, the monitoring

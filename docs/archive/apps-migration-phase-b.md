@@ -1,9 +1,14 @@
 # apps VM migration — Phase B (production cutover)
 
+> [!WARNING]
+> **Obsolete — kept for history.** This describes the migration while it was happening,
+> including infrastructure that no longer exists. Do not follow it; current docs start at
+> the [home page](../index.md).
+
 > [!NOTE]
 > **Complete (2026-11-23).** Kept as the record of the cutover. Its procedures for
-> adding and replacing pool disks live on in [overview.md](overview.md), and the
-> disaster-recovery runbook in [backups.md](../backups.md).
+> adding and replacing pool disks live on in [hypervisor operations](../operations/hypervisor.md), and the
+> disaster-recovery runbook in [backups.md](../operations/backups.md).
 
 > [!CAUTION]
 > **Phase B reinstalls the production server.** Its hardware is the target hardware:
@@ -36,7 +41,7 @@ the architecture and per-stack progress):
 | apps VM | `apps` on the test hypervisor, test domains | `apps-01` on `hypervisor-01`, production domains, LAN IP `192.168.1.10` |
 
 Phase B is also the real disaster-recovery rehearsal: `apps-01` boots *held* and is
-restored with the same tools as [the DR runbook](../backups.md#full-disaster-recovery-rebuilding-apps-01-from-scratch).
+restored with the same tools as [the DR runbook](../operations/backups.md#full-disaster-recovery-rebuilding-apps-01-from-scratch).
 
 ### How the storage moves
 
@@ -97,7 +102,7 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
       Grafana line of D7's ntfy check.
 - [x] The Backrest design for after the cutover: production's two repositories, B2
       twins, check and prune policies (`nix/hosts/apps-01/backrest.nix`, described in
-      [the backups doc](../backups.md#two-repositories-productions-own)), with the
+      [the backups doc](../operations/backups.md#two-repositories-productions-own)), with the
       B2 bucket path and credentials from the vault.
 
 ### Backups must be verified, not assumed
@@ -121,7 +126,7 @@ migration (#153/#170) is live. Two things it left open have to be closed before 
 ### Credentials must exist outside this infrastructure
 
 This is the step that is *actually* irreversible if skipped — see
-[key management](../backups.md#key-management-the-actual-single-point-of-failure).
+[key management](../operations/backups.md#key-management-the-actual-single-point-of-failure).
 
 - [x] The breakglass age key is in the password manager **and** is a recipient on every
       secrets file (`git grep -c age1mpnhsfpava0 -- 'nix/hosts/*/data/*'`).
@@ -159,7 +164,7 @@ with paths and owners translated. It is built from the same generator as
 `backrest-restore` (`nix/modules/nixos/backrest/restore.nix`), so it shares that
 command's safety behaviour: snapshot resolution per group, a real `--dry-run` size
 preflight, a confirmation prompt, and `--at`. See
-[the backups doc](../backups.md#the-restore-commands) for the shared flags.
+[the backups doc](../operations/backups.md#the-restore-commands) for the shared flags.
 
 **`legacy-import`** (on `hypervisor-01`, `nix/hosts/hypervisor-01/legacy-import.nix`)
 copies the `/mnt/storage` groups off the two legacy data disks, which it mounts
@@ -290,7 +295,7 @@ just sops-update nix/hosts/apps-01/data/common.yaml          # key: tailscale/au
 ### P4. hypervisor-01's keys
 
 The SSH host key decides the host's sops identity, so it is made now and installed with
-nixos-anywhere (see [Setup New Machine — Pre-Deployment](../nix/Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
+nixos-anywhere (see [Setup New Machine — Pre-Deployment](../operations/new-machine/pre-deployment.md)
 for the background). Keep it out of `/tmp`, which may not survive until D-day:
 
 ```sh
@@ -338,7 +343,7 @@ read -s > ~/phase-b/hypervisor-01-luks-password.txt
 
 ### P5. Rehearse adding a disk (test hypervisor)
 
-Proves the [corrected procedure](overview.md#adding-a-disk-to-an-existing-pool) on a pool
+Proves the [corrected procedure](../operations/hypervisor.md#adding-a-disk-to-an-existing-pool) on a pool
 whose data doesn't matter, with the spare 2 TB WD20EZRZ still in the test box. If it
 isn't there any more, use any spare disk.
 
@@ -385,7 +390,7 @@ both tools.
 4. Once it is back: `ssh root@hypervisor ls /dev/mapper/` shows `crypt-bulk-2`, and
    `btrfs filesystem show /mnt/bulk` shows three devices. **This is the check that
    matters**: the disk was unlocked at boot from its partition label.
-5. Take it out again ([Removing a Disk](overview.md#removing-a-disk-from-a-pool); it is
+5. Take it out again ([Removing a Disk](../operations/hypervisor.md#removing-a-disk-from-a-pool); it is
    the last index, so nothing needs relabelling):
 
    ```sh
@@ -661,7 +666,7 @@ backup.snyssen.be:
      --chown /etc/ssh/ssh_host_ed25519_key.pub 0:0
    ```
 
-   See [Setup New Machine — Deployment](../nix/Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
+   See [Setup New Machine — Deployment](../operations/new-machine/deployment.md)
    for what each part does and what to expect.
 6. It reboots into hypervisor-01. Commit the generated
    `nix/hosts/hypervisor-01/hardware-configuration.nix`.
@@ -890,7 +895,7 @@ On apps-01, in `screen` (`ssh apps-01`, `sudo -i`, `screen -S restore`).
 ### D8. Release the backups
 
 apps-01's Backrest is already configured for production's two repositories (see
-[the backups doc](../backups.md#two-repositories-productions-own)): every plan into the
+[the backups doc](../operations/backups.md#two-repositories-productions-own)): every plan into the
 on-site repository, and its `-offsite` twin into B2, with check and prune policies on
 both. Until now the hold kept it from starting, so the first thing it writes into those
 repositories is apps-01's restored state. Autorestic's snapshots stay as they are;

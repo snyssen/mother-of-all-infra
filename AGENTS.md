@@ -12,34 +12,33 @@ Terraform. Single maintainer.
 - `nix/` — NixOS + Home Manager modules and per-host configs. Flake uses `numtide/blueprint` with `prefix = "nix/"`, so directory structure IS the flake output structure:
   - `nix/hosts/<host>/` — one dir per machine (`configuration.nix`, `hardware-configuration.nix`, `users/<user>.nix`, `data/secrets.yaml` for SOPS). Blueprint turns each into a `nixosConfigurations.<host>` (or `darwinConfigurations`) output.
   - `nix/modules/nixos/` and `nix/modules/home/` — reusable NixOS and Home Manager modules, one concern per file (e.g. `docker.nix`, `sops.nix`, `stylix.nix`).
-  - `nix/hosts/apps-01/compose/<stack>/` — the Nix successor to the `container_*` Ansible roles: a `default.nix` plus a `docker-compose.yaml` per stack, each realised as a `compose-<stack>.service` unit.
+  - `nix/hosts/apps-01/compose/<stack>/` — the apps server's Docker Compose stacks: a `default.nix` plus a `docker-compose.yaml` per stack, each realised as a `compose-<stack>.service` unit.
   - `nix/devshell.nix` — the repo's dev shell.
-- `ansible/` — service deployment (legacy; see the note below):
-  - `playbooks/` — named `<context>-<action>.ansible.yml` (e.g. `stacks-deploy.ansible.yml`, `server-reboot.ansible.yml`).
-  - `roles/` — roles prefixed `container_<name>` each deploy one Docker Compose stack (`tasks/main.yml` templates a `docker-compose.yml` and manages that stack's volumes, config and secrets).
-  - `hosts/` — inventories: `dev.yml` (default), `staging` equivalent, `prod.yml`, `test.yml`, plus `group_vars`/`host_vars`.
+- `ansible/` — the imperative leftovers (see the Ansible section below):
+  - `playbooks/` — `libvirt-image-build`, `libvirt-provision`, `technitium-setup`, `backup-server-setup` (`<context>-<action>.ansible.yml`).
+  - `roles/` — the roles those use; Galaxy roles (names with a dot) are installed by `just setup` and gitignored.
+  - `hosts/prod.yml` — the only inventory (`hypervisor`, `technitium`, `backup`), with `group_vars`/`host_vars`; secrets in `host_vars/<host>/secrets.sops.yaml`.
 - `terraform/` — provider IaC: `gandi/`, `ovh/` (each with `bootstrap/` + `infra/`).
 - `hypervisor/` — libvirt VMs driven via `virsh` over SSH to a hypervisor host, `hypervisor-01` (the reinstalled former prod box).
 - `scripts/` — helper scripts invoked by `just` recipes and devshell hooks.
-- `docs/` — mkdocs site; preview with `just run-docs`.
+- `docs/` — mkdocs site, organised as `architecture/`, `operations/`, `services/`, `modules/`, `plans/` (not yet carried out; once done, a plan is deleted or moved to `archive/`) and `archive/` (obsolete, kept for history), with an explicit `nav:` in `mkdocs.yaml`; preview with `just run-docs`.
 
 Why it is shaped this way: the Nix flake and `devshell.nix` give a reproducible dev
 environment, and `just` keeps automation out of ad-hoc shell scripts. Terraform provisions
 the cloud machines and their IAM (an OVH VPS, a Gandi OpenStack instance); Nix then
 configures those hosts, alongside the bare-metal and libvirt ones.
 
-**Ansible is legacy, but it is still what runs current production.** Service deployment is
-migrating to Nix, which will configure both the hosts and the apps on them — see
-`nix/hosts/apps-01/` and `docs/hypervisor/apps-migration-plan.md`. Ansible keeps a permanent
-but narrow role for imperative work that is awkward in Nix, chiefly building and
-provisioning the libvirt VM images. So treat `ansible/roles/container_*` as live-but-
-legacy: authoritative for prod today, while new service work generally belongs on the Nix
-side. When the two disagree, ask which one the task means.
+**Nix configures the hosts and the apps on them**; production runs on the NixOS VM
+`apps-01` since the cutover from the Ansible-managed box (history in `docs/archive/`).
+Ansible keeps a permanent but narrow role for imperative work that is awkward in Nix:
+building and provisioning the libvirt VM images, configuring the Technitium DNS cluster,
+and the bare-metal backup server until it moves to NixOS (issue #52). New service work
+belongs on the Nix side.
 
 ## Dev environment
 
 - Enter the devshell with `nix develop`, or install direnv (`.envrc` auto-loads the flake). Devshell packages: `nixfmt`, `nixd`, `just`, `pre-commit`, `ansible`, `ansible-lint`, `terraform`, `sops`, `age`, `ssh-to-age`, `openstackclient`.
-- First run: `just setup` → installs pre-commit hooks, Ansible Galaxy collections/roles (`ansible/requirements.yml`), and prompts for the Ansible Vault passphrase (written to `.envrc.private`, never committed).
+- First run: `just setup` → installs pre-commit hooks and Ansible Galaxy collections/roles (`ansible/requirements.yml`).
 - Grafana MCP server: `.mcp.json` registers `grafana` (read-only, `-disable-write`) against `GRAFANA_URL` from `.envrc`. It launches through `direnv exec`, so it needs direnv even when the devshell is entered another way. The only per-user step is `just grafana-mcp-setup`, which stores a Grafana service account token (Viewer role is enough) in `.envrc.private`.
 - List all tasks: `just --list`. The root `justfile` imports `ansible/ansible.just`, `nix/nix.just`, `terraform/terraform.just`, `hypervisor/hypervisor.just`.
 - On every devshell load, `scripts/git-main-safety-check.sh warn` runs (throttled fetch) to warn if the tree is behind/dirty.
@@ -57,13 +56,12 @@ side. When the two disagree, ask which one the task means.
 
 ## Ansible (read this before running anything)
 
-- **Legacy, but it is what runs production today.** Prefer Nix for new service work. Reach for Ansible when touching the current prod apps server, or the imperative playbooks that outlive the migration (`libvirt-image-build`, `libvirt-provision`).
-- Run a playbook via the task runner: `just ansible-playbook <playbook> [flags]`, e.g. `just ansible-playbook stacks-deploy -i hosts/prod.yml -e '{"stacks_deploy_list":["nextcloud"]}'`. Aliases: `just apb`, `just apl` (list playbooks), `just au` (update collections/roles).
+- **Narrow scope:** only the four playbooks listed under Layout. Do not add service deployment back here; that belongs in Nix. See `ansible/README.md`.
+- Run a playbook via the task runner: `just ansible-playbook <playbook> [flags]`, e.g. `just ansible-playbook technitium-setup --check --diff`. The libvirt playbooks have their own recipes (`just hypervisor-build-vm-images <host>`, `just hypervisor-provision-vms <host>`). Aliases: `just apb`, `just apl` (list playbooks), `just au` (update collections/roles).
 - **Safety gate:** `just ansible-playbook` first runs `scripts/git-main-safety-check.sh enforce`, which fails unless you are on `main`, have a clean tree, and are in sync with upstream. Bypass once with `ALLOW_UNSAFE_ANSIBLE_RUN=1` (discouraged).
-- The `ansible-playbook` and `ansible-setup`/`ansible-update` recipes run with `working-directory: 'ansible'`. If invoking `ansible-playbook` manually, `cd ansible/` first (or pass `-i ansible/hosts/<env>.yml` and playbook paths relative to `ansible/`).
-- Inventories in `ansible/hosts/`: `dev` (default), `staging`, `prod`. Pass with `-i hosts/<env>.yml`.
-- Destructive playbooks exist (`server-wipe`, `server-shutdown`, `server-reboot`): never run against prod without explicit instruction.
-- Adding a new stack: create `ansible/roles/container_<name>/` with `tasks/main.yml` + `templates/docker-compose.yml`, then wire it into `stacks-deploy.ansible.yml` / `stacks-manage.ansible.yml`.
+- The `ansible-playbook` and `ansible-setup`/`ansible-update` recipes run with `working-directory: 'ansible'`. If invoking `ansible-playbook` manually, `cd ansible/` first so `ansible.cfg` (inventory, vars plugins) applies.
+- The single inventory is `ansible/hosts/prod.yml`, the default in `ansible.cfg`. Every host in it is live.
+- Secrets: `community.sops` decrypts `host_vars/<host>/secrets.sops.yaml` at inventory load with your age key; the keys are the variable names. Recipients are per host in `.sops.yaml`. There is no Ansible Vault.
 
 ## Terraform
 
@@ -77,9 +75,8 @@ side. When the two disagree, ask which one the task means.
 
 ## Secrets
 
-- SOPS (age): per-host key groups are defined in `.sops.yaml`; encrypted secrets live under `nix/hosts/<host>/data/*`. Edit with `just sops-update <file>`; rotate keys with `just sops-update-keys <file>`.
-- Ansible Vault passphrase lives in `.envrc.private` (gitignored). Never print or commit it, or any SOPS/age key material.
-- pre-commit hook `ansible-vault-encrypted` checks `vault.yml` stays encrypted.
+- SOPS (age) is the only secrets system: per-host key groups are defined in `.sops.yaml`; encrypted secrets live under `nix/hosts/<host>/data/*` (apps-01: one file per stack) and `ansible/hosts/host_vars/<host>/secrets.sops.yaml`. Edit with `just sops-update <file>`; add values without printing them with `just sops-gen-secret` / `just sops-set-stdin`; rotate keys with `just sops-update-keys <file>` or `just sops-update-keys-all`.
+- Private values (e.g. the Grafana MCP token) live in `.envrc.private` (gitignored). Never print or commit them, or any SOPS/age key material.
 
 ## Conventions & safety
 
@@ -87,9 +84,8 @@ side. When the two disagree, ask which one the task means.
 - Conventional commits are enforced by pre-commit (`conventional-pre-commit` on `commit-msg`), so write proposed messages in that form.
 - Dependency bumps are owned by Renovate (`renovate.json5`: nix enabled, lockfile maintenance, semantic commits, grouped). Do not hand-edit version pins that Renovate manages without explicit approval. Note `minimumReleaseAge` is 3 days, so Renovate deliberately lags fresh releases — call this out when a security fix is involved.
 - Treat `nix/hosts/*`, `terraform/*`, and `ansible/hosts/prod.yml` as live infrastructure: require explicit owner approval before editing or deploying.
-- Never run destructive Ansible playbooks (`server-wipe`, `server-shutdown`, `server-reboot`), remote commands against production, or anything that alters live infrastructure, without explicit instruction.
-- Do not make unilateral changes to live container stacks managed by `container_` roles — they own volumes and configs as well as the compose file.
-- Never commit secrets, private keys or SOPS key material, and never print age keys or vault passphrases in diffs, messages or PRs.
+- Never run playbooks, remote commands against production, or anything that alters live infrastructure, without explicit instruction.
+- Never commit secrets, private keys or SOPS key material, and never print age keys or secret values in diffs, messages or PRs.
 - Do not send repository contents to external services beyond what the task plainly requires.
 
 ## Working in this repo

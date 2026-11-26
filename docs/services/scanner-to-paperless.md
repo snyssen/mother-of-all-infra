@@ -245,9 +245,9 @@ Potential improvements not yet implemented:
 
 ## Related Documentation
 
-- [Paperless Stack](../ansible/stacks/paperless.md)
-- [SOPS Secrets Management](secrets-management.md)
-- [NixOS Printing Module](../nix/modules/printing.md)
+- Paperless stack: `nix/hosts/apps-01/compose/paperless/` (see the [services list](index.md))
+- [SOPS Secrets Management](../architecture/secrets.md)
+- [NixOS Printing Module](../modules/printing.md)
 
 ## Module Options Reference
 

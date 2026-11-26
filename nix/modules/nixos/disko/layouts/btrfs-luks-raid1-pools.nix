@@ -39,7 +39,7 @@ let
   # A pool of one disk is formatted `single` (metadata `dup`), since btrfs RAID1 needs
   # two devices. It is meant to be temporary: grow it with `btrfs device add` and
   # convert it with `btrfs balance start -dconvert=raid1 -mconvert=raid1` (see
-  # docs/hypervisor/overview.md, "Adding a Disk to an Existing Pool"). Disko only formats
+  # docs/operations/hypervisor.md, "Adding a Disk to an Existing Pool"). Disko only formats
   # at install time, so the profile chosen here never touches an existing pool.
   #
   # Boot finds each LUKS container by GPT partition label, which disko derives from the

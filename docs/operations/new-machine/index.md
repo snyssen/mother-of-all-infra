@@ -35,7 +35,7 @@ Admin Host              Target Machine              Admin Host
 
 **What**: Prepare everything needed for deployment
 **Where**: Admin host only (target not yet needed)
-**See**: [Setup New Machine - Pre-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
+**See**: [Setup New Machine - Pre-Deployment](pre-deployment.md)
 
 Includes:
 - Create NixOS configuration files
@@ -50,7 +50,7 @@ Includes:
 
 **What**: Boot target and run automated NixOS installation
 **Where**: Target machine + admin host
-**See**: [Setup New Machine - Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
+**See**: [Setup New Machine - Deployment](deployment.md)
 
 Includes:
 - Boot target to NixOS minimal ISO
@@ -65,7 +65,7 @@ Includes:
 
 **What**: Verify system and complete optional setup
 **Where**: Target machine (and optional cache server)
-**See**: [Setup New Machine - Post-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Post-Deployment.md)
+**See**: [Setup New Machine - Post-Deployment](post-deployment.md)
 
 Includes:
 - Verify system identity and networking
@@ -88,9 +88,9 @@ Before starting, ensure:
 
 ## Quick Start
 
-1. **Start here**: [Setup New Machine - Pre-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Pre-Deployment.md)
-2. **Then**: [Setup New Machine - Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Deployment.md)
-3. **Finally**: [Setup New Machine - Post-Deployment](Setup%20New%20Machine/Setup%20New%20Machine%20-%20Post-Deployment.md)
+1. **Start here**: [Setup New Machine - Pre-Deployment](pre-deployment.md)
+2. **Then**: [Setup New Machine - Deployment](deployment.md)
+3. **Finally**: [Setup New Machine - Post-Deployment](post-deployment.md)
 
 ## Key Concepts
 
@@ -124,6 +124,6 @@ Derived from SSH keys; used for encrypting/decrypting secrets with SOPS. The tar
 
 ## Related Documentation
 
-- [Full Disk Encryption](./Full%20Disk%20Encryption.md): For LUKS configuration and keyfiles
-- [Secrets Management with SOPS](./secrets-management.md): How secrets are encrypted/decrypted
+- [Full Disk Encryption](../disk-encryption.md): For LUKS configuration and keyfiles
+- [Secrets Management with SOPS](../../architecture/secrets.md): How secrets are encrypted/decrypted
 - [NixOS Anywhere Documentation](https://nix-community.github.io/nixos-anywhere/)
