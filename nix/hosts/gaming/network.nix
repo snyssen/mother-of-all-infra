@@ -1,9 +1,11 @@
 # Configuration copied from hypervisor-01, see hypervisor-01 for explanations
 { ... }:
 let
-  # Physical NIC to enslave to the bridge.
-  # Override this value if the actual interface name differs.
-  lanNic = "enp2s0";
+  # Physical NIC to enslave to the bridge, named by its MAC address rather than the
+  # kernel's PCIe-bus-derived `enpXs0` name, which shifts when an M.2 disk is added
+  # or removed (see hypervisor-01). A changed `macAddress` only applies at next boot.
+  lanNic = "lan0";
+  macAddress = "2c:f0:5d:95:34:b6"; # `ip -br link`
 in
 {
   networking = {
@@ -36,6 +38,10 @@ in
       # The physical NIC is enslaved to br0; it must not hold an IP itself.
       "${lanNic}".useDHCP = false;
     };
+  };
+  systemd.network.links."10-${lanNic}" = {
+    matchConfig.PermanentMACAddress = macAddress;
+    linkConfig.Name = lanNic;
   };
   systemd.network.networks."10-${lanNic}" = {
     matchConfig.Name = lanNic;
