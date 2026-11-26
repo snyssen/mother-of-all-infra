@@ -124,8 +124,9 @@ against them.
    This is global: during the trial, AppSec matches on apps-01's own two CrowdSec
    routes are still blocked in-band but no longer lead to bans. Acceptable for a few
    weeks; it ends in Phase 3.
-4. **Never ban ingress itself.** Add ingress's tailnet address, `100.120.249.84`, to
-   `crowdsec/self-whitelist.yaml`. Every AppSec call from ingress reaches apps-01's
+4. **Never ban ingress itself.** Already covered: `crowdsec/self-whitelist.yaml`
+   whitelists the whole tailnet (`100.64.0.0/10`), ingress's `100.120.249.84` included.
+   Every AppSec call from ingress reaches apps-01's
    Traefik from that address, at the full public request rate, which is exactly what
    `http-crawl-non_statics` bans. Public visitors are unaffected: apps-01 trusts
    ingress's forwarded headers, so they are logged and banned under their own address.
