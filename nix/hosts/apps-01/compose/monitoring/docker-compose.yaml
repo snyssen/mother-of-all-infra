@@ -130,7 +130,7 @@ services:
   # each is a file sops renders, mounted where the config expects it. No UI is routed:
   # alerts and silences are handled from Grafana, through its `alertmanager` datasource.
   alertmanager:
-    image: quay.io/prometheus/alertmanager:v0.35.0@sha256:5f6e66c01bd610aef6dd671642a52eee775fd3a89bd8788ebada33efaf373d10
+    image: quay.io/prometheus/alertmanager:v0.35.1@sha256:03d4e362b9948eee910802ddac55f9175b320862a2de1fdef5206c3213875a09
     restart: unless-stopped
     networks:
       - monitoring
