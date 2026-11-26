@@ -37,6 +37,7 @@
   rclone.gui.enable = true;
 
   shell.zsh.zellij.enable = true;
+  shell.zsh.zellij.autoStart = true;
 
   programs.btop.enable = true;
   programs.bat.enable = true;
