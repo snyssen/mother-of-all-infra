@@ -45,6 +45,12 @@ in
     "compose-stacks/crowdsec/ingress_bouncer/api_key" = {
       sopsFile = ../../data/crowdsec.yaml;
     };
+    # The `ingress` host's Traefik plugin, calling the AppSec listener on 7423 (see the
+    # crowdsec-appsec-ingress route below). Same value as that host's
+    # `crowdsec/appsec_key` (nix/hosts/ingress/data/secrets.yaml).
+    "compose-stacks/crowdsec/ingress_waf_bouncer/api_key" = {
+      sopsFile = ../../data/crowdsec.yaml;
+    };
     "compose-stacks/crowdsec/webui/lapi_user" = {
       sopsFile = ../../data/crowdsec.yaml;
     };
@@ -80,6 +86,9 @@ in
     BOUNCER_KEY_firewall=${config.sops.placeholder."compose-stacks/crowdsec/firewall_bouncer/api_key"}
     BOUNCER_KEY_traefik=${config.sops.placeholder."compose-stacks/crowdsec/waf_bouncer/api_key"}
     BOUNCER_KEY_ingress=${config.sops.placeholder."compose-stacks/crowdsec/ingress_bouncer/api_key"}
+    BOUNCER_KEY_ingress_waf=${
+      config.sops.placeholder."compose-stacks/crowdsec/ingress_waf_bouncer/api_key"
+    }
     CROWDSEC_LAPI_PASSWORD=${config.sops.placeholder."compose-stacks/crowdsec/webui/lapi_password"}
     CROWDSEC_WEBUI_CONFIG_PATH=${config.sops.templates."crowdsec-web-ui-configuration.yml".path}
     CROWDSEC_OIDC_CLIENT_SECRET_PATH=${
@@ -129,6 +138,22 @@ in
             - authelia
           tls:
             certResolver: le_main
+        # ingress's Traefik sends every public request here for an AppSec check
+        # (crowdsec-waf in nix/hosts/ingress/traefik-configuration.nix). Never
+        # crowdsec-waf on this router: that would send the check itself to be checked.
+        crowdsec-appsec-ingress:
+          rule: "Host(`appsec.${config.domains.main}`)"
+          entryPoints:
+            - websecure
+          service: crowdsec-appsec-ingress
+          middlewares:
+            - ingress-only
+          tls:
+            certResolver: le_main
+          # One line per public request otherwise: these calls are not traffic, and in
+          # the access log they would also feed CrowdSec's own HTTP scenarios.
+          observability:
+            accessLogs: false
       services:
         crowdsec:
           loadBalancer:
@@ -138,7 +163,17 @@ in
           loadBalancer:
             servers:
               - url: "http://crowdsec-web-ui:3000"
+        crowdsec-appsec-ingress:
+          loadBalancer:
+            servers:
+              - url: "http://crowdsec:7423"
       middlewares:
+        # Only ingress calls the AppSec listener on 7423. The bouncer key is still
+        # required on top; this keeps the endpoint closed to the rest of the tailnet.
+        ingress-only:
+          ipAllowList:
+            sourceRange:
+              - "100.120.249.84/32"
         crowdsec-waf:
           plugin:
             crowdsec-bouncer:

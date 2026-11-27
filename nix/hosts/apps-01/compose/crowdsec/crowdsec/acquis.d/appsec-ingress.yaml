@@ -1,0 +1,15 @@
+# AppSec (WAF) listener for the `ingress` host's Traefik, separate from appsec.yaml's
+# (apps-01's own crowdsec-waf) so its mode can change on its own. Ingress reaches it over
+# the tailnet through apps-01's Traefik, on the crowdsec-appsec-ingress route in
+# ../../default.nix. See docs/plans/crowdsec-appsec.md.
+#
+# Observe-only while the trial runs: when several configs are listed, the last one sets
+# default_remediation, and `allow` means a matching rule is logged (and alerts) but the
+# request goes through. Phase 3 of the plan drops snyssen/appsec-observe to enforce.
+source: appsec
+listen_addr: 0.0.0.0:7423
+appsec_configs:
+  - crowdsecurity/appsec-default
+  - snyssen/appsec-observe
+labels:
+  type: appsec

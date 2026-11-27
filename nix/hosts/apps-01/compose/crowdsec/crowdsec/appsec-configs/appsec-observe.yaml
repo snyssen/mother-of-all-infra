@@ -1,0 +1,5 @@
+# Listed last on ingress's AppSec listener (acquis.d/appsec-ingress.yaml) to turn it
+# observe-only: rules still match and raise alerts, but the request is allowed through.
+# Carries no rules of its own; crowdsecurity/appsec-default, listed before it, does.
+name: snyssen/appsec-observe
+default_remediation: allow

@@ -10,6 +10,11 @@ services:
       - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d:ro
       - ./crowdsec/self-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/self-whitelist.yaml:ro
       - ./crowdsec/binary-cache-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/binary-cache-whitelist.yaml:ro
+      # Ingress AppSec trial (docs/plans/crowdsec-appsec.md): the observe-only config
+      # used by acquis.d/appsec-ingress.yaml, and the simulation that keeps AppSec
+      # matches from turning into bans meanwhile.
+      - ./crowdsec/appsec-configs/appsec-observe.yaml:/etc/crowdsec/appsec-configs/appsec-observe.yaml:ro
+      - ./crowdsec/simulation.yaml:/etc/crowdsec/simulation.yaml:ro
       # Only the declared static config is mounted read-only — the enable-symlinks for
       # collections/parsers installed via COLLECTIONS below land in the container's own
       # writable layer, reinstalled fresh (idempotently) on every start, not a
@@ -23,12 +28,13 @@ services:
     environment:
       # Registers each as a valid bouncer API key with the LAPI at startup — one per
       # bouncer identity (this host's own nftables bouncer, the Traefik plugin's
-      # own bouncer instance, and the `ingress` host's nftables bouncer), matching the
-      # legacy setup's approach of one key per bouncer rather than sharing one across
-      # bouncer types.
+      # own bouncer instance, the `ingress` host's nftables bouncer, and its Traefik
+      # plugin in AppSec mode), matching the legacy setup's approach of one key per
+      # bouncer rather than sharing one across bouncer types.
       - BOUNCER_KEY_firewall
       - BOUNCER_KEY_traefik
       - BOUNCER_KEY_ingress
+      - BOUNCER_KEY_ingress_waf
       # crowdsecurity/linux brings sshd + whitelist-good-actors; crowdsecurity/traefik
       # brings base-http-scenarios + http-cve. The app collections each need a
       # matching acquis.d entry whose `type` label equals the parser's program name.

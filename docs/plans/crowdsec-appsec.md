@@ -1,8 +1,8 @@
 # CrowdSec AppSec on ingress — plan
 
-Status: **Phase 0 done (2026-11-27), Phase 1 next.** Before Phase 1: resize ingress to
-V-R2 and deploy finer Traefik histogram buckets (see the baseline notes). Nothing from
-Phase 1 on has been applied.
+Status: **Phase 0 done (2026-11-27); ingress resized to V-R2 the same day. Phase 1
+written, not deployed.** Deploy the finer Traefik histogram buckets before Phase 1 (see
+the baseline notes).
 
 ## Goal and decisions already made
 
@@ -228,11 +228,10 @@ http:
      crowdsecMode = "appsec";
      crowdsecAppsecEnabled = true;
      crowdsecAppsecScheme = "https";
-     crowdsecAppsecHost = "appsec.snyssen.be:443";
+     crowdsecAppsecHost = "appsec.snyssen.be";
      crowdsecAppsecPath = "/";
-     # The AppSec key defaults to the LAPI key; given as a file so it stays out of the
-     # store. The plugin accepts a path for either.
-     crowdsecLapiKeyFile = config.sops.secrets."crowdsec/appsec_key".path;
+     # Given as a file so it stays out of the store.
+     crowdsecAppsecKeyFile = config.sops.secrets."crowdsec/appsec_key".path;
      crowdsecAppsecBodyLimit = 1048576; # see Phase 0
      crowdsecAppsecUnreadableBodyBlock = false;
      # Fail open during the trial; decided in Phase 3.
@@ -241,8 +240,8 @@ http:
    };
    ```
 
-   Check against the pinned plugin's README that `crowdsecMode = "appsec"` does not
-   still require LAPI scheme/host settings.
+   Checked against the pinned plugin (v1.7.1): `appsec` mode skips the LAPI key
+   requirement, and `crowdsecAppsecKeyFile` exists.
 4. **Attach it to the public routers.** In the `lib.mapAttrs` that builds routers from
    `proxiedWebServices`, add `middlewares = [ "crowdsec-waf" ]`, except for a small
    `wafExempt` list. Start with:
@@ -340,9 +339,13 @@ For each alert, classify it:
 
 ## Open checks (resolve during Phase 1)
 
-- Combining `appsec-default` with an `allow`-only config on one listener behaves as
-  documented ("the last declared one takes precedence").
-- In `appsec` mode the plugin needs nothing beyond the AppSec settings.
-- Traefik on apps-01 supports per-router `observability.accessLogs`.
-- Traefik on ingress loads a local plugin through a symlink into the store.
-- `appsec.snyssen.be` resolves to apps-01 from ingress.
+- [ ] Combining `appsec-default` with an `allow`-only config on one listener behaves as
+      documented ("the last declared one takes precedence"). Only visible after deploy.
+- [x] In `appsec` mode the plugin needs nothing beyond the AppSec settings (plugin
+      source, v1.7.1).
+- [x] Traefik on apps-01 supports per-router `observability.accessLogs` (v3.7.19).
+- [ ] Traefik on ingress loads a local plugin through a symlink into the store. Only
+      visible after deploy.
+- [x] `appsec.snyssen.be` resolves to apps-01 from ingress: the split-horizon wildcard
+      `*.snyssen.be` answers `100.114.242.89` to tailnet clients
+      (`ansible/hosts/group_vars/technitium/vars.yml`).
