@@ -7,7 +7,7 @@
 # they can follow the hardware (the test VM cannot fit prod's 8G per server).
 services:
   minecraft:
-    image: itzg/minecraft-server:2026.11.0@sha256:8d5080d8dcd0a2629c2e4f248678373a337a40537ad6ef2857c7dbcda6e3eadd
+    image: itzg/minecraft-server:2026.11.1@sha256:0634ff76eee896c7e9760a35117d24fad394857d10bc8c1d9bc7f7ff7deef3c2
     restart: unless-stopped
     networks:
       - internal
@@ -46,7 +46,7 @@ services:
     mem_limit: ${MC_MAIN_MEM_LIMIT}
 
   mc-usw:
-    image: itzg/minecraft-server:2026.11.0@sha256:8d5080d8dcd0a2629c2e4f248678373a337a40537ad6ef2857c7dbcda6e3eadd
+    image: itzg/minecraft-server:2026.11.1@sha256:0634ff76eee896c7e9760a35117d24fad394857d10bc8c1d9bc7f7ff7deef3c2
     restart: unless-stopped
     networks:
       - internal
