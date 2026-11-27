@@ -29,15 +29,17 @@ Put CrowdSec's AppSec (the WAF: CVE virtual patches plus generic rules) in front
 
 ### Prerequisites
 
-- [ ] ingress's Traefik metrics deployed (`traefik.metrics` + `grafana-alloy.traefikMetrics`):
+- [x] ingress's Traefik metrics deployed (`traefik.metrics` + `grafana-alloy.traefikMetrics`):
       `traefik_router_requests_total{instance="ingress"}` returns data.
-- [ ] Loki on Traefik's network deployed on apps-01, so ingress's logs (including
+- [x] Loki on Traefik's network deployed on apps-01, so ingress's logs (including
       `/var/log/traefik/access.log` via `varlogs`) reach Loki:
       `{host="ingress"}` returns data.
-- [ ] Measure the tailnet path ingress → apps-01 once, on ingress:
-      `tailscale ping -c 20 apps-01`. Record the median RTT and whether it says
-      `via DERP(...)` or a direct `via <ip>:<port>`. **A DERP-relayed path is a blocker:**
+- [x] Measure the tailnet path ingress → apps-01 once, on ingress:
+      `tailscale ping --until-direct=false -c 20 apps-01` (without `--until-direct=false`
+      it stops at the first direct pong; `-c` is only an upper bound). Record the median
+      RTT and whether it says `via DERP(...)` or a direct `via <ip>:<port>`. **A DERP-relayed path is a blocker:**
       every public request would pay a relayed round trip. Fix the direct path first.
+      2026-11-27: direct over IPv6 on all 20 pings, median 15 ms (15–16 ms).
 
 ### What to record
 
@@ -58,7 +60,7 @@ against them.
 
 | | B1 avg / p99 / max | B2 | B3 | B4 avg / peak | B6 | B8 |
 |---|---|---|---|---|---|---|
-| Baseline | | | | | | |
+| Baseline | | | | | | 15 ms, direct |
 | Phase 2 | | | | | | |
 
 ### Decisions the baseline feeds
