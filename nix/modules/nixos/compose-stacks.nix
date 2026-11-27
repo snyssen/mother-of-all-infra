@@ -80,6 +80,47 @@ in
   };
 
   config = lib.mkIf (cfg.stacks != { }) {
+    # Fail the build when a compose file points at a relative path (`./…`, `../…`) that
+    # is not in the stack's store copy. Nix never reads those paths itself, so without
+    # this a missing file, typically one not yet `git add`ed (flakes copy only tracked
+    # files), only shows up on the host: Docker tries to create the bind-mount source
+    # in the read-only store and the stack does not start. Paths containing `$` are
+    # left alone, since they are interpolated at runtime.
+    system.checks = lib.mapAttrsToList (
+      name: stack:
+      pkgs.runCommand "compose-${name}-paths-check"
+        {
+          nativeBuildInputs = [ pkgs.yq-go ];
+          composeFile = "${stack.composeFile}";
+          stackDir = dirOf "${stack.composeFile}";
+        }
+        ''
+          # A separate step, so a yq failure (bad YAML) fails the build too.
+          yq -r '
+            (.services[]?.volumes[]? | select(tag == "!!str") | split(":")[0]),
+            (.services[]?.volumes[]? | select(tag == "!!map" and .type == "bind") | .source),
+            (.services[]?.env_file | select(tag == "!!str")),
+            (.services[]?.env_file[]? | select(tag == "!!str")),
+            (.services[]?.env_file[]? | select(tag == "!!map") | .path),
+            (.configs[]?.file, .secrets[]?.file | select(. != null))
+          ' "$composeFile" > sources
+          missing=0
+          while IFS= read -r src; do
+            case "$src" in
+              ./* | ../*) ;;
+              *) continue ;;
+            esac
+            case "$src" in *'$'*) continue ;; esac
+            if [ ! -e "$stackDir/$src" ]; then
+              echo "compose stack ${name}: $src is referenced in docker-compose.yaml but missing from the stack's store copy (new file not git-added?)" >&2
+              missing=1
+            fi
+          done < sources
+          [ "$missing" = 0 ]
+          touch "$out"
+        ''
+    ) cfg.stacks;
+
     systemd.services = lib.mapAttrs' (
       name: stack:
       let
