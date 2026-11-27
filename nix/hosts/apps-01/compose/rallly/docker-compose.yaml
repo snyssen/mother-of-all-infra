@@ -4,7 +4,7 @@
 # Stateless container: polls, users and sessions all live in its `rallly` database.
 services:
   rallly:
-    image: lukevella/rallly:4.17.1@sha256:2c35b8ec567a403207b4681f037be967f1efd04f06f75d9801841f25b7504e45
+    image: lukevella/rallly:4.17.2@sha256:e43d8f750728ba500f512c4f3ae2c26d66c2666e68447659825a8ed2618f7ced
     restart: unless-stopped
     networks:
       - db
