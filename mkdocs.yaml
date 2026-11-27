@@ -62,6 +62,7 @@ nav:
   - Plans:
       - plans/index.md
       - CrowdSec AppSec on ingress: plans/crowdsec-appsec.md
+      - Rootless containers: plans/rootless-containers.md
   - Archive:
       - archive/index.md
       - apps migration plan: archive/apps-migration-plan.md
