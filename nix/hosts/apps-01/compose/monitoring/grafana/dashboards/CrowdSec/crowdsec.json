@@ -1125,7 +1125,8 @@
               }
             ]
           },
-          "mappings": []
+          "mappings": [],
+          "noValue": "over 2 days"
         },
         "overrides": []
       },
@@ -1149,7 +1150,7 @@
             "type": "prometheus",
             "uid": "Lxg23YOVk"
           },
-          "expr": "time() - max(cs_capi_last_pull_timestamp)",
+          "expr": "time() - (max(max_over_time(cs_capi_last_pull_timestamp[2d])) > 0)",
           "refId": "A",
           "editorMode": "code",
           "instant": true,
