@@ -19,6 +19,7 @@ pkgs.mkShell {
     authelia # scripts/sops-gen-secret.sh (random values and OIDC client secret digests)
     openstackclient
     mcp-grafana # .mcp.json
+    gh # GitHub issues and PRs
   ];
 
   # Add environment variables
