@@ -26,17 +26,6 @@ in
     "compose-stacks/crowdsec/firewall_bouncer/api_key" = {
       sopsFile = ../../data/crowdsec.yaml;
     };
-    # A separate bouncer identity for the Traefik plugin (see the WAF scope note
-    # below) — each bouncer gets its own key, matching the legacy setup's approach.
-    # Also consumed directly (as a raw file, not a placeholder) by reverse-proxy's
-    # Traefik container — see crowdsecLapiKeyFile in the dynamicConfig fragment below
-    # for why: a dynamicConfig fragment's string content is written via
-    # pkgs.writeText, not rendered through sops.templates, so a placeholder embedded
-    # in it would never actually get substituted (the same class of bug already
-    # caught once this session for authelia-configuration.yml).
-    "compose-stacks/crowdsec/waf_bouncer/api_key" = {
-      sopsFile = ../../data/crowdsec.yaml;
-    };
     # The `ingress` host's firewall bouncer key: the same value as that host's own
     # `crowdsec-firewall-bouncer/api_key` (nix/hosts/ingress/data/secrets.yaml),
     # registered here so the LAPI accepts it. Legacy prod registered it outside the
@@ -84,7 +73,6 @@ in
 
   sops.templates."compose-crowdsec.env".content = ''
     BOUNCER_KEY_firewall=${config.sops.placeholder."compose-stacks/crowdsec/firewall_bouncer/api_key"}
-    BOUNCER_KEY_traefik=${config.sops.placeholder."compose-stacks/crowdsec/waf_bouncer/api_key"}
     BOUNCER_KEY_ingress=${config.sops.placeholder."compose-stacks/crowdsec/ingress_bouncer/api_key"}
     BOUNCER_KEY_ingress_waf=${
       config.sops.placeholder."compose-stacks/crowdsec/ingress_waf_bouncer/api_key"
@@ -105,11 +93,11 @@ in
     mode = "0400";
   };
 
-  # crowdsec-waf is scoped to this stack's own two routes only — see the WAF scope
-  # decision in the plan this was built from. Extending it to other stacks' routers
-  # (reverse-proxy/auth/monitoring) is a deliberate, separate follow-up: Traefik has
-  # no way to apply a middleware to every router on an entrypoint declaratively, so
-  # doing that here would mean editing every other stack's fragment too.
+  # No AppSec on apps-01's own routes: the WAF sits on ingress, in front of the public
+  # routes only (docs/plans/crowdsec-appsec.md), so LAN and tailnet access never
+  # depends on it. apps-01 used to run it on these two routes as a test; removed
+  # 2026-11-27, since neither is public and it put the remote firewall bouncers' LAPI
+  # polling behind a fail-closed AppSec check.
   #
   # crowdsec (LAPI) is reachable by any tailnet host's firewall bouncer, gated by the
   # tailnet-whitelist middleware already defined in monitoring's own fragment — same
@@ -124,7 +112,6 @@ in
             - websecure
           service: crowdsec
           middlewares:
-            - crowdsec-waf
             - tailnet-whitelist
           tls:
             certResolver: le_main
@@ -134,13 +121,11 @@ in
             - websecure
           service: crowdsec-ui
           middlewares:
-            - crowdsec-waf
             - authelia
           tls:
             certResolver: le_main
         # ingress's Traefik sends every public request here for an AppSec check
-        # (crowdsec-waf in nix/hosts/ingress/traefik-configuration.nix). Never
-        # crowdsec-waf on this router: that would send the check itself to be checked.
+        # (crowdsec-waf in nix/hosts/ingress/traefik-configuration.nix).
         crowdsec-appsec-ingress:
           rule: "Host(`appsec.${config.domains.main}`)"
           entryPoints:
@@ -174,21 +159,6 @@ in
           ipAllowList:
             sourceRange:
               - "100.120.249.84/32"
-        crowdsec-waf:
-          plugin:
-            crowdsec-bouncer:
-              enabled: true
-              crowdsecMode: live
-              crowdsecLapiHost: "crowdsec:8080"
-              # File, not crowdsecLapiKey inline — see the comment on this secret
-              # above for why. Bind-mounted directly into the Traefik container by
-              # reverse-proxy/docker-compose.yaml at this fixed path.
-              crowdsecLapiKeyFile: "/run/secrets/crowdsec_waf_bouncer_key"
-              # WAF: forward each request to the AppSec listener declared in
-              # crowdsec/acquis.d/appsec.yaml. The plugin reuses the LAPI key above
-              # when no AppSec key is given, and fails closed if AppSec is unreachable.
-              crowdsecAppsecEnabled: true
-              crowdsecAppsecHost: "crowdsec:7422"
   '';
 
   compose-stacks.stacks.crowdsec = {
@@ -245,8 +215,8 @@ in
   # virtual patches reach this instance. The entrypoint already updates the hub on
   # every start (see the hub volume in docker-compose.yaml), but the container can run
   # for weeks between starts. SIGHUP reloads crowdsec in place (it is PID 1 via the
-  # entrypoint's exec) rather than restarting it, which would briefly fail-close every
-  # crowdsec-waf route.
+  # entrypoint's exec) rather than restarting it, which would briefly cut off the LAPI
+  # and ingress's AppSec checks.
   systemd.services.crowdsec-hub-upgrade = {
     description = "Update and upgrade crowdsec hub content";
     after = [ "compose-crowdsec.service" ];

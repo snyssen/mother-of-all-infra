@@ -252,9 +252,9 @@
   # one: compose stacks start as soon as network-online.target is reached, which on a
   # cold boot is ~36s before tailscaled finishes connecting, and until then every
   # container lookup black-holes. It cost us Traefik's CrowdSec plugin (its startup
-  # download timed out, which disables *all* plugins for the life of the process —
-  # see the localPlugins note in compose/reverse-proxy/docker-compose.yaml) and
-  # crowdsec itself, which exited fatally on "loki is not ready".
+  # download timed out, which disables *all* plugins for the life of the process;
+  # the plugin has since been removed from apps-01) and crowdsec itself, which exited
+  # fatally on "loki is not ready".
   #
   # Safe as a full replacement rather than a fallback for containers specifically:
   # these answer both public names and the internal zones, and the one thing they

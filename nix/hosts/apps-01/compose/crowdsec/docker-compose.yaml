@@ -27,12 +27,11 @@ services:
       - /var/lib/app-data/crowdsec/hub:/etc/crowdsec/hub
     environment:
       # Registers each as a valid bouncer API key with the LAPI at startup — one per
-      # bouncer identity (this host's own nftables bouncer, the Traefik plugin's
-      # own bouncer instance, the `ingress` host's nftables bouncer, and its Traefik
-      # plugin in AppSec mode), matching the legacy setup's approach of one key per
-      # bouncer rather than sharing one across bouncer types.
+      # bouncer identity (this host's own nftables bouncer, the `ingress` host's
+      # nftables bouncer, and its Traefik plugin in AppSec mode), matching the legacy
+      # setup's approach of one key per bouncer rather than sharing one across
+      # bouncer types.
       - BOUNCER_KEY_firewall
-      - BOUNCER_KEY_traefik
       - BOUNCER_KEY_ingress
       - BOUNCER_KEY_ingress_waf
       # crowdsecurity/linux brings sshd + whitelist-good-actors; crowdsecurity/traefik

@@ -1,5 +1,5 @@
-# AppSec (WAF) listener for the `ingress` host's Traefik, separate from appsec.yaml's
-# (apps-01's own crowdsec-waf) so its mode can change on its own. Ingress reaches it over
+# AppSec (WAF) listener for the `ingress` host's Traefik, the only one on this host
+# (apps-01's own listener on 7422 was removed 2026-11-27). Ingress reaches it over
 # the tailnet through apps-01's Traefik, on the crowdsec-appsec-ingress route in
 # ../../default.nix. See docs/plans/crowdsec-appsec.md.
 #

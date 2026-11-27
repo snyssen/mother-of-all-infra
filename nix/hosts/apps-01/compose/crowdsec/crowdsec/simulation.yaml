@@ -1,8 +1,6 @@
 # Ingress AppSec trial (docs/plans/crowdsec-appsec.md): AppSec matches must not turn
-# into bans while ingress's listener only observes. The in-band matches themselves are
-# unaffected: they still raise alerts, and on apps-01's own listener (port 7422, the
-# crowdsec and crowdsec-ui routes) they are still blocked in-band. Only the bans these
-# scenarios would add are simulated, and that is global, apps-01's listener included.
+# into bans while ingress's listener only observes. The matches themselves still raise
+# alerts; only the bans these scenarios would add are simulated.
 # Remove the exclusions (or this whole file and its mount) in Phase 3.
 simulation: off
 exclusions:

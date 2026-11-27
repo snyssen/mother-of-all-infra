@@ -1,7 +1,6 @@
 {
   lib,
   config,
-  inputs,
   pkgs,
   ...
 }:
@@ -91,16 +90,6 @@ in
         PORKBUN_SECRET_API_KEY=${
           config.sops.placeholder."compose-stacks/reverse-proxy/acme/porkbun_secret_api_key"
         }
-        # Declared by the crowdsec stack, consumed here as a raw file path — see its
-        # default.nix for why this needs to be a file mount rather than a placeholder.
-        CROWDSEC_WAF_BOUNCER_KEY_PATH=${
-          config.sops.secrets."compose-stacks/crowdsec/waf_bouncer/api_key".path
-        }
-        # Not a secret — a plain store path, routed through this template only because
-        # the compose file reads it via EnvironmentFile and this is the only such file
-        # the stack has. Pinned in flake.nix; see the localPlugins note in the compose
-        # file for why Traefik reads the plugin off disk instead of fetching it.
-        CROWDSEC_BOUNCER_PLUGIN_SRC=${inputs.crowdsec-bouncer-traefik-plugin}
       '';
     };
 
@@ -143,10 +132,6 @@ in
     compose-stacks.stacks.reverse-proxy = {
       restartTriggers = [
         ../../data/reverse-proxy.yaml
-        # Traefik's CrowdSec plugin reads the WAF bouncer key, which lives in the
-        # crowdsec stack's file — a dependency by path rather than by placeholder,
-        # so it is easy to miss.
-        ../../data/crowdsec.yaml
         config.sops.templates."compose-reverse-proxy.env".content
       ];
       inherit composeFile;

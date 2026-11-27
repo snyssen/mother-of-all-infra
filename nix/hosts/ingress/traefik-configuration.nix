@@ -81,8 +81,12 @@ in
     restartUnits = [ "traefik.service" ];
   };
   # Plugin sources from the store, pinned in flake.nix, rather than downloaded at
-  # startup: a failed download disables every plugin for the life of the process (see
-  # the localPlugins note in apps-01's compose/reverse-proxy/docker-compose.yaml).
+  # startup. The remote `experimental.plugins` form calls plugins.traefik.io on every
+  # start (it revalidates even a cached archive), and one failed call disables *all*
+  # plugins for the life of the process: every router using one then fails as
+  # "invalid middleware type or middleware does not exist". That happened for real on
+  # apps-01 (its own plugin, since removed), when a cold boot's DNS was not up yet
+  # and the 10s download timed out.
   #
   # Every parent directory is declared owned by traefik: left implicit, tmpfiles
   # creates them owned by root inside traefik's data dir, then refuses to traverse them

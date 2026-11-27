@@ -67,7 +67,7 @@ in
     NTFY_TEMPLATES_PATH=${templates}
   '';
 
-  # No Authelia/crowdsec-waf gating — ntfy enforces its own per-topic auth (see
+  # No Authelia gating — ntfy enforces its own per-topic auth (see
   # NTFY_AUTH_* above), matching the legacy setup which had no `authelia@docker`
   # middleware on this router either.
   reverseProxy.dynamicConfig.ntfy = ''

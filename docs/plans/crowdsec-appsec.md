@@ -24,8 +24,9 @@ Put CrowdSec's AppSec (the WAF: CVE virtual patches plus generic rules) in front
 - **Observe before blocking.** A dedicated AppSec listener for ingress starts in
   allow-only mode, with the AppSec scenarios simulated, so nothing is blocked or banned
   until the data says it is safe.
-- **apps-01's own `crowdsec-waf`** (on `crowdsec` and `crowdsec-ui`) is unchanged by
-  this plan.
+- **apps-01's own `crowdsec-waf`** (on `crowdsec` and `crowdsec-ui`, listener 7422) was
+  removed on 2026-11-27, once Phase 1 was running: neither route is public, and it put
+  the remote firewall bouncers' LAPI polling behind a fail-closed AppSec check.
 
 ## Phase 0 — baseline (now, at least 14 days)
 
