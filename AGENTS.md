@@ -47,7 +47,7 @@ belongs on the Nix side.
 ## Nix
 
 - Build a host: `just nix-build <host>` → `nh os build -H <host>`. To apply a config to the machine you are on, `nh os switch`.
-- Push to the S3 binary cache: `just nix-build-cache <host>` (or `just nix-build-cache-sign <host> [keyFile]` with a signing key).
+- Push to the S3 binary cache: `just nix-build-cache <host>` (or `just nix-build-cache-sign <host> [keyFile]` with a signing key). Credentials: `just nix-cache-setup` (sets `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in `.envrc.private`).
 - Remote install/switch: `just nix-remote-install <build|switch|boot|test> <host> [ip]` → `nh os <action> -H <host> --target-host=root@<ip>` (needs Tailscale DNS + root SSH). `ip` defaults to the host name.
 - Validate the whole flake: `just nix-check` → `nix flake check`. CI is self-hosted **argunix** (<https://codeberg.org/tfc/argunix>, running at `argunix.snyssen.be`), which evaluates `nixosConfigurations` directly; `flake.nix` prunes `nixos-*`/`darwin-*`/`system-*` closure-duplicate checks to reduce its eval fan-out. `.github/workflows/nix.yml` only checks flake *inputs*, so Renovate has a passing status to automerge against. The CI setup is in flux — confirm against `flake.nix` and `.github/workflows/` rather than trusting this paragraph.
 - `pkgs.unstable` is exposed everywhere via an overlay (defined in `flake.nix`); use it for packages that need nixpkgs-unstable.
@@ -65,7 +65,7 @@ belongs on the Nix side.
 
 ## Terraform
 
-- State backend (Backblaze S3): `just terraform-state-backend-setup` (sets `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` into `.envrc.private` via `scripts/set-private-var.sh`).
+- State backend (Backblaze S3): `just terraform-state-backend-setup` (sets `TF_STATE_AWS_ACCESS_KEY_ID`/`TF_STATE_AWS_SECRET_ACCESS_KEY` in `.envrc.private` via `scripts/set-private-var.sh`). Plain `AWS_*` belong to the binary cache, so run Terraform through `just terraform <stack> <args>` (alias `tf`, e.g. `just tf gandi/infra plan`), which maps the `TF_STATE_*` pair onto `AWS_*` for that process only. A bare `terraform` would use the cache's keys against the state bucket.
 - OpenStack for Gandi: `just terraform-openstack-setup` (sets `OS_USERNAME`/`OS_PROJECT_NAME`/`OS_PASSWORD`). Gandi OpenStack vars are also exported from `.envrc`.
 
 ## Hypervisor

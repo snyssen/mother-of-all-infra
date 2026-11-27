@@ -153,6 +153,20 @@ in
             # Per-router series too, not just per entrypoint and service: one router per
             # proxied hostname, so this is what shows which public routes get traffic.
             addRoutersLabels = true;
+            # Finer than the default 0.1/0.3/1.2/5 s, which cannot show a change of a few
+            # tens of ms (e.g. the latency CrowdSec AppSec adds on ingress).
+            buckets = [
+              0.005
+              0.01
+              0.025
+              0.05
+              0.1
+              0.25
+              0.5
+              1
+              2.5
+              5
+            ];
           };
           accesslog = {
             filePath = "/var/log/traefik/access.log";

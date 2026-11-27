@@ -8,6 +8,11 @@ alias nbcs := nix-build-cache-sign
 nix-build host=hostname:
   nh os build -H {{host}}
 
+# Setup credentials for pushing to the S3 binary cache (s3.snyssen.be): stored as AWS_*, which nix copy reads
+nix-cache-setup:
+  scripts/set-private-var.sh AWS_ACCESS_KEY_ID
+  scripts/set-private-var.sh AWS_SECRET_ACCESS_KEY
+
 # Build NixOS configuration and push result to the S3 binary cache
 nix-build-cache host=hostname:
   nh os build -H {{host}}

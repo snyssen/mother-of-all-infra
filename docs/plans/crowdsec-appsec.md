@@ -1,7 +1,8 @@
 # CrowdSec AppSec on ingress — plan
 
-Status: **not started.** Phase 0 (collect a baseline) runs from the deploy of ingress's
-Traefik metrics. Nothing below has been applied.
+Status: **Phase 0 done (2026-11-27), Phase 1 next.** Before Phase 1: resize ingress to
+V-R2 and deploy finer Traefik histogram buckets (see the baseline notes). Nothing from
+Phase 1 on has been applied.
 
 ## Goal and decisions already made
 
@@ -60,8 +61,35 @@ against them.
 
 | | B1 avg / p99 / max | B2 | B3 | B4 avg / peak | B6 | B8 |
 |---|---|---|---|---|---|---|
-| Baseline | | | | | | 15 ms, direct |
+| Baseline | 11 % / 28 % / 91 % | 131 MiB (of 948) | 144 MiB | 1.44 / 11.2 req/s | 517 | 15 ms, direct |
 | Phase 2 | | | | | | |
+
+Baseline taken 2026-11-27 over 13 days (2026-11-14 → 11-27), not 14; about 6 h of data
+are missing around 2026-11-23. Notes:
+
+- **B2 fails the go/no-go** (< 300 MiB). The typical daily low is 390–450 MiB; the two
+  lows (2026-11-15 19:10 and 11-20 18:05 UTC, each a single 5-minute sample) have no
+  visible cause in ingress's journal. Decision: resize ingress to V-R2 (2 GiB) first.
+- **B4/B5:** `matrix` (0.66 req/s, 46 %) and `social` (0.47 req/s, 33 %) are nearly all
+  the traffic, and nearly all the bodies: POST/PUT 0.63/s on `matrix` (federation) and
+  0.34/s on `social` (ActivityPub inbox, ~2.7 KiB each). Every other router is under
+  0.01 req/s. Request bodies over the window: `social` 1.0 GiB, `immich` 274 MiB,
+  `matrix` 155 MiB.
+- **B7 is not usable as recorded.** Traefik's default histogram buckets (0.1, 0.3, 1.2,
+  5 s) cannot show a ~20 ms change; finer buckets are needed before a latency baseline
+  means anything. `matrix`'s p95 is ≥ 5 s because of client `/sync` long-polls.
+
+Decided 2026-11-27: resize to V-R2 and add finer buckets (`metrics.prometheus.buckets` in
+`nix/modules/nixos/traefik.nix`), then go straight to Phase 1 **without a second
+baseline** — getting the WAF in front of the public routes outweighs clean before/after
+numbers. Consequences:
+
+- B2 after the resize is only seen in Phase 2, with the plugin already loaded. Watch it
+  closely the first days.
+- B7 has no real "before". The fine-bucket data from between the bucket deploy and the
+  Phase 1 deploy is all there is (so leave a few hours between them if convenient). In
+  Phase 2, the exempted federation routes, which never go through AppSec, give a rough
+  comparison for the covered ones.
 
 ### Decisions the baseline feeds
 
@@ -222,6 +250,12 @@ http:
      ``PathPrefix(`/_matrix/federation`) || PathPrefix(`/_matrix/key`)`` without the
      middleware. Server-to-server traffic from many sources; a false positive there
      silently breaks federation. The client API stays covered.
+   - **ActivityPub inbox** (decided 2026-11-27): same treatment for `social` (Sharkey),
+     a second router for ``Path(`/inbox`) || PathRegexp(`^/users/[^/]+/inbox$`)``
+     without the middleware. Same reasoning as Matrix: server-to-server, and a false
+     positive silently breaks federation. It is also a third of all ingress traffic and
+     most of its request bodies (see B4/B5), so this roughly halves AppSec's load. Cost:
+     the inbox is not inspected. The rest of `social` (web UI, API, media) stays covered.
    - Nothing else exempt yet. Jellyfin, dynmap (`mc-dynmap`) and `argunix` (GitHub
      webhooks carry commit messages and diffs) are watched in Phase 2, not exempted
      blind.
