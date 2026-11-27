@@ -368,6 +368,57 @@ tests:
                 disk or cable.
               dashboard_uid: disk-health
 
+  # not_after is a Unix timestamp and the test clock starts at 0: 20 days left warns,
+  # 6 days left also goes critical, 90 days left stays quiet. Not before `for` is up.
+  - interval: 1m
+    input_series:
+      - series: 'traefik_tls_certs_not_after{instance="ingress", cn="a.example.org", sans="a.example.org", serial="1"}'
+        values: "1728000x30"
+      - series: 'traefik_tls_certs_not_after{instance="traefik:8080", cn="b.example.org", sans="b.example.org", serial="2"}'
+        values: "518400x30"
+      - series: 'traefik_tls_certs_not_after{instance="ingress", cn="c.example.org", sans="c.example.org", serial="3"}'
+        values: "7776000x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CertificateExpiring
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: CertificateExpiring
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              priority: default
+              instance: ingress
+              cn: a.example.org
+            exp_annotations:
+              summary: "TLS certificate a.example.org on ingress expires in 20 days"
+              description: >-
+                Traefik has not managed to renew it. Look for "Unable to obtain ACME
+                certificate" in that Traefik's logs; a 401 from the DNS provider means its
+                API key (Dynu) was disabled or changed.
+          - exp_labels:
+              severity: warning
+              priority: default
+              instance: traefik:8080
+              cn: b.example.org
+            exp_annotations:
+              summary: "TLS certificate b.example.org on traefik:8080 expires in 6 days"
+              description: >-
+                Traefik has not managed to renew it. Look for "Unable to obtain ACME
+                certificate" in that Traefik's logs; a 401 from the DNS provider means its
+                API key (Dynu) was disabled or changed.
+          - exp_labels:
+              severity: critical
+              priority: high
+              instance: traefik:8080
+              cn: b.example.org
+            exp_annotations:
+              summary: "TLS certificate b.example.org on traefik:8080 expires in 6 days"
+              description: >-
+                Traefik has not managed to renew it. Look for "Unable to obtain ACME
+                certificate" in that Traefik's logs; a 401 from the DNS provider means its
+                API key (Dynu) was disabled or changed.
+
   - interval: 1m
     alert_rule_test:
       - eval_time: 1m

@@ -401,6 +401,33 @@ groups:
         annotations:
           summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
 
+  # TLS certificates held by Traefik, on apps-01 (instance traefik:8080) and ingress.
+  # Both issue through Let's Encrypt's DNS challenge at Dynu, so a disabled or rotated
+  # Dynu API key stops every issuance and renewal without anything else breaking: that
+  # went unnoticed for weeks in November 2026. Traefik renews 30 days before expiry, so
+  # under 21 days left means renewals have been failing for over a week.
+  - name: certificates
+    rules:
+      - alert: CertificateExpiring
+        expr: min by (instance, cn) ((traefik_tls_certs_not_after - time()) / 86400) < 21
+        for: 15m
+        labels:
+          severity: warning
+          priority: default
+        annotations: &certificate_expiring_annotations
+          summary: "TLS certificate {{ $labels.cn }} on {{ $labels.instance }} expires in {{ $value | printf \"%.0f\" }} days"
+          description: >-
+            Traefik has not managed to renew it. Look for "Unable to obtain ACME
+            certificate" in that Traefik's logs; a 401 from the DNS provider means its
+            API key (Dynu) was disabled or changed.
+      - alert: CertificateExpiring
+        expr: min by (instance, cn) ((traefik_tls_certs_not_after - time()) / 86400) < 7
+        for: 15m
+        labels:
+          severity: critical
+          priority: high
+        annotations: *certificate_expiring_annotations
+
   - name: meta
     rules:
       # Dead man's switch: always firing, routed to healthchecks.io, which alerts when the
