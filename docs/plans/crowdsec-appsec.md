@@ -1,8 +1,9 @@
 # CrowdSec AppSec on ingress — plan
 
-Status: **Phase 0 done (2026-11-27); ingress resized to V-R2 the same day. Phase 1
-written, not deployed.** Deploy the finer Traefik histogram buckets before Phase 1 (see
-the baseline notes).
+Status: **Phase 1 running since 2026-11-27 13:50** (observe only; Phase 0 and the
+ingress resize to V-R2 done the same day). The first AppSec checks only got through once
+apps-01 could issue the `appsec.snyssen.be` certificate: its Dynu API key had been
+disabled, and re-enabling it fixed ACME.
 
 ## Goal and decisions already made
 
@@ -344,8 +345,14 @@ For each alert, classify it:
 - [x] In `appsec` mode the plugin needs nothing beyond the AppSec settings (plugin
       source, v1.7.1).
 - [x] Traefik on apps-01 supports per-router `observability.accessLogs` (v3.7.19).
-- [ ] Traefik on ingress loads a local plugin through a symlink into the store. Only
-      visible after deploy.
+- [x] Traefik on ingress loads a local plugin through a symlink into the store
+      ("Plugins loaded.", 2026-11-27 13:06). First deploy (2026-11-27 12:20) failed: tmpfiles created
+      the link's parents owned by root inside traefik's data dir, refused the "unsafe
+      path transition", and never created the link. Traefik disabled the plugin and
+      dropped every router using `crowdsec-waf`, so all public sites 404ed until the
+      rollback. Fixed by declaring the parents owned by traefik. Lesson: a plugin that
+      fails to load takes down every router that uses it, not just the WAF. Deploy
+      plugin changes on ingress with `test` first.
 - [x] `appsec.snyssen.be` resolves to apps-01 from ingress: the split-horizon wildcard
       `*.snyssen.be` answers `100.114.242.89` to tailnet clients
       (`ansible/hosts/group_vars/technitium/vars.yml`).

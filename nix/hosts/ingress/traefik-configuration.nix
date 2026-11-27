@@ -83,9 +83,24 @@ in
   # Plugin sources from the store, pinned in flake.nix, rather than downloaded at
   # startup: a failed download disables every plugin for the life of the process (see
   # the localPlugins note in apps-01's compose/reverse-proxy/docker-compose.yaml).
-  systemd.tmpfiles.rules = [
-    "L+ ${config.services.traefik.dataDir}/plugins-local/src/${crowdsecPluginModule} - - - - ${inputs.crowdsec-bouncer-traefik-plugin}"
-  ];
+  #
+  # Every parent directory is declared owned by traefik: left implicit, tmpfiles
+  # creates them owned by root inside traefik's data dir, then refuses to traverse them
+  # ("unsafe path transition") and never creates the link. Traefik then disables all
+  # plugins and drops every router that uses one: every public site 404s.
+  systemd.tmpfiles.rules =
+    let
+      base = "${config.services.traefik.dataDir}/plugins-local";
+      parents = lib.init (lib.splitString "/" "src/${crowdsecPluginModule}");
+      parentDirs = lib.imap1 (i: _: "${base}/${lib.concatStringsSep "/" (lib.take i parents)}") parents;
+    in
+    map (dir: "d ${dir} 0755 traefik traefik - -") ([ base ] ++ parentDirs)
+    ++ [
+      "L+ ${base}/src/${crowdsecPluginModule} - - - - ${inputs.crowdsec-bouncer-traefik-plugin}"
+    ];
+  # Plugins load only at startup, and the link lives outside the unit: restart Traefik
+  # whenever the plugin's store path changes (first deploy, version bump).
+  systemd.services.traefik.restartTriggers = [ inputs.crowdsec-bouncer-traefik-plugin ];
   services.traefik.staticConfigOptions.experimental.localPlugins.crowdsec-bouncer.moduleName =
     crowdsecPluginModule;
 
