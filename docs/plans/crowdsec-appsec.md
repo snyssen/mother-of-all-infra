@@ -341,8 +341,10 @@ For each alert, classify it:
 
 ## Open checks (resolve during Phase 1)
 
-- [ ] Combining `appsec-default` with an `allow`-only config on one listener behaves as
-      documented ("the last declared one takes precedence"). Only visible after deploy.
+- [x] Combining `appsec-default` with an `allow`-only config on one listener behaves as
+      documented ("the last declared one takes precedence"). Confirmed 2026-11-27 13:12:
+      six `/.git/*` probes on `umami` matched `crowdsecurity/vpatch-git-config` in-band
+      and still reached umami (404 from the backend, not 403).
 - [x] In `appsec` mode the plugin needs nothing beyond the AppSec settings (plugin
       source, v1.7.1).
 - [x] Traefik on apps-01 supports per-router `observability.accessLogs` (v3.7.19).

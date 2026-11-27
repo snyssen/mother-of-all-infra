@@ -38,6 +38,13 @@
     debugPayloads: false
   updates:
     enabled: true
+  # Durable history (daily summaries, attacker/target rankings) built from the alerts
+  # and decisions this UI syncs. On by default only for new installations. It cannot be
+  # backfilled: CrowdSec keeps just a few days, so what is not collected is lost.
+  # Grafana's CrowdSec dashboard covers the metrics side (rates, rule hits, health).
+  statistics:
+    enabled: true
+    retentionDays: 365
   crowdsec:
     simulationsEnabled: false
     alertFilters: {}
