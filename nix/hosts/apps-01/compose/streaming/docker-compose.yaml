@@ -76,7 +76,7 @@ services:
       - vpn
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:4.0.20@sha256:339814bbf50599ac3b59077c252f29833d0138b59a062d0e82ce37bdc7f04f86
+    image: lscr.io/linuxserver/sonarr:4.0.20@sha256:5c943771636f8f13b833efc0eae81b9373737435a262503a29157842c052ed0b
     restart: unless-stopped
     environment:
       - PUID=33
@@ -240,7 +240,7 @@ services:
       - peertube_redis
 
   peertube_redis:
-    image: redis:8-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+    image: redis:8-alpine@sha256:5af80107c1eeecb484a2269b80a26d12bfa6521787da4663bd9f19f60a163483
     restart: unless-stopped
     networks:
       - peertube_internal
@@ -248,7 +248,7 @@ services:
       - /var/lib/app-data/peertube/redis:/data
 
   audiomuse_redis:
-    image: redis:8-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+    image: redis:8-alpine@sha256:5af80107c1eeecb484a2269b80a26d12bfa6521787da4663bd9f19f60a163483
     restart: unless-stopped
     networks:
       - audiomuse_internal
