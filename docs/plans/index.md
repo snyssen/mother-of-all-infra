@@ -14,3 +14,6 @@ an obsolete banner.
 - **[Rootless containers](rootless-containers.md)** — getting apps-01's containers off
   root (issue #322): first non-root under today's Docker, then a choice of rootless
   runtime. Inventory drafted.
+- **[Backup server on NixOS](backup-server-nixos.md)** — moving the backup server off
+  Ansible onto NixOS with btrfs, a monthly scrub and REST server auth (issue #52); starts
+  the on-site backups from scratch unless a new disk is bought. Not started.

@@ -63,6 +63,7 @@ nav:
       - plans/index.md
       - CrowdSec AppSec on ingress: plans/crowdsec-appsec.md
       - Rootless containers: plans/rootless-containers.md
+      - Backup server on NixOS: plans/backup-server-nixos.md
   - Archive:
       - archive/index.md
       - apps migration plan: archive/apps-migration-plan.md
